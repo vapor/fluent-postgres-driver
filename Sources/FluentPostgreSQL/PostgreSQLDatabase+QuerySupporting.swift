@@ -36,7 +36,7 @@ extension PostgreSQLDatabase: QuerySupporting {
 
             // Create a PostgreSQL-flavored SQL serializer to create a SQL string
             let sqlSerializer = PostgreSQLSQLSerializer()
-            var sqlString = sqlSerializer.serialize(data: sqlQuery)
+            let sqlString = sqlSerializer.serialize(data: sqlQuery)
 
             // Combine the query data with bind values from filters.
             // All bind values must come _after_ the columns section of the query.
