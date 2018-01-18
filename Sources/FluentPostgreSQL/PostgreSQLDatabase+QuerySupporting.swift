@@ -36,7 +36,7 @@ extension PostgreSQLDatabase: QuerySupporting {
 
             // Create a PostgreSQL-flavored SQL serializer to create a SQL string
             let sqlSerializer = PostgreSQLSQLSerializer()
-            let sqlString = sqlSerializer.serialize(data: sqlQuery)
+            var sqlString = sqlSerializer.serialize(data: sqlQuery)
 
             // Combine the query data with bind values from filters.
             // All bind values must come _after_ the columns section of the query.
@@ -48,6 +48,8 @@ extension PostgreSQLDatabase: QuerySupporting {
                 }
             }
 
+            // Create a push stream to accept the psql output
+            // FIXME: connect streams directly instead?
             let pushStream = PushStream<D>()
             pushStream.output(to: stream)
 
@@ -82,9 +84,15 @@ extension PostgreSQLDatabase: QuerySupporting {
             if M.ID.self == UUID.self {
                 model.fluentID = unsafeBitCast(UUID(), to: M.ID.self)
             }
+        case .didCreate:
+            if M.ID.self == Int.self {
+                return connection.simpleQuery("SELECT LASTVAL();").map(to: Void.self) { row in
+                    model.fluentID = row[0]["lastval"]?.int as? M.ID
+                }
+            }
         default: break
         }
-        print("model event: \(event)")
         return .done
     }
 }
+

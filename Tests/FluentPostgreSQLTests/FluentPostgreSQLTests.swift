@@ -34,11 +34,11 @@ class FluentPostgreSQLTests: XCTestCase {
 //    }
 
     func testChunking() throws {
-        try benchmarker.benchmarkChunking_withSchema().blockingAwait(timeout: .seconds(60))
+        try benchmarker.benchmarkChunking_withSchema()
     }
 
     func testAutoincrement() throws {
-        try benchmarker.benchmarkAutoincrement_withSchema().blockingAwait(timeout: .seconds(60))
+        try benchmarker.benchmarkAutoincrement_withSchema()
     }
 
     static let allTests = [
