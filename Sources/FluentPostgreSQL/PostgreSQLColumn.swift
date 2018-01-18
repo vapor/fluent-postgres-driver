@@ -30,6 +30,16 @@ extension Data: PostgreSQLColumnStaticRepresentable {
     public static var postgreSQLColumn: PostgreSQLColumn { return .init(type: .bytea) }
 }
 
+extension UUID: PostgreSQLColumnStaticRepresentable {
+    /// See `PostgreSQLColumnStaticRepresentable.postgreSQLColumn`
+    public static var postgreSQLColumn: PostgreSQLColumn { return .init(type: .bytea, size: 16) }
+}
+
+extension Date: PostgreSQLColumnStaticRepresentable {
+    /// See `PostgreSQLColumnStaticRepresentable.postgreSQLColumn`
+    public static var postgreSQLColumn: PostgreSQLColumn { return .init(type: .timestamp) }
+}
+
 extension FixedWidthInteger {
     /// See `PostgreSQLColumnStaticRepresentable.postgreSQLColumn`
     public static var postgreSQLColumn: PostgreSQLColumn {

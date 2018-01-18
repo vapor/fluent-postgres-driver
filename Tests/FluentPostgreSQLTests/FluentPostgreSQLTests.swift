@@ -15,7 +15,7 @@ class FluentPostgreSQLTests: XCTestCase {
     }
 
     func testSchema() throws {
-        try benchmarker.benchmarkSchema().blockingAwait(timeout: .seconds(60))
+        try! benchmarker.benchmarkSchema().blockingAwait(timeout: .seconds(60))
     }
 
     func testModels() throws {
