@@ -82,7 +82,7 @@ extension PostgreSQLDatabase: QuerySupporting {
         switch event {
         case .willCreate:
             if M.ID.self == UUID.self {
-                model.fluentID = unsafeBitCast(UUID(), to: M.ID.self)
+                model.fluentID = UUID() as? M.ID
             }
         case .didCreate:
             if M.ID.self == Int.self {
