@@ -1,28 +1,24 @@
 // swift-tools-version:4.0
-// The swift-tools-version declares the minimum version of Swift required to build this package.
-
 import PackageDescription
 
 let package = Package(
     name: "FluentPostgreSQL",
     products: [
-        // Products define the executables and libraries produced by a package, and make them visible to other packages.
-        .library(
-            name: "FluentPostgreSQL",
-            targets: ["FluentPostgreSQL"]),
+        // Swift ORM for PostgreSQL (built on top of Fluent ORM framework)
+        .library(name: "FluentPostgreSQL", targets: ["FluentPostgreSQL"]),
     ],
     dependencies: [
-        // Dependencies declare other packages that this package depends on.
-        // .package(url: /* package url */, from: "1.0.0"),
+        // Swift Promises, Futures, and Streams.
+        .package(url: "https://github.com/vapor/async.git", .branch("beta")),
+
+        // Swift ORM framework (queries, models, and relations) for building NoSQL and SQL database integrations.
+        .package(url: "https://github.com/vapor/fluent.git", .branch("beta")),
+
+        // Pure Swift, async/non-blocking client for PostgreSQL.
+        .package(url: "https://github.com/vapor/postgresql.git", .branch("beta")),
     ],
     targets: [
-        // Targets are the basic building blocks of a package. A target can define a module or a test suite.
-        // Targets can depend on other targets in this package, and on products in packages which this package depends on.
-        .target(
-            name: "FluentPostgreSQL",
-            dependencies: []),
-        .testTarget(
-            name: "FluentPostgreSQLTests",
-            dependencies: ["FluentPostgreSQL"]),
+        .target(name: "FluentPostgreSQL", dependencies: ["Async", "Fluent", "FluentSQL", "PostgreSQL"]),
+        .testTarget(name: "FluentPostgreSQLTests", dependencies: ["FluentBenchmark", "FluentPostgreSQL"]),
     ]
 )
