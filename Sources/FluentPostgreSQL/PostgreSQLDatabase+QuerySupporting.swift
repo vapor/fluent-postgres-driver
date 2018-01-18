@@ -92,6 +92,7 @@ extension PostgreSQLDatabase: QuerySupporting {
             }
         default: break
         }
+        
         return .done
     }
 }
