@@ -12,7 +12,7 @@ let package = Package(
         .package(url: "https://github.com/vapor/async.git", .branch("beta")),
 
         // Swift ORM framework (queries, models, and relations) for building NoSQL and SQL database integrations.
-        .package(url: "https://github.com/vapor/fluent.git", .branch("beta")),
+        .package(url: "https://github.com/vapor/fluent.git", .branch("benchmark-await")),
 
         // Pure Swift, async/non-blocking client for PostgreSQL.
         .package(url: "https://github.com/vapor/postgresql.git", .branch("beta")),
