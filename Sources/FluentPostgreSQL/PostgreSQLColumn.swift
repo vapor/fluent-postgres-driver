@@ -35,6 +35,23 @@ extension UUID: PostgreSQLColumnStaticRepresentable {
     public static var postgreSQLColumn: PostgreSQLColumn { return .init(type: .uuid) }
 }
 
+extension UUID: PostgreSQLDataCustomConvertible {
+    /// See `PostgreSQLDataCustomConvertible.convertFromPostgreSQLData(from:)`
+    public static func convertFromPostgreSQLData(from data: PostgreSQLData) throws -> UUID {
+        switch data {
+        case .uuid(let uuid): return uuid
+        default: throw PostgreSQLError(identifier: "uuid", reason: "Could not convert data to UUID.")
+        }
+    }
+
+    /// See `PostgreSQLDataCustomConvertible.convertToPostgreSQLData()`
+    public func convertToPostgreSQLData() throws -> PostgreSQLData {
+        return .uuid(self)
+    }
+
+
+}
+
 extension Date: PostgreSQLColumnStaticRepresentable {
     /// See `PostgreSQLColumnStaticRepresentable.postgreSQLColumn`
     public static var postgreSQLColumn: PostgreSQLColumn { return .init(type: .timestamp) }
