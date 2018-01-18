@@ -1,11 +1,12 @@
 import Async
 import FluentSQL
+import Foundation
 
 /// Adds ability to do basic Fluent queries using a `PostgreSQLDatabase`.
 extension PostgreSQLDatabase: QuerySupporting {
     /// See `QuerySupporting.execute`
     public static func execute<I, D>(query: DatabaseQuery<PostgreSQLDatabase>, into stream: I, on connection: PostgreSQLConnection)
-        where I: InputStream, D: Decodable, D == I.Input
+        where I: Async.InputStream, D: Decodable, D == I.Input
     {
         let future = Future<Void> {
             // Convert Fluent `DatabaseQuery` to generic FluentSQL `DataQuery`
@@ -40,16 +41,23 @@ extension PostgreSQLDatabase: QuerySupporting {
             // Combine the query data with bind values from filters.
             // All bind values must come _after_ the columns section of the query.
             let parameters = try modelData + bindValues.map { bind in
-                return try PostgreSQLDataEncoder().encode(bind.encodable)
+                if let uuid = bind.encodable as? UUID {
+                    return .uuid(uuid)
+                } else {
+                    return try PostgreSQLDataEncoder().encode(bind.encodable)
+                }
             }
+
+            let pushStream = PushStream<D>()
+            pushStream.output(to: stream)
 
             // Run the query
             return try connection.query(sqlString, parameters) { row in
                 do {
                     let decoded = try PostgreSQLDataDecoder().decode(D.self, from: .dictionary(row))
-                    stream.next(decoded)
+                    pushStream.push(decoded)
                 } catch {
-                    stream.error(error)
+                    pushStream.error(error)
                 }
             }
         }
@@ -69,6 +77,13 @@ extension PostgreSQLDatabase: QuerySupporting {
     public static func modelEvent<M>(event: ModelEvent, model: M, on connection: PostgreSQLConnection) -> Future<Void>
         where PostgreSQLDatabase == M.Database, M: Model
     {
+        switch event {
+        case .willCreate:
+            if M.ID.self == UUID.self {
+                model.fluentID = unsafeBitCast(UUID(), to: M.ID.self)
+            }
+        default: break
+        }
         print("model event: \(event)")
         return .done
     }
