@@ -32,7 +32,7 @@ extension Data: PostgreSQLColumnStaticRepresentable {
 
 extension UUID: PostgreSQLColumnStaticRepresentable {
     /// See `PostgreSQLColumnStaticRepresentable.postgreSQLColumn`
-    public static var postgreSQLColumn: PostgreSQLColumn { return .init(type: .bytea, size: 16) }
+    public static var postgreSQLColumn: PostgreSQLColumn { return .init(type: .uuid) }
 }
 
 extension Date: PostgreSQLColumnStaticRepresentable {

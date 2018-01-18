@@ -9,13 +9,12 @@ class FluentPostgreSQLTests: XCTestCase {
 
     override func setUp() {
         self.worker = try! DefaultEventLoop(label: "codes.vapor.postgresql.test")
-        Thread.async { self.worker.runLoop() }
         let database = PostgreSQLDatabase(config: .default())
         benchmarker = Benchmarker(database, config: .init(), on: worker, onFail: XCTFail)
     }
 
     func testSchema() throws {
-        try! benchmarker.benchmarkSchema().blockingAwait(timeout: .seconds(60))
+        try benchmarker.benchmarkSchema()
     }
 
     func testModels() throws {
