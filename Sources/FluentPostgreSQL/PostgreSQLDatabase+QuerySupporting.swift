@@ -95,4 +95,3 @@ extension PostgreSQLDatabase: QuerySupporting {
         return .done
     }
 }
-
