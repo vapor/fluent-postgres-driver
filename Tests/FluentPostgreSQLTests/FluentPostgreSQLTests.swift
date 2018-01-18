@@ -22,17 +22,17 @@ class FluentPostgreSQLTests: XCTestCase {
         try benchmarker.benchmarkModels_withSchema().blockingAwait(timeout: .seconds(60))
     }
 
-    func testRelations() throws {
-        try benchmarker.benchmarkRelations_withSchema().blockingAwait(timeout: .seconds(60))
-    }
+//    func testRelations() throws {
+//        try benchmarker.benchmarkRelations_withSchema().blockingAwait(timeout: .seconds(60))
+//    }
 
     func testTimestampable() throws {
         try benchmarker.benchmarkTimestampable_withSchema().blockingAwait(timeout: .seconds(60))
     }
 
-    func testTransactions() throws {
-        try benchmarker.benchmarkTransactions_withSchema().blockingAwait(timeout: .seconds(60))
-    }
+//    func testTransactions() throws {
+//        try benchmarker.benchmarkTransactions_withSchema().blockingAwait(timeout: .seconds(60))
+//    }
 
     func testChunking() throws {
         try benchmarker.benchmarkChunking_withSchema().blockingAwait(timeout: .seconds(60))
@@ -45,9 +45,9 @@ class FluentPostgreSQLTests: XCTestCase {
     static let allTests = [
         ("testSchema", testSchema),
         ("testModels", testModels),
-        ("testRelations", testRelations),
+//        ("testRelations", testRelations),
         ("testTimestampable", testTimestampable),
-        ("testTransactions", testTransactions),
+//        ("testTransactions", testTransactions),
         ("testChunking", testChunking),
         ("testAutoincrement", testAutoincrement),
     ]
