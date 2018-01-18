@@ -26,7 +26,7 @@ class FluentPostgreSQLTests: XCTestCase {
 //    }
 
     func testTimestampable() throws {
-        try benchmarker.benchmarkTimestampable_withSchema().blockingAwait(timeout: .seconds(60))
+        try benchmarker.benchmarkTimestampable_withSchema()
     }
 
 //    func testTransactions() throws {

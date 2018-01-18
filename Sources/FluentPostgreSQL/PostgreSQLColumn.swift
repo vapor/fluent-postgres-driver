@@ -48,13 +48,26 @@ extension UUID: PostgreSQLDataCustomConvertible {
     public func convertToPostgreSQLData() throws -> PostgreSQLData {
         return .uuid(self)
     }
-
-
 }
 
 extension Date: PostgreSQLColumnStaticRepresentable {
     /// See `PostgreSQLColumnStaticRepresentable.postgreSQLColumn`
     public static var postgreSQLColumn: PostgreSQLColumn { return .init(type: .timestamp) }
+}
+
+extension Date: PostgreSQLDataCustomConvertible {
+    /// See `PostgreSQLDataCustomConvertible.convertFromPostgreSQLData(from:)`
+    public static func convertFromPostgreSQLData(from data: PostgreSQLData) throws -> Date {
+        switch data {
+        case .date(let date): return date
+        default: throw PostgreSQLError(identifier: "date", reason: "Could not convert data to Date.")
+        }
+    }
+
+    /// See `PostgreSQLDataCustomConvertible.convertToPostgreSQLData()`
+    public func convertToPostgreSQLData() throws -> PostgreSQLData {
+        return .date(self)
+    }
 }
 
 extension FixedWidthInteger {
