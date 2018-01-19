@@ -8,7 +8,7 @@ extension PostgreSQLDatabase: QuerySupporting {
     public static func execute<I, D>(query: DatabaseQuery<PostgreSQLDatabase>, into stream: I, on connection: PostgreSQLConnection)
         where I: Async.InputStream, D: Decodable, D == I.Input
     {
-        let future = Future<Void> {
+        let future = Future<Void>.flatMap {
             // Convert Fluent `DatabaseQuery` to generic FluentSQL `DataQuery`
             var (sqlQuery, bindValues) = query.makeDataQuery()
 

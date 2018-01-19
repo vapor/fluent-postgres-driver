@@ -65,8 +65,9 @@ extension PostgreSQLDatabase: SchemaSupporting {
     /// See `SchemaSupporting.execute`
     public static func execute(schema: DatabaseSchema<PostgreSQLDatabase>, on connection: PostgreSQLConnection) -> Future<Void> {
         do {
-            let sqlQuery = schema.makeSchemaQuery(dataTypeFactory: dataType)
-            let sqlString = PostgreSQLSQLSerializer().serialize(schema: sqlQuery)
+            var schemaQuery = schema.makeSchemaQuery(dataTypeFactory: dataType)
+            schema.applyReferences(to: &schemaQuery)
+            let sqlString = PostgreSQLSQLSerializer().serialize(schema: schemaQuery)
             return try connection.query(sqlString).map(to: Void.self) { rows in
                 assert(rows.count == 0)
             }
