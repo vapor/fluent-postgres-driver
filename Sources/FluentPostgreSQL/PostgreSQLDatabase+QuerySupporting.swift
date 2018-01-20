@@ -1,4 +1,5 @@
 import Async
+import CodableKit
 import FluentSQL
 import Foundation
 
@@ -17,19 +18,12 @@ extension PostgreSQLDatabase: QuerySupporting {
             // Dictionary values should be added to the parameterized array.
             let modelData: [PostgreSQLData]
             if let model = query.data {
-                let encoded = try PostgreSQLDataEncoder().encode(model)
-                switch encoded {
-                case .dictionary(let dict):
-                    sqlQuery.columns += dict.keys.map { key in
-                        return DataColumn(table: query.entity, name: key)
-                    }
-                    modelData = .init(dict.values)
-                default:
-                    throw PostgreSQLError(
-                        identifier: "queryData",
-                        reason: "Unsupported PostgreSQLData (dictionary required) created by query data: \(model)"
-                    )
+                let encoder = PostgreSQLRowEncoder()
+                try model.encode(to: encoder)
+                sqlQuery.columns += encoder.data.keys.map { key in
+                    return DataColumn(table: query.entity, name: key)
                 }
+                modelData = .init(encoder.data.values)
             } else {
                 modelData = []
             }
@@ -41,11 +35,18 @@ extension PostgreSQLDatabase: QuerySupporting {
             // Combine the query data with bind values from filters.
             // All bind values must come _after_ the columns section of the query.
             let parameters = try modelData + bindValues.map { bind in
-                if let uuid = bind.encodable as? UUID {
-                    return .uuid(uuid)
-                } else {
-                    return try PostgreSQLDataEncoder().encode(bind.encodable)
+                let encodable = bind.encodable
+                guard let convertible = encodable as? PostgreSQLDataCustomConvertible else {
+                    let type = Swift.type(of: encodable)
+                    throw PostgreSQLError(
+                        identifier: "convertible",
+                        reason: "Unsupported encodable type: \(type)",
+                        suggestedFixes: [
+                            "Conform \(type) to PostgreSQLDataCustomConvertible"
+                        ]
+                    )
                 }
+                return try convertible.convertToPostgreSQLData()
             }
 
             // Create a push stream to accept the psql output
@@ -56,7 +57,7 @@ extension PostgreSQLDatabase: QuerySupporting {
             // Run the query
             return try connection.query(sqlString, parameters) { row in
                 do {
-                    let decoded = try PostgreSQLDataDecoder().decode(D.self, from: .dictionary(row))
+                    let decoded = try D.init(from: PostgreSQLRowDecoder(row: row))
                     pushStream.push(decoded)
                 } catch {
                     pushStream.error(error)
@@ -87,7 +88,7 @@ extension PostgreSQLDatabase: QuerySupporting {
         case .didCreate:
             if M.ID.self == Int.self {
                 return connection.simpleQuery("SELECT LASTVAL();").map(to: Void.self) { row in
-                    model.fluentID = row[0]["lastval"]?.int as? M.ID
+                    try! model.fluentID = row[0]["lastval"]?.decode(Int.self) as? M.ID
                 }
             }
         default: break

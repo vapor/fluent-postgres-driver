@@ -5,12 +5,13 @@ import FluentPostgreSQL
 
 class FluentPostgreSQLTests: XCTestCase {
     var benchmarker: Benchmarker<PostgreSQLDatabase>!
-    var worker: EventLoop!
+    var eventLoop: EventLoop!
+    var database: PostgreSQLDatabase!
 
     override func setUp() {
-        self.worker = try! DefaultEventLoop(label: "codes.vapor.postgresql.test")
-        let database = PostgreSQLDatabase(config: .default())
-        benchmarker = Benchmarker(database, config: .init(), on: worker, onFail: XCTFail)
+        eventLoop = try! DefaultEventLoop(label: "codes.vapor.postgresql.test")
+        database = PostgreSQLDatabase(config: .default())
+        benchmarker = Benchmarker(database, config: .init(), on: eventLoop, onFail: XCTFail)
     }
 
     func testSchema() throws {
@@ -41,6 +42,22 @@ class FluentPostgreSQLTests: XCTestCase {
         try benchmarker.benchmarkAutoincrement_withSchema()
     }
 
+    func testNestedStruct() throws {
+        let conn = try! database.makeConnection(using: .init(), on: eventLoop).await(on: eventLoop)
+        // print(User.codingPath(forKey: \.favoriteColors))
+        // print(User.properties())
+        try! User.prepare(on: conn).await(on: eventLoop)
+        let user = User(id: nil, name: "Tanner", pet: Pet(name: "Zizek"))
+        // user.favoriteColors = ["pink", "blue"]
+        _ = try! user.save(on: conn).await(on: eventLoop)
+
+        let fetched = try! User.query(on: conn).first().await(on: eventLoop)
+
+        XCTAssertEqual(user.id, fetched?.id)
+        try! User.revert(on: conn).await(on: eventLoop)
+        conn.close()
+    }
+
     static let allTests = [
         ("testSchema", testSchema),
         ("testModels", testModels),
@@ -51,3 +68,24 @@ class FluentPostgreSQLTests: XCTestCase {
         ("testAutoincrement", testAutoincrement),
     ]
 }
+
+struct Pet: PostgreSQLJSONType {
+    var name: String
+}
+
+final class User: PostgreSQLModel, Migration {
+    static let idKey = \User.id
+    var id: Int?
+    var name: String
+    var age: Int?
+    // var favoriteColors: [String]
+    var pet: Pet
+
+    init(id: Int? = nil, name: String, pet: Pet) {
+        // self.favoriteColors = []
+        self.id = id
+        self.name = name
+        self.pet = pet
+    }
+}
+
