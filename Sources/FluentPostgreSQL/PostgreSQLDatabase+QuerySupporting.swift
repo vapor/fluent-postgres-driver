@@ -26,20 +26,6 @@ extension PostgreSQLDatabase: QuerySupporting {
                     }
                     modelData = try dict.values.map { codableData -> PostgreSQLData in
                         switch codableData {
-                        case .bool(let value): return try value.convertToPostgreSQLData()
-                        case .int(let value): return try value.convertToPostgreSQLData()
-                        case .int8(let value): return try value.convertToPostgreSQLData()
-                        case .int16(let value): return try value.convertToPostgreSQLData()
-                        case .int32(let value): return try value.convertToPostgreSQLData()
-                        case .int64(let value): return try value.convertToPostgreSQLData()
-                        case .uint(let value): return try value.convertToPostgreSQLData()
-                        case .uint8(let value): return try value.convertToPostgreSQLData()
-                        case .uint16(let value): return try value.convertToPostgreSQLData()
-                        case .uint32(let value): return try value.convertToPostgreSQLData()
-                        case .uint64(let value): return try value.convertToPostgreSQLData()
-                        case .float(let value): return try value.convertToPostgreSQLData()
-                        case .double(let value): return try value.convertToPostgreSQLData()
-                        case .string(let value): return try value.convertToPostgreSQLData()
                         case .null: return PostgreSQLData(type: .void)
                         case .encodable(let encodable):
                             guard let convertible = encodable as? PostgreSQLDataCustomConvertible else {
@@ -53,8 +39,8 @@ extension PostgreSQLDatabase: QuerySupporting {
                                 )
                             }
                             return try convertible.convertToPostgreSQLData()
-                        case .array, .dictionary, .decoder:
-                            throw PostgreSQLError(identifier: "codable", reason: "Unsupported codable type: \(codableData)")
+                        case .array, .dictionary:
+                            throw PostgreSQLError(identifier: "codable", reason: "Unsupported encodable type: \(codableData)")
                         }
                     }
                 default:
@@ -95,7 +81,7 @@ extension PostgreSQLDatabase: QuerySupporting {
 
             // Run the query
             return try connection.query(sqlString, parameters) { row in
-                let codableDict = row.mapValues { psqlData -> CodableData in
+                let codableDict = row.mapValues { psqlData -> DecodableData in
                     return .decoder(PostgreSQLDataDecoder(data: psqlData))
                 }
                 do {
@@ -141,8 +127,7 @@ extension PostgreSQLDatabase: QuerySupporting {
 }
 
 
-internal struct PostgreSQLDataDecoder: Decoder, SingleValueDecodingContainer {
-
+internal struct PostgreSQLDataDecoder: SingleValueDecodingContainer {
     var codingPath: [CodingKey]
     var userInfo: [CodingUserInfoKey: Any]
     let data: PostgreSQLData
@@ -152,7 +137,6 @@ internal struct PostgreSQLDataDecoder: Decoder, SingleValueDecodingContainer {
         self.codingPath = []
     }
 
-    func singleValueContainer() throws -> SingleValueDecodingContainer { return self }
     func decodeNil() -> Bool { return data.data == nil }
     func decode(_ type: Int.Type) throws -> Int { return try data.decode(Int.self) }
     func decode(_ type: Int8.Type) throws -> Int8 { return try data.decode(Int8.self) }
@@ -179,22 +163,5 @@ internal struct PostgreSQLDataDecoder: Decoder, SingleValueDecodingContainer {
             )
         }
         return try convertible.convertFromPostgreSQLData(data) as! T
-    }
-
-    // unsupported
-    func container<Key>(keyedBy type: Key.Type) throws -> KeyedDecodingContainer<Key> where Key : CodingKey {
-        throw PostgreSQLError(
-            identifier: "decoding",
-            reason: "Keyed decoding container not supported",
-            suggestedFixes: ["Use a nested struct isntead"]
-        )
-    }
-
-    func unkeyedContainer() throws -> UnkeyedDecodingContainer {
-        throw PostgreSQLError(
-            identifier: "decoding",
-            reason: "Unkeyed decoding container not supported",
-            suggestedFixes: ["Use a nested struct isntead"]
-        )
     }
 }
