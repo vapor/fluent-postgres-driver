@@ -1,10 +1,8 @@
 internal struct PostgreSQLDataDecoder: SingleValueDecodingContainer {
     var codingPath: [CodingKey]
-    var userInfo: [CodingUserInfoKey: Any]
     let data: PostgreSQLData
     init(data: PostgreSQLData) {
         self.data = data
-        self.userInfo = [:]
         self.codingPath = []
     }
 

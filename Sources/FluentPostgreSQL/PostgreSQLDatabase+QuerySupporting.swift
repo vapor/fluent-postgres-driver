@@ -26,21 +26,18 @@ extension PostgreSQLDatabase: QuerySupporting {
                     }
                     modelData = try dict.values.map { codableData -> PostgreSQLData in
                         switch codableData {
-                        case .null: return PostgreSQLData(type: .void)
-                        case .encodable(let encodable):
-                            guard let convertible = encodable as? PostgreSQLDataCustomConvertible else {
-                                let type = Swift.type(of: encodable)
-                                throw PostgreSQLError(
-                                    identifier: "convertible",
-                                    reason: "Unsupported encodable type: \(type)",
-                                    suggestedFixes: [
-                                        "Conform \(type) to PostgreSQLDataCustomConvertible"
-                                    ]
-                                )
-                            }
-                            return try convertible.convertToPostgreSQLData()
-                        case .array, .dictionary:
-                            throw PostgreSQLError(identifier: "codable", reason: "Unsupported encodable type: \(codableData)")
+                        case .single(let closure):
+                            var encoder: SingleValueEncodingContainer = PostgreSQLDataEncoder()
+                            try closure(&encoder)
+                            return (encoder as! PostgreSQLDataEncoder).data!
+                        case .array, .dictionary, .null:
+                            throw PostgreSQLError(
+                                identifier: "nestedData",
+                                reason: "Unsupported nested data in query.",
+                                suggestedFixes: [
+                                    "Use a nested struct instead"
+                                ]
+                            )
                         }
                     }
                 default:
@@ -82,7 +79,7 @@ extension PostgreSQLDatabase: QuerySupporting {
             // Run the query
             return try connection.query(sqlString, parameters) { row in
                 let codableDict = row.mapValues { psqlData -> DecodableData in
-                    return .decoder(PostgreSQLDataDecoder(data: psqlData))
+                    return .single({ PostgreSQLDataDecoder(data: psqlData) })
                 }
                 do {
                     let decoded = try CodableDataDecoder().decode(D.self, from: .dictionary(codableDict))
