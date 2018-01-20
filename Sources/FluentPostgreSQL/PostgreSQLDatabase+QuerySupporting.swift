@@ -19,7 +19,6 @@ extension PostgreSQLDatabase: QuerySupporting {
             let modelData: [PostgreSQLData]
             if let model = query.data {
                 let encoded = try CodableDataEncoder().encode(model)
-                print(encoded)
                 switch encoded {
                 case .dictionary(let dict):
                     sqlQuery.columns += dict.keys.map { key in
@@ -99,7 +98,6 @@ extension PostgreSQLDatabase: QuerySupporting {
                 let codableDict = row.mapValues { psqlData -> CodableData in
                     return .decoder(PostgreSQLDataDecoder(data: psqlData))
                 }
-
                 do {
                     let decoded = try CodableDataDecoder().decode(D.self, from: .dictionary(codableDict))
                     pushStream.push(decoded)
