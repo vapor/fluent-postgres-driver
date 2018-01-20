@@ -14,11 +14,11 @@ internal final class PostgreSQLRowDecoder: Decoder {
     }
 
     func unkeyedContainer() throws -> UnkeyedDecodingContainer {
-        throw unsupported
+        throw unsupported()
     }
 
     func singleValueContainer() throws -> SingleValueDecodingContainer {
-        throw unsupported
+        throw unsupported()
     }
 
     func require(key: CodingKey) throws -> PostgreSQLData {
@@ -30,13 +30,15 @@ internal final class PostgreSQLRowDecoder: Decoder {
 
 }
 
-private let unsupported = PostgreSQLError(
-    identifier: "rowDecode",
-    reason: "PostgreSQL rows only support a flat, keyed structure `[String: T]`",
-    suggestedFixes: [
-        "You can conform nested types to `PostgreSQLJSONType` or `PostgreSQLArrayType`. (Nested types must be `PostgreSQLDataCustomConvertible`.)"
-    ]
-)
+private func unsupported() -> PostgreSQLError {
+    return PostgreSQLError(
+        identifier: "rowDecode",
+        reason: "PostgreSQL rows only support a flat, keyed structure `[String: T]`",
+        suggestedFixes: [
+            "You can conform nested types to `PostgreSQLJSONType` or `PostgreSQLArrayType`. (Nested types must be `PostgreSQLDataCustomConvertible`.)"
+        ]
+    )
+}
 
 
 fileprivate struct PostgreSQLRowKeyedDecodingContainer<K>: KeyedDecodingContainerProtocol
