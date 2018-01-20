@@ -26,6 +26,8 @@ extension PostgreSQLDatabase: SchemaSupporting {
         case .numeric: string = "NUMERIC"
         case .void: string = "VOID"
         case .uuid: string = "UUID"
+        case .jsonb: string = "JSONB"
+        case .json: string = "JSON"
         case .pg_node_tree: string = "pg_node_tree"
         default: string = "VOID" // FIXME: better error?
         }
