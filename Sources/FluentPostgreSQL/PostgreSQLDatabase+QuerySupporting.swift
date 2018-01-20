@@ -82,7 +82,7 @@ extension PostgreSQLDatabase: QuerySupporting {
             // Run the query
             return try connection.query(sqlString, parameters) { row in
                 let codableDict = row.mapValues { psqlData -> DecodableData in
-                    return .decoder(psqlData)
+                    return .decoder(PostgreSQLDataDecoder(data: psqlData))
                 }
                 do {
                     let decoded = try CodableDataDecoder().decode(D.self, from: .dictionary(codableDict))
