@@ -43,16 +43,16 @@ class FluentPostgreSQLTests: XCTestCase {
     }
 
     func testNestedStruct() throws {
-        let conn = try database.makeConnection(using: .init(), on: eventLoop).await(on: eventLoop)
-        try User.prepare(on: conn).await(on: eventLoop)
+        let conn = try! database.makeConnection(using: .init(), on: eventLoop).await(on: eventLoop)
+        try! User.prepare(on: conn).await(on: eventLoop)
 
-        let user = try User(id: nil, name: "Tanner", pet: Pet(name: "Zizek"))
+        let user = try! User(id: nil, name: "Tanner", pet: Pet(name: "Zizek"))
             .save(on: conn).await(on: eventLoop)
 
-        let fetched = try User.query(on: conn).first().await(on: eventLoop)
+        let fetched = try! User.query(on: conn).first().await(on: eventLoop)
 
         XCTAssertEqual(user.id, fetched?.id)
-        try User.revert(on: conn).await(on: eventLoop)
+        try! User.revert(on: conn).await(on: eventLoop)
         conn.close()
     }
 
@@ -75,6 +75,7 @@ final class User: PostgreSQLModel, Migration {
     static let idKey = \User.id
     var id: Int?
     var name: String
+    var age: Int?
     var pet: Pet
 
     init(id: Int? = nil, name: String, pet: Pet) {
