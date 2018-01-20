@@ -44,13 +44,11 @@ class FluentPostgreSQLTests: XCTestCase {
 
     func testNestedStruct() throws {
         let conn = try! database.makeConnection(using: .init(), on: eventLoop).await(on: eventLoop)
-        print(User.codingPath(forKey: \.favoriteColors))
-        print(User.properties())
+        // print(User.codingPath(forKey: \.favoriteColors))
+        // print(User.properties())
         try! User.prepare(on: conn).await(on: eventLoop)
-
-
-        let user = try! User(id: nil, name: "Tanner", pet: Pet(name: "Zizek"))
-        user.favoriteColors = ["pink", "blue"]
+        let user = User(id: nil, name: "Tanner", pet: Pet(name: "Zizek"))
+        // user.favoriteColors = ["pink", "blue"]
         _ = try! user.save(on: conn).await(on: eventLoop)
 
         let fetched = try! User.query(on: conn).first().await(on: eventLoop)
@@ -80,11 +78,11 @@ final class User: PostgreSQLModel, Migration {
     var id: Int?
     var name: String
     var age: Int?
-    var favoriteColors: [String]
+    // var favoriteColors: [String]
     var pet: Pet
 
     init(id: Int? = nil, name: String, pet: Pet) {
-        self.favoriteColors = []
+        // self.favoriteColors = []
         self.id = id
         self.name = name
         self.pet = pet
