@@ -43,18 +43,22 @@ class FluentPostgreSQLTests: XCTestCase {
     }
 
     func testNestedStruct() throws {
-        let conn = try! database.makeConnection(using: .init(), on: eventLoop).await(on: eventLoop)
-        // print(User.codingPath(forKey: \.favoriteColors))
-        // print(User.properties())
-        try! User.prepare(on: conn).await(on: eventLoop)
+        let conn = try database.makeConnection(using: .init(), on: eventLoop).await(on: eventLoop)
+        try User.prepare(on: conn).await(on: eventLoop)
         let user = User(id: nil, name: "Tanner", pet: Pet(name: "Zizek"))
-        // user.favoriteColors = ["pink", "blue"]
-        _ = try! user.save(on: conn).await(on: eventLoop)
+        user.favoriteColors = ["pink", "blue"]
+        user.dict["hello"] = "world"
+        _ = try user.save(on: conn).await(on: eventLoop)
+        if let fetched = try User.query(on: conn).first().await(on: eventLoop) {
+            XCTAssertEqual(user.id, fetched.id)
+            XCTAssertNil(user.age)
+            XCTAssertEqual(fetched.favoriteColors, ["pink", "blue"])
+            XCTAssertEqual(fetched.dict["hello"], "world")
+        } else {
+            XCTFail()
+        }
 
-        let fetched = try! User.query(on: conn).first().await(on: eventLoop)
-
-        XCTAssertEqual(user.id, fetched?.id)
-        try! User.revert(on: conn).await(on: eventLoop)
+        try User.revert(on: conn).await(on: eventLoop)
         conn.close()
     }
 
@@ -78,11 +82,13 @@ final class User: PostgreSQLModel, Migration {
     var id: Int?
     var name: String
     var age: Int?
-    // var favoriteColors: [String]
+    var favoriteColors: [String]
     var pet: Pet
+    var dict: [String: String]
 
     init(id: Int? = nil, name: String, pet: Pet) {
-        // self.favoriteColors = []
+        self.favoriteColors = []
+        self.dict = [:]
         self.id = id
         self.name = name
         self.pet = pet
