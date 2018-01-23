@@ -6,30 +6,10 @@ extension PostgreSQLDatabase: SchemaSupporting {
     /// See `SchemaSupporting.dataType`
     public static func dataType(for field: SchemaField<PostgreSQLDatabase>) -> String {
         var string: String
-        switch field.type.type {
-        case .bool: string = "BOOLEAN"
-        case .bytea: string = "BYTEA"
-        case .char: string = "CHAR"
-        case .int8: string = "BIGINT"
-        case .int2: string = "SMALLINT"
-        case .int4, .oid, .regproc: string = "INTEGER"
-        case .text, .name: string = "TEXT"
-        case .point: string = "POINT"
-        case .float4: string = "REAL"
-        case .float8: string = "DOUBLE PRECISION"
-        case ._aclitem: string = "_aclitem"
-        case .bpchar: string = "BPCHAR"
-        case .varchar: string = "VARCHAR"
-        case .date: string = "DATE"
-        case .time: string = "TIME"
-        case .timestamp: string = "TIMESTAMP"
-        case .numeric: string = "NUMERIC"
-        case .void: string = "VOID"
-        case .uuid: string = "UUID"
-        case .jsonb: string = "JSONB"
-        case .json: string = "JSON"
-        case .pg_node_tree: string = "pg_node_tree"
-        default: string = "VOID" // FIXME: better error?
+        if let knownSQLName = field.type.type.knownSQLName {
+            string = knownSQLName
+        } else {
+            string = "VOID"
         }
 
         if field.type.size >= 0 {
