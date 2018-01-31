@@ -1,5 +1,4 @@
-public protocol PostgreSQLModel: Model
-    where Database == PostgreSQLDatabase { }
+public protocol PostgreSQLModel: Model where Self.Database == PostgreSQLDatabase { }
 
 extension PostgreSQLModel {
     /// See `Model.Database`
