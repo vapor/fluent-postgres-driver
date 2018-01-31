@@ -51,7 +51,7 @@ fileprivate struct PostgreSQLRowKeyedDecodingContainer<K>: KeyedDecodingContaine
     init(decoder: PostgreSQLRowDecoder) {
         self.decoder = decoder
         codingPath = []
-        allKeys = self.decoder.data.keys.flatMap { K(stringValue: $0) }
+        allKeys = self.decoder.data.keys.compactMap { K(stringValue: $0) }
     }
     func contains(_ key: K) -> Bool { return decoder.data.keys.contains(key.stringValue) }
     func decodeNil(forKey key: K) -> Bool { return decoder.data[key.stringValue]?.data == nil }
