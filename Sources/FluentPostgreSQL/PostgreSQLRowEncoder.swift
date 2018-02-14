@@ -1,3 +1,5 @@
+import Foundation
+
 internal final class PostgreSQLRowEncoder: Encoder {
     var codingPath: [CodingKey]
     var userInfo: [CodingUserInfoKey : Any]
@@ -43,7 +45,7 @@ fileprivate struct PostgreSQLRowKeyedEncodingContainer<K>: KeyedEncodingContaine
         self.codingPath = []
     }
 
-    mutating func encodeNil(forKey key: K) throws { encoder.data[key.stringValue] = PostgreSQLData(type: .void) }
+    mutating func encodeNil(forKey key: K) throws { encoder.data[key.stringValue] = PostgreSQLData(type: .void, data: nil) }
     mutating func encode(_ value: Bool, forKey key: K) throws { encoder.data[key.stringValue] = try value.convertToPostgreSQLData() }
     mutating func encode(_ value: Int, forKey key: K) throws { encoder.data[key.stringValue] = try value.convertToPostgreSQLData() }
     mutating func encode(_ value: Int16, forKey key: K) throws { encoder.data[key.stringValue] = try value.convertToPostgreSQLData() }
@@ -59,7 +61,18 @@ fileprivate struct PostgreSQLRowKeyedEncodingContainer<K>: KeyedEncodingContaine
     mutating func encode(_ value: String, forKey key: K) throws { encoder.data[key.stringValue] = try value.convertToPostgreSQLData() }
     mutating func superEncoder() -> Encoder { return encoder }
     mutating func superEncoder(forKey key: K) -> Encoder { return encoder }
-    mutating func encode<T>(_ value: T, forKey key: K) throws where T : Encodable {
+    mutating func encodeIfPresent<T>(_ value: T?, forKey key: K) throws where T : Encodable {
+        if let value = value {
+            try encode(value, forKey: key)
+        } else {
+            if let convertibleType = T.self as? PostgreSQLDataCustomConvertible.Type {
+                encoder.data[key.stringValue] = PostgreSQLData(type: convertibleType.postgreSQLDataType, data: nil)
+            } else {
+                try encodeNil(forKey: key)
+            }
+        }
+    }
+    mutating func encode<T>(_ value: T, forKey key: K) throws where T: Encodable {
         guard let convertible = value as? PostgreSQLDataCustomConvertible else {
             let type = Swift.type(of: value)
             throw PostgreSQLError(

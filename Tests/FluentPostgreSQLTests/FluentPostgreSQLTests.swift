@@ -42,6 +42,22 @@ class FluentPostgreSQLTests: XCTestCase {
         try benchmarker.benchmarkAutoincrement_withSchema()
     }
 
+    func testCache() throws {
+        try benchmarker.benchmarkCache_withSchema()
+    }
+
+    func testJoins() throws {
+        try benchmarker.benchmarkJoins_withSchema()
+    }
+
+    func testSoftDeletable() throws {
+        try benchmarker.benchmarkSoftDeletable_withSchema()
+    }
+
+    func testReferentialActions() throws {
+        try benchmarker.benchmarkReferentialActions_withSchema()
+    }
+
     func testNestedStruct() throws {
         /// Swift runtime does not yet support dynamically querying conditional conformance ('Swift.Array<Swift.String>': 'CodableKit.AnyKeyStringDecodable')
         return;
@@ -72,6 +88,10 @@ class FluentPostgreSQLTests: XCTestCase {
         ("testTransactions", testTransactions),
         ("testChunking", testChunking),
         ("testAutoincrement", testAutoincrement),
+        ("testCache", testCache),
+        ("testJoins", testJoins),
+        ("testSoftDeletable", testSoftDeletable),
+        ("testReferentialActions", testReferentialActions),
     ]
 }
 
@@ -80,7 +100,7 @@ struct Pet: PostgreSQLJSONType {
 }
 
 final class User: PostgreSQLModel, Migration {
-    static let idKey = \User.id
+    static let idKey: WritableKeyPath<User, Int?> = \User.id
     var id: Int?
     var name: String
     var age: Int?
