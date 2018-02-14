@@ -77,23 +77,27 @@ extension PostgreSQLDatabase: QuerySupporting {
     }
 
     /// See `QuerySupporting.modelEvent`
-    public static func modelEvent<M>(event: ModelEvent, model: M, on connection: PostgreSQLConnection) -> Future<Void>
+    public static func modelEvent<M>(event: ModelEvent, model: M, on connection: PostgreSQLConnection) -> Future<M>
         where PostgreSQLDatabase == M.Database, M: Model
     {
         switch event {
         case .willCreate:
             if M.ID.self == UUID.self {
+                var model = model
                 model.fluentID = UUID() as? M.ID
+                return Future(model)
             }
         case .didCreate:
             if M.ID.self == Int.self {
-                return connection.simpleQuery("SELECT LASTVAL();").map(to: Void.self) { row in
-                    try! model.fluentID = row[0]["lastval"]?.decode(Int.self) as? M.ID
+                return connection.simpleQuery("SELECT LASTVAL();").map(to: M.self) { row in
+                    var model = model
+                    try model.fluentID = row[0]["lastval"]?.decode(Int.self) as? M.ID
+                    return model
                 }
             }
         default: break
         }
         
-        return .done
+        return Future(model)
     }
 }
