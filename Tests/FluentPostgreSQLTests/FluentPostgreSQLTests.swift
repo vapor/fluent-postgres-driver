@@ -84,6 +84,26 @@ class FluentPostgreSQLTests: XCTestCase {
         try benchmarker.benchmarkIndexSupporting_withSchema()
     }
 
+    func testMinimumViableModelDeclaration() throws {
+        /// NOTE: these must never fail to build
+        struct Foo: PostgreSQLModel {
+            var id: Int?
+            var name: String
+        }
+        final class Bar: PostgreSQLModel {
+            var id: Int?
+            var name: String
+        }
+        struct Baz: PostgreSQLUUIDModel {
+            var id: UUID?
+            var name: String
+        }
+        final class Qux: PostgreSQLUUIDModel {
+            var id: UUID?
+            var name: String
+        }
+    }
+
     static let allTests = [
         ("testSchema", testSchema),
         ("testModels", testModels),
@@ -97,6 +117,7 @@ class FluentPostgreSQLTests: XCTestCase {
         ("testSoftDeletable", testSoftDeletable),
         ("testReferentialActions", testReferentialActions),
         ("testIndexSupporting", testIndexSupporting),
+        ("testMinimumViableModelDeclaration", testMinimumViableModelDeclaration),
     ]
 }
 
