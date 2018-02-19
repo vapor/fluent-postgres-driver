@@ -15,10 +15,10 @@ let package = Package(
         .package(url: "https://github.com/vapor/core.git", "3.0.0-beta.1"..<"3.0.0-beta.2"),
 
         // Swift ORM framework (queries, models, and relations) for building NoSQL and SQL database integrations.
-        .package(url: "https://github.com/vapor/fluent.git", "3.0.0-beta.2"..<"3.0.0-beta.3"),
+        .package(url: "https://github.com/vapor/fluent.git", "3.0.0-beta.3"..<"3.0.0-beta.4"),
 
         // Pure Swift, async/non-blocking client for PostgreSQL.
-        .package(url: "https://github.com/vapor/postgresql.git", "1.0.0-beta.2"..<"1.0.0-beta.3"),
+        .package(url: "https://github.com/vapor/postgresql.git", "1.0.0-beta.3"..<"1.0.0-beta.4"),
     ],
     targets: [
         .target(name: "FluentPostgreSQL", dependencies: ["Async", "CodableKit", "Fluent", "FluentSQL", "PostgreSQL"]),
