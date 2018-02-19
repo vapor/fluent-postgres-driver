@@ -11,7 +11,7 @@ class FluentPostgreSQLTests: XCTestCase {
     override func setUp() {
         eventLoop = try! DefaultEventLoop(label: "codes.vapor.postgresql.test")
         database = PostgreSQLDatabase(config: .default())
-        benchmarker = Benchmarker(database, config: .init(), on: eventLoop, onFail: XCTFail)
+        benchmarker = Benchmarker(database, on: eventLoop, onFail: XCTFail)
     }
 
     func testSchema() throws {
@@ -61,7 +61,7 @@ class FluentPostgreSQLTests: XCTestCase {
     func testNestedStruct() throws {
         /// Swift runtime does not yet support dynamically querying conditional conformance ('Swift.Array<Swift.String>': 'CodableKit.AnyKeyStringDecodable')
         return;
-        let conn = try database.makeConnection(using: .init(), on: eventLoop).await(on: eventLoop)
+        let conn = try database.makeConnection(on: eventLoop).await(on: eventLoop)
         try User.prepare(on: conn).await(on: eventLoop)
         let user = User(id: nil, name: "Tanner", pet: Pet(name: "Zizek"))
         user.favoriteColors = ["pink", "blue"]
@@ -80,6 +80,10 @@ class FluentPostgreSQLTests: XCTestCase {
         conn.close()
     }
 
+    func testIndexSupporting() throws {
+        try benchmarker.benchmarkIndexSupporting_withSchema()
+    }
+
     static let allTests = [
         ("testSchema", testSchema),
         ("testModels", testModels),
@@ -92,6 +96,7 @@ class FluentPostgreSQLTests: XCTestCase {
         ("testJoins", testJoins),
         ("testSoftDeletable", testSoftDeletable),
         ("testReferentialActions", testReferentialActions),
+        ("testIndexSupporting", testIndexSupporting),
     ]
 }
 
