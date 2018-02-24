@@ -43,7 +43,8 @@ extension PostgreSQLDatabase: QuerySupporting {
                         reason: "Unsupported encodable type: \(type)",
                         suggestedFixes: [
                             "Conform \(type) to PostgreSQLDataCustomConvertible"
-                        ]
+                        ],
+                        source: .capture()
                     )
                 }
                 return try convertible.convertToPostgreSQLData()

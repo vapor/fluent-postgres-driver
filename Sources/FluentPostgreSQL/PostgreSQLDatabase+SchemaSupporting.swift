@@ -45,7 +45,8 @@ extension PostgreSQLDatabase: SchemaSupporting, IndexSupporting {
                 suggestedFixes: [
                     "Conform \(type) to `PostgreSQLColumnStaticRepresentable` to specify field type or implement a custom migration.",
                     "Specify the `PostgreSQLColumn` manually using the schema builder in a migration."
-                ]
+                ],
+                source: .capture()
             )
         }
     }

@@ -10,7 +10,7 @@ extension PostgreSQLDatabase: ReferenceSupporting {
     /// See `ReferenceSupporting.disableReferences(on:)`
     public static func disableReferences(on connection: PostgreSQLConnection) -> Future<Void> {
         return Future(
-            error: PostgreSQLError(identifier: "disableReferences", reason: "PostgreSQL does not support disabling foreign key checks.")
+            error: PostgreSQLError(identifier: "disableReferences", reason: "PostgreSQL does not support disabling foreign key checks.", source: .capture())
         )
     }
 }

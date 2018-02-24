@@ -80,7 +80,8 @@ fileprivate struct PostgreSQLRowKeyedEncodingContainer<K>: KeyedEncodingContaine
                 reason: "Unsupported encodable type: \(type)",
                 suggestedFixes: [
                     "Conform \(type) to PostgreSQLDataCustomConvertible"
-                ]
+                ],
+                source: .capture()
             )
         }
         encoder.data[key.stringValue] = try convertible.convertToPostgreSQLData()
