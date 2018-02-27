@@ -6,10 +6,14 @@ public struct PostgreSQLColumn {
     /// The columns size. Negative values mean varying size.
     public let size: Int16
 
+    /// This column's default value.
+    public var `default`: String?
+
     /// Creates a new `PostgreSQLColumn`.
-    public init(type: PostgreSQLDataType, size: Int16? = nil) {
+    public init(type: PostgreSQLDataType, size: Int16? = nil, default: String? = nil) {
         self.type = type
         self.size = size ?? -1
+        self.default = `default`
     }
 }
 
