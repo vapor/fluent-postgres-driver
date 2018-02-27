@@ -59,23 +59,19 @@ class FluentPostgreSQLTests: XCTestCase {
     }
 
     func testNestedStruct() throws {
-        /// Swift runtime does not yet support dynamically querying conditional conformance ('Swift.Array<Swift.String>': 'CodableKit.AnyKeyStringDecodable')
-        return;
         let conn = try database.makeConnection(on: eventLoop).await(on: eventLoop)
+        try? User.revert(on: conn).await(on: eventLoop)
         try User.prepare(on: conn).await(on: eventLoop)
         let user = User(id: nil, name: "Tanner", pet: Pet(name: "Zizek"))
         user.favoriteColors = ["pink", "blue"]
-        user.dict["hello"] = "world"
         _ = try user.save(on: conn).await(on: eventLoop)
         if let fetched = try User.query(on: conn).first().await(on: eventLoop) {
             XCTAssertEqual(user.id, fetched.id)
             XCTAssertNil(user.age)
             XCTAssertEqual(fetched.favoriteColors, ["pink", "blue"])
-            XCTAssertEqual(fetched.dict["hello"], "world")
         } else {
             XCTFail()
         }
-
         try User.revert(on: conn).await(on: eventLoop)
         conn.close()
     }
@@ -121,7 +117,7 @@ class FluentPostgreSQLTests: XCTestCase {
     ]
 }
 
-struct Pet: PostgreSQLJSONType {
+struct Pet: PostgreSQLJSONType, Codable {
     var name: String
 }
 
@@ -132,11 +128,9 @@ final class User: PostgreSQLModel, Migration {
     var age: Int?
     var favoriteColors: [String]
     var pet: Pet
-    var dict: [String: String]
 
     init(id: Int? = nil, name: String, pet: Pet) {
         self.favoriteColors = []
-        self.dict = [:]
         self.id = id
         self.name = name
         self.pet = pet
