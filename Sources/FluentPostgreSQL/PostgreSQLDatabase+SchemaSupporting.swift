@@ -31,6 +31,10 @@ extension PostgreSQLDatabase: SchemaSupporting, IndexSupporting {
             string += " NOT NULL"
         }
 
+        if let d = field.type.default {
+            string += " DEFAULT \(d)"
+        }
+
         return string
     }
 

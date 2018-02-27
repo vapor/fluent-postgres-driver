@@ -100,6 +100,26 @@ class FluentPostgreSQLTests: XCTestCase {
         }
     }
 
+    func testDefaultValue() throws {
+        database.enableLogging(using: DatabaseLogger(handler: { print($0) }))
+        let conn = try database.makeConnection(on: eventLoop).await(on: eventLoop)
+        try? DefaultTest.revert(on: conn).await(on: eventLoop)
+        try DefaultTest.prepare(on: conn).await(on: eventLoop)
+        let test = DefaultTest()
+        // _ = try test.save(on: conn).await(on: eventLoop)
+        let builder = test.query(on: conn)
+        builder.query.data = ["foo": "bar"] // there _must_ be a better way
+        builder.query.action = .create
+        try builder.execute().await(on: eventLoop)
+        if let fetched = try DefaultTest.query(on: conn).first().await(on: eventLoop) {
+            XCTAssertNotNil(fetched.date?.value)
+        } else {
+            XCTFail()
+        }
+        try DefaultTest.revert(on: conn).await(on: eventLoop)
+        conn.close()
+    }
+
     static let allTests = [
         ("testSchema", testSchema),
         ("testModels", testModels),
@@ -115,6 +135,45 @@ class FluentPostgreSQLTests: XCTestCase {
         ("testIndexSupporting", testIndexSupporting),
         ("testMinimumViableModelDeclaration", testMinimumViableModelDeclaration),
     ]
+}
+
+struct PostgreSQLDate: PostgreSQLType, Codable {
+    static var postgreSQLDataType: PostgreSQLDataType {
+        return .timestamp
+    }
+
+    static var postgreSQLDataArrayType: PostgreSQLDataType {
+        return ._timestamp
+    }
+
+    static var postgreSQLColumn: PostgreSQLColumn {
+        return PostgreSQLColumn(type: .timestamp, size: nil, default: "CURRENT_TIMESTAMP")
+    }
+
+    var value: Date?
+
+    init(_ value: Date? = nil) {
+        self.value = value
+    }
+
+    static func convertFromPostgreSQLData(_ data: PostgreSQLData) throws -> PostgreSQLDate {
+        return try PostgreSQLDate(Date.convertFromPostgreSQLData(data))
+    }
+
+    func convertToPostgreSQLData() throws -> PostgreSQLData {
+        return try value?.convertToPostgreSQLData() ?? PostgreSQLData(type: .timestamp, format: .binary, data: nil)
+    }
+}
+
+struct DefaultTest: PostgreSQLModel, Migration {
+    var id: Int?
+    var date: PostgreSQLDate?
+    var foo: String
+    init() {
+        self.id = nil
+        self.date = nil
+        self.foo = "bar'"
+    }
 }
 
 struct Pet: PostgreSQLJSONType, Codable {
