@@ -33,5 +33,4 @@ extension Float: PostgreSQLType { }
 extension Double: PostgreSQLType { }
 extension String: PostgreSQLType { }
 extension Bool: PostgreSQLType { }
-extension Array: PostgreSQLArrayType where Element: Codable, Element: PostgreSQLType { }
-extension Dictionary: PostgreSQLJSONType where Key: Codable, Value: Codable { }
+extension Array: PostgreSQLArrayType { }
