@@ -10,7 +10,7 @@ class FluentPostgreSQLTests: XCTestCase {
     override func setUp() {
         let eventLoop = MultiThreadedEventLoopGroup(numThreads: 1)
         database = PostgreSQLDatabase(config: .default())
-        benchmarker = Benchmarker(database, on: wrap(eventLoop.next()), onFail: XCTFail)
+        benchmarker = Benchmarker(database, on: eventLoop, onFail: XCTFail)
     }
 
     func testSchema() throws {
