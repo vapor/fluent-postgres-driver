@@ -5,11 +5,14 @@ import Foundation
 
 /// Adds ability to do basic Fluent queries using a `PostgreSQLDatabase`.
 extension PostgreSQLDatabase: QuerySupporting {
+
     /// See `QuerySupporting.execute`
-    public static func execute<I, D>(query: DatabaseQuery<PostgreSQLDatabase>, into stream: I, on connection: PostgreSQLConnection)
-        where I: Async.InputStream, D: Decodable, D == I.Input
-    {
-        let future = Future<Void>.flatMap {
+    public static func execute<D>(
+        query: DatabaseQuery<PostgreSQLDatabase>,
+        into handler: @escaping (D, PostgreSQLConnection) throws -> (),
+        on connection: PostgreSQLConnection
+    ) -> EventLoopFuture<Void> where D : Decodable {
+        return Future<Void>.flatMap(on: connection) {
             // Convert Fluent `DatabaseQuery` to generic FluentSQL `DataQuery`
             var (sqlQuery, bindValues) = query.makeDataQuery()
 
@@ -50,30 +53,11 @@ extension PostgreSQLDatabase: QuerySupporting {
                 return try convertible.convertToPostgreSQLData()
             }
 
-            // Create a push stream to accept the psql output
-            // FIXME: connect streams directly instead?
-            let pushStream = PushStream<D>()
-            pushStream.output(to: stream)
-
             // Run the query
             return try connection.query(sqlString, parameters) { row in
-                do {
-                    let decoded = try D.init(from: PostgreSQLRowDecoder(row: row))
-                    pushStream.push(decoded)
-                } catch {
-                    pushStream.error(error)
-                }
+                let decoded = try D.init(from: PostgreSQLRowDecoder(row: row))
+                try handler(decoded, connection)
             }
-        }
-
-        /// Convert Future completion / error to stream
-        future.do {
-            // Query is complete
-            stream.close()
-        }.catch { error in
-            // Query failed
-            stream.error(error)
-            stream.close()
         }
     }
 
@@ -86,7 +70,7 @@ extension PostgreSQLDatabase: QuerySupporting {
             if M.ID.self == UUID.self {
                 var model = model
                 model.fluentID = UUID() as? M.ID
-                return Future(model)
+                return Future.map(on: connection) { model }
             }
         case .didCreate:
             if M.ID.self == Int.self {
@@ -98,7 +82,7 @@ extension PostgreSQLDatabase: QuerySupporting {
             }
         default: break
         }
-        
-        return Future(model)
+
+        return Future.map(on: connection) { model }
     }
 }

@@ -57,7 +57,7 @@ extension PostgreSQLDatabase: SchemaSupporting, IndexSupporting {
 
     /// See `SchemaSupporting.execute`
     public static func execute(schema: DatabaseSchema<PostgreSQLDatabase>, on connection: PostgreSQLConnection) -> Future<Void> {
-        do {
+        return Future.flatMap(on: connection) {
             var schemaQuery = schema.makeSchemaQuery(dataTypeFactory: dataType)
             schema.applyReferences(to: &schemaQuery)
             let sqlString = PostgreSQLSQLSerializer().serialize(schema: schemaQuery)
@@ -81,12 +81,8 @@ extension PostgreSQLDatabase: SchemaSupporting, IndexSupporting {
                     }
                     indexFutures.append(remove)
                 }
-                return indexFutures.flatten()
+                return indexFutures.flatten(on: connection)
             }
-
-            
-        } catch {
-            return Future(error: error)
         }
     }
 }

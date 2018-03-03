@@ -5,13 +5,12 @@ import FluentPostgreSQL
 
 class FluentPostgreSQLTests: XCTestCase {
     var benchmarker: Benchmarker<PostgreSQLDatabase>!
-    var eventLoop: EventLoop!
     var database: PostgreSQLDatabase!
 
     override func setUp() {
-        eventLoop = try! DefaultEventLoop(label: "codes.vapor.postgresql.test")
+        let eventLoop = MultiThreadedEventLoopGroup(numThreads: 1)
         database = PostgreSQLDatabase(config: .default())
-        benchmarker = Benchmarker(database, on: eventLoop, onFail: XCTFail)
+        benchmarker = Benchmarker(database, on: wrap(eventLoop.next()), onFail: XCTFail)
     }
 
     func testSchema() throws {
@@ -59,21 +58,21 @@ class FluentPostgreSQLTests: XCTestCase {
     }
 
     func testNestedStruct() throws {
-        let conn = try database.makeConnection(on: eventLoop).await(on: eventLoop)
-        try? User.revert(on: conn).await(on: eventLoop)
-        try User.prepare(on: conn).await(on: eventLoop)
+        let conn = try benchmarker.pool.requestConnection().wait()
+        try? User.revert(on: conn).wait()
+        try User.prepare(on: conn).wait()
         let user = User(id: nil, name: "Tanner", pet: Pet(name: "Zizek"))
         user.favoriteColors = ["pink", "blue"]
-        _ = try user.save(on: conn).await(on: eventLoop)
-        if let fetched = try User.query(on: conn).first().await(on: eventLoop) {
+        _ = try user.save(on: conn).wait()
+        if let fetched = try User.query(on: conn).first().wait() {
             XCTAssertEqual(user.id, fetched.id)
             XCTAssertNil(user.age)
             XCTAssertEqual(fetched.favoriteColors, ["pink", "blue"])
         } else {
             XCTFail()
         }
-        try User.revert(on: conn).await(on: eventLoop)
-        conn.close()
+        try User.revert(on: conn).wait()
+        benchmarker.pool.releaseConnection(conn)
     }
 
     func testIndexSupporting() throws {
@@ -101,23 +100,22 @@ class FluentPostgreSQLTests: XCTestCase {
     }
 
     func testDefaultValue() throws {
-        database.enableLogging(using: DatabaseLogger(handler: { print($0) }))
-        let conn = try database.makeConnection(on: eventLoop).await(on: eventLoop)
-        try? DefaultTest.revert(on: conn).await(on: eventLoop)
-        try DefaultTest.prepare(on: conn).await(on: eventLoop)
+        let conn = try benchmarker.pool.requestConnection().wait()
+        try? DefaultTest.revert(on: conn).wait()
+        try DefaultTest.prepare(on: conn).wait()
         let test = DefaultTest()
         // _ = try test.save(on: conn).await(on: eventLoop)
         let builder = test.query(on: conn)
         builder.query.data = ["foo": "bar"] // there _must_ be a better way
         builder.query.action = .create
-        try builder.execute().await(on: eventLoop)
-        if let fetched = try DefaultTest.query(on: conn).first().await(on: eventLoop) {
+        try builder.run().wait()
+        if let fetched = try DefaultTest.query(on: conn).first().wait() {
             XCTAssertNotNil(fetched.date?.value)
         } else {
             XCTFail()
         }
-        try DefaultTest.revert(on: conn).await(on: eventLoop)
-        conn.close()
+        try DefaultTest.revert(on: conn).wait()
+        benchmarker.pool.releaseConnection(conn)
     }
 
     static let allTests = [
