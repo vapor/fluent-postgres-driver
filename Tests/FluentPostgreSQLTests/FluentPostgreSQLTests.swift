@@ -106,7 +106,7 @@ class FluentPostgreSQLTests: XCTestCase {
         let test = DefaultTest()
         // _ = try test.save(on: conn).await(on: eventLoop)
         let builder = test.query(on: conn)
-        builder.query.data = ["foo": "bar"] // there _must_ be a better way
+        builder.query.data = try ["foo": "bar".convertToPostgreSQLData()] // there _must_ be a better way
         builder.query.action = .create
         try builder.run().wait()
         if let fetched = try DefaultTest.query(on: conn).first().wait() {
@@ -115,6 +115,20 @@ class FluentPostgreSQLTests: XCTestCase {
             XCTFail()
         }
         try DefaultTest.revert(on: conn).wait()
+        benchmarker.pool.releaseConnection(conn)
+    }
+
+
+    func testUpdate() throws {
+        benchmarker.database.enableLogging(using: .print)
+        let conn = try benchmarker.pool.requestConnection().wait()
+        try? User.revert(on: conn).wait()
+        try User.prepare(on: conn).wait()
+        let user = User(id: nil, name: "Tanner", pet: Pet(name: "Zizek"))
+        user.favoriteColors = ["pink", "blue"]
+        _ = try user.save(on: conn).wait()
+        try User.query(on: conn).update(["name": "Vapor"]).wait()
+        try User.revert(on: conn).wait()
         benchmarker.pool.releaseConnection(conn)
     }
 

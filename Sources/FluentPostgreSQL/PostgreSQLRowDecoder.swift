@@ -71,7 +71,7 @@ fileprivate struct PostgreSQLRowKeyedDecodingContainer<K>: KeyedDecodingContaine
     func decode(_ type: Bool.Type, forKey key: K) throws -> Bool { return try decoder.require(key: key).decode(Bool.self) }
     func decode(_ type: String.Type, forKey key: K) throws -> String { return try decoder.require(key: key).decode(String.self) }
     func decode<T>(_ type: T.Type, forKey key: K) throws -> T where T: Decodable {
-        guard let convertible = type as? PostgreSQLDataCustomConvertible.Type else {
+        guard let convertible = type as? PostgreSQLDataConvertible.Type else {
             throw PostgreSQLError(
                 identifier: "convertible",
                 reason: "Unsupported decodable type: \(type)",
