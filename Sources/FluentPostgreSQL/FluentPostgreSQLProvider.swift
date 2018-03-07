@@ -30,7 +30,7 @@ public final class FluentPostgreSQLProvider: Provider {
 /// dirty workaround for missing pre migration hook 
 public final class PostgreSQLVersionCheckProvider: Provider {
     /// See `Provider.repositoryName`
-    public static let repositoryName = "fluent-postgresql-versioncheck"
+    public static let repositoryName = "fluent-postgresql"
 
     public init() {}
     /// See `Provider.register(_:)`
