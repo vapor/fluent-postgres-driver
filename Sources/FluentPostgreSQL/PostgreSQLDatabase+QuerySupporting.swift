@@ -8,7 +8,7 @@ extension PostgreSQLDatabase: QuerySupporting, CustomSQLSupporting {
     /// See `QuerySupporting.execute`
     public static func execute(
         query: DatabaseQuery<PostgreSQLDatabase>,
-        into handler: @escaping ([QueryField: PostgreSQLDataConvertible], PostgreSQLConnection) throws -> (),
+        into handler: @escaping ([QueryField: PostgreSQLData], PostgreSQLConnection) throws -> (),
         on connection: PostgreSQLConnection
     ) -> EventLoopFuture<Void> {
         return Future<Void>.flatMap(on: connection) {
@@ -18,9 +18,10 @@ extension PostgreSQLDatabase: QuerySupporting, CustomSQLSupporting {
             // If the query has an Encodable model attached serialize it.
             // Dictionary keys should be added to the DataQuery as columns.
             // Dictionary values should be added to the parameterized array.
-            var modelData: [PostgreSQLDataConvertible] = []
+            var modelData: [PostgreSQLData] = []
             modelData.reserveCapacity(query.data.count)
             for (field, data) in query.data {
+                if case .create = query.action, data.isNull && field.name == "id" { continue } // bad hack
                 sqlQuery.columns.append(DataColumn(table: field.entity, name: field.name))
                 modelData.append(data)
             }
@@ -35,7 +36,7 @@ extension PostgreSQLDatabase: QuerySupporting, CustomSQLSupporting {
             let sqlString = sqlSerializer.serialize(data: sqlQuery)
 
             /// Convert params
-            let parameters: [PostgreSQLData] = try (modelData + bindValues).map { try $0.convertToPostgreSQLData() }
+            let parameters: [PostgreSQLData] = modelData + bindValues
 
             /// Log supporting
             if let logger = connection.logger {
@@ -44,7 +45,7 @@ extension PostgreSQLDatabase: QuerySupporting, CustomSQLSupporting {
 
             // Run the query
             return try connection.query(sqlString, parameters) { row in
-                var res: [QueryField: PostgreSQLDataConvertible] = [:]
+                var res: [QueryField: PostgreSQLData] = [:]
                 for (col, data) in row {
                     let field = QueryField(entity: col.table, name: col.name)
                     res[field] = data
@@ -79,18 +80,23 @@ extension PostgreSQLDatabase: QuerySupporting, CustomSQLSupporting {
         return Future.map(on: connection) { model }
     }
 
-
+    /// See `QuerySupporting.QueryDataConvertible`
+    public typealias QueryDataConvertible = PostgreSQLDataConvertible
 
     /// See `QuerySupporting.queryDataParse(_:from:)`
-    public static func queryDataParse<T>(_ type: T.Type, from data: PostgreSQLDataConvertible) throws -> T {
+    public static func queryDataParse<T>(_ type: T.Type, from data: PostgreSQLData) throws -> T? {
+        if data.isNull {
+            return nil
+        }
         guard let convertibleType = T.self as? PostgreSQLDataConvertible.Type else {
             throw PostgreSQLError(identifier: "queryDataParse", reason: "Cannot parse \(T.self) from PostgreSQLData", source: .capture())
         }
-        return try convertibleType.convertFromPostgreSQLData(data.convertToPostgreSQLData()) as! T
+        let t: T = try convertibleType.convertFromPostgreSQLData(data) as! T
+        return t
     }
 
     /// See `QuerySupporting.queryDataSerialize(data:)`
-    public static func queryDataSerialize<T>(data: T?) throws -> PostgreSQLDataConvertible {
+    public static func queryDataSerialize<T>(data: T?) throws -> PostgreSQLData {
         if let data = data {
             guard let convertible = data as? PostgreSQLDataConvertible else {
                 throw PostgreSQLError(identifier: "queryDataSerialize", reason: "Cannot serialize \(T.self) to PostgreSQLData", source: .capture())
@@ -104,3 +110,5 @@ extension PostgreSQLDatabase: QuerySupporting, CustomSQLSupporting {
         }
     }
 }
+
+extension PostgreSQLData: FluentData {}
