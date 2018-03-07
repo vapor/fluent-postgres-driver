@@ -1,9 +1,9 @@
 import Foundation
 
 /// A type that is compatible with PostgreSQL schema and data.
-public protocol PostgreSQLType: PostgreSQLColumnStaticRepresentable, PostgreSQLDataCustomConvertible { }
+public protocol PostgreSQLType: PostgreSQLColumnStaticRepresentable, PostgreSQLDataConvertible { }
 
-extension PostgreSQLColumnStaticRepresentable where Self: PostgreSQLDataCustomConvertible {
+extension PostgreSQLColumnStaticRepresentable where Self: PostgreSQLDataConvertible {
     /// The `PostgreSQLColumn` type that best represents this type.
     public static var postgreSQLColumn: PostgreSQLColumn { return .init(type: Self.postgreSQLDataType) }
 }

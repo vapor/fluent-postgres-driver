@@ -4,14 +4,13 @@ import FluentSQL
 import Foundation
 
 /// Adds ability to do basic Fluent queries using a `PostgreSQLDatabase`.
-extension PostgreSQLDatabase: QuerySupporting {
-
+extension PostgreSQLDatabase: QuerySupporting, CustomSQLSupporting {
     /// See `QuerySupporting.execute`
-    public static func execute<D>(
+    public static func execute(
         query: DatabaseQuery<PostgreSQLDatabase>,
-        into handler: @escaping (D, PostgreSQLConnection) throws -> (),
+        into handler: @escaping ([QueryField: PostgreSQLDataConvertible], PostgreSQLConnection) throws -> (),
         on connection: PostgreSQLConnection
-    ) -> EventLoopFuture<Void> where D : Decodable {
+    ) -> EventLoopFuture<Void> {
         return Future<Void>.flatMap(on: connection) {
             // Convert Fluent `DatabaseQuery` to generic FluentSQL `DataQuery`
             var (sqlQuery, bindValues) = query.makeDataQuery()
@@ -19,44 +18,38 @@ extension PostgreSQLDatabase: QuerySupporting {
             // If the query has an Encodable model attached serialize it.
             // Dictionary keys should be added to the DataQuery as columns.
             // Dictionary values should be added to the parameterized array.
-            let modelData: [PostgreSQLData]
-            if let model = query.data {
-                let encoder = PostgreSQLRowEncoder()
-                try model.encode(to: encoder)
-                sqlQuery.columns += encoder.data.keys.map { key in
-                    return DataColumn(table: query.entity, name: key)
-                }
-                modelData = .init(encoder.data.values)
-            } else {
-                modelData = []
+            var modelData: [PostgreSQLDataConvertible] = []
+            modelData.reserveCapacity(query.data.count)
+            for (field, data) in query.data {
+                sqlQuery.columns.append(DataColumn(table: field.entity, name: field.name))
+                modelData.append(data)
+            }
+
+            /// Apply custom sql transformations
+            for customSQL in query.customSQL {
+                customSQL.closure(&sqlQuery)
             }
 
             // Create a PostgreSQL-flavored SQL serializer to create a SQL string
             let sqlSerializer = PostgreSQLSQLSerializer()
             let sqlString = sqlSerializer.serialize(data: sqlQuery)
 
-            // Combine the query data with bind values from filters.
-            // All bind values must come _after_ the columns section of the query.
-            let parameters = try modelData + bindValues.map { bind in
-                let encodable = bind.encodable
-                guard let convertible = encodable as? PostgreSQLDataCustomConvertible else {
-                    let type = Swift.type(of: encodable)
-                    throw PostgreSQLError(
-                        identifier: "convertible",
-                        reason: "Unsupported encodable type: \(type)",
-                        suggestedFixes: [
-                            "Conform \(type) to PostgreSQLDataCustomConvertible"
-                        ],
-                        source: .capture()
-                    )
-                }
-                return try convertible.convertToPostgreSQLData()
+            /// Convert params
+            let parameters: [PostgreSQLData] = try (modelData + bindValues).map { try $0.convertToPostgreSQLData() }
+
+            /// Log supporting
+            if let logger = connection.logger {
+                logger.log(query: sqlString, parameters: parameters)
             }
 
             // Run the query
             return try connection.query(sqlString, parameters) { row in
-                let decoded = try D.init(from: PostgreSQLRowDecoder(row: row))
-                try handler(decoded, connection)
+                var res: [QueryField: PostgreSQLDataConvertible] = [:]
+                for (col, data) in row {
+                    let field = QueryField(entity: col.table, name: col.name)
+                    res[field] = data
+                }
+                try handler(res, connection)
             }
         }
     }
@@ -76,7 +69,7 @@ extension PostgreSQLDatabase: QuerySupporting {
             if M.ID.self == Int.self {
                 return connection.simpleQuery("SELECT LASTVAL();").map(to: M.self) { row in
                     var model = model
-                    try model.fluentID = row[0]["lastval"]?.decode(Int.self) as? M.ID
+                    try model.fluentID = row[0].firstValue(forField: "lastval")?.decode(Int.self) as? M.ID
                     return model
                 }
             }
@@ -84,5 +77,30 @@ extension PostgreSQLDatabase: QuerySupporting {
         }
 
         return Future.map(on: connection) { model }
+    }
+
+
+
+    /// See `QuerySupporting.queryDataParse(_:from:)`
+    public static func queryDataParse<T>(_ type: T.Type, from data: PostgreSQLDataConvertible) throws -> T {
+        guard let convertibleType = T.self as? PostgreSQLDataConvertible.Type else {
+            throw PostgreSQLError(identifier: "queryDataParse", reason: "Cannot parse \(T.self) from PostgreSQLData", source: .capture())
+        }
+        return try convertibleType.convertFromPostgreSQLData(data.convertToPostgreSQLData()) as! T
+    }
+
+    /// See `QuerySupporting.queryDataSerialize(data:)`
+    public static func queryDataSerialize<T>(data: T?) throws -> PostgreSQLDataConvertible {
+        if let data = data {
+            guard let convertible = data as? PostgreSQLDataConvertible else {
+                throw PostgreSQLError(identifier: "queryDataSerialize", reason: "Cannot serialize \(T.self) to PostgreSQLData", source: .capture())
+            }
+            return try convertible.convertToPostgreSQLData()
+        } else {
+            guard let convertibleType = T.self as? PostgreSQLDataConvertible.Type else {
+                throw PostgreSQLError(identifier: "queryDataParse", reason: "Cannot parse \(T.self) from PostgreSQLData", source: .capture())
+            }
+            return PostgreSQLData(type: convertibleType.postgreSQLDataType, format: .binary, data: nil)
+        }
     }
 }

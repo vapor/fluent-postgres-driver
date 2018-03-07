@@ -65,7 +65,7 @@ fileprivate struct PostgreSQLRowKeyedEncodingContainer<K>: KeyedEncodingContaine
         if let value = value {
             try encode(value, forKey: key)
         } else {
-            if let convertibleType = T.self as? PostgreSQLDataCustomConvertible.Type {
+            if let convertibleType = T.self as? PostgreSQLDataConvertible.Type {
                 encoder.data[key.stringValue] = PostgreSQLData(type: convertibleType.postgreSQLDataType, data: nil)
             } else {
                 try encodeNil(forKey: key)
@@ -73,7 +73,7 @@ fileprivate struct PostgreSQLRowKeyedEncodingContainer<K>: KeyedEncodingContaine
         }
     }
     mutating func encode<T>(_ value: T, forKey key: K) throws where T: Encodable {
-        guard let convertible = value as? PostgreSQLDataCustomConvertible else {
+        guard let convertible = value as? PostgreSQLDataConvertible else {
             let type = Swift.type(of: value)
             throw PostgreSQLError(
                 identifier: "convertible",
