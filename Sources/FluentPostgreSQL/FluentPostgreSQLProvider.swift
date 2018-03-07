@@ -53,7 +53,7 @@ public final class PostgreSQLVersionCheckProvider: Provider {
     }
 
     // get current server version
-    public func getServerVersion() -> String {
+    public static func getServerVersion() -> String {
         return _serverVersion ?? "N/A"
     }
 }
