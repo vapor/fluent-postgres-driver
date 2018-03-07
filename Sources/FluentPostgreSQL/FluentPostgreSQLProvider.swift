@@ -17,6 +17,7 @@ public final class FluentPostgreSQLProvider: Provider {
 
     /// See `Provider.register(_:)`
     public func register(_ services: inout Services) throws {
+        try services.register(PostgreSQLVersionCheckProvider())
         try services.register(FluentProvider())
         try services.register(PostgreSQLProvider())
     }
@@ -25,5 +26,39 @@ public final class FluentPostgreSQLProvider: Provider {
     public func boot(_ worker: Container) throws { }
 }
 
+/// check server version and override _globalEnableIdentityColumns
+/// dirty workaround for missing pre migration hook 
+public final class PostgreSQLVersionCheckProvider: Provider {
+    /// See `Provider.repositoryName`
+    public static let repositoryName = "fluent-postgresql"
+
+    public init() {}
+    /// See `Provider.register(_:)`
+    public func register(_ services: inout Services) throws {}
+
+    /// See `Provider.boot(_:)`
+    public func boot(_ worker: Container) throws {
+        try worker.withConnection(to: .psql) { conn in
+            conn.simpleQuery("SELECT current_setting('server_version') as version").map(to: Void.self) { rows in
+                _serverVersion = try rows[0]["version"]!.decode(String.self)
+                if let versionString = _serverVersion {
+                    let pointIndex = versionString.index(of: ".") ?? versionString.endIndex
+                    let majorVersion = versionString[..<pointIndex]
+                    if let ver = Int(majorVersion) {
+                        _globalEnableIdentityColumns = ver < 10 ? false: _globalEnableIdentityColumns
+                    }
+                }
+            }
+        }.wait()
+    }
+
+    // get current server version
+    public static func getServerVersion() -> String {
+        return _serverVersion ?? "N/A"
+    }
+}
+
+/// server version string
+internal var _serverVersion: String?
 /// Enabled by default
 internal var _globalEnableIdentityColumns: Bool = true
