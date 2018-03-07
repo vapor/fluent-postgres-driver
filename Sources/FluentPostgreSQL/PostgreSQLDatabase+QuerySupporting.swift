@@ -70,7 +70,7 @@ extension PostgreSQLDatabase: QuerySupporting, CustomSQLSupporting {
             if M.ID.self == Int.self {
                 return connection.simpleQuery("SELECT LASTVAL();").map(to: M.self) { row in
                     var model = model
-                    try model.fluentID = row[0].firstValue(forField: "lastval")?.decode(Int.self) as? M.ID
+                    try model.fluentID = row[0].firstValue(forColumn: "lastval")?.decode(Int.self) as? M.ID
                     return model
                 }
             }
