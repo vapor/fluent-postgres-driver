@@ -132,6 +132,22 @@ class FluentPostgreSQLTests: XCTestCase {
         benchmarker.pool.releaseConnection(conn)
     }
 
+    func testGH24() throws {
+        benchmarker.database.enableLogging(using: .print)
+        let conn = try benchmarker.pool.requestConnection().wait()
+        try? Allergy.revert(on: conn).wait()
+        try Allergy.prepare(on: conn).wait()
+        struct Allergy: PostgreSQLModel, Migration {
+            static let entity = "allergies"
+            var id: Int?
+        }
+        _ = try Allergy(id: 2).create(on: conn).wait()
+        _ = try Allergy(id: 4).create(on: conn).wait()
+        let stuff = try Allergy.query(on: conn).filter(\Allergy.id, in: [1, 2, 3]).all().wait()
+        XCTAssertEqual(stuff.count, 1)
+        XCTAssertEqual(stuff.first?.id, 2)
+    }
+
     static let allTests = [
         ("testSchema", testSchema),
         ("testModels", testModels),
@@ -146,6 +162,7 @@ class FluentPostgreSQLTests: XCTestCase {
         ("testReferentialActions", testReferentialActions),
         ("testIndexSupporting", testIndexSupporting),
         ("testMinimumViableModelDeclaration", testMinimumViableModelDeclaration),
+        ("testGH24", testGH24),
     ]
 }
 

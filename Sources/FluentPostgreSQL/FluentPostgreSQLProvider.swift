@@ -40,7 +40,7 @@ public final class PostgreSQLVersionCheckProvider: Provider {
     public func boot(_ worker: Container) throws {
         try worker.withConnection(to: .psql) { conn in
             conn.simpleQuery("SELECT current_setting('server_version') as version").map(to: Void.self) { rows in
-                _serverVersion = try rows[0]["version"]!.decode(String.self)
+                _serverVersion = try rows[0].firstValue(forColumn: "version")!.decode(String.self)
                 if let versionString = _serverVersion {
                     let pointIndex = versionString.index(of: ".") ?? versionString.endIndex
                     let majorVersion = versionString[..<pointIndex]

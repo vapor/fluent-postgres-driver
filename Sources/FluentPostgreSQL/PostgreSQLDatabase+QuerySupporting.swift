@@ -67,7 +67,7 @@ extension PostgreSQLDatabase: QuerySupporting, CustomSQLSupporting {
                 return Future.map(on: connection) { model }
             }
         case .didCreate:
-            if M.ID.self == Int.self {
+            if M.ID.self == Int.self, model.fluentID == nil {
                 return connection.simpleQuery("SELECT LASTVAL();").map(to: M.self) { row in
                     var model = model
                     try model.fluentID = row[0].firstValue(forColumn: "lastval")?.decode(Int.self) as? M.ID
