@@ -1,7 +1,9 @@
+import CodableKit
 import Foundation
 
 /// A type that is compatible with PostgreSQL schema and data.
-public protocol PostgreSQLType: PostgreSQLColumnStaticRepresentable, PostgreSQLDataConvertible { }
+public protocol PostgreSQLType:
+    PostgreSQLColumnStaticRepresentable, PostgreSQLDataConvertible { }
 
 extension PostgreSQLColumnStaticRepresentable where Self: PostgreSQLDataConvertible {
     /// The `PostgreSQLColumn` type that best represents this type.
@@ -13,6 +15,8 @@ public protocol PostgreSQLJSONType: PostgreSQLType, PostgreSQLJSONCustomConverti
 
 /// A type that is supports being represented as T[] in a PostgreSQL database.
 public protocol PostgreSQLArrayType: PostgreSQLType, PostgreSQLArrayCustomConvertible { }
+
+public protocol PostgreSQLEnumType: PostgreSQLType, Codable, TupleKeyStringDecodable, RawRepresentable where Self.RawValue: PostgreSQLDataConvertible { }
 
 /// MARK: Default Implementations
 

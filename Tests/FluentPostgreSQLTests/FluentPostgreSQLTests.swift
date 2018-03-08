@@ -148,6 +148,37 @@ class FluentPostgreSQLTests: XCTestCase {
         XCTAssertEqual(stuff.first?.id, 2)
     }
 
+    func testGH21() throws {
+        /// - types
+        enum PetType: Int, PostgreSQLEnumType {
+            static let keyString: TupleMap = (.cat, .dog)
+            case cat = 1
+            case dog = 2
+        }
+        struct Pet: PostgreSQLModel, Migration {
+            static let entity = "pets"
+            var id: Int?
+            var type: PetType
+            var name: String
+        }
+
+        /// - prepare db
+        benchmarker.database.enableLogging(using: .print)
+        let conn = try benchmarker.pool.requestConnection().wait()
+        try? Pet.revert(on: conn).wait()
+        try Pet.prepare(on: conn).wait()
+
+        /// - tests
+        _ = try Pet(id: nil, type: .cat, name: "Ziz").save(on: conn).wait()
+        _ = try Pet(id: nil, type: .dog, name: "Spud").save(on: conn).wait()
+        let cats = try Pet.query(on: conn).filter(\.type == .cat).all().wait()
+        let dogs = try Pet.query(on: conn).filter(\.type == .dog).all().wait()
+        XCTAssertEqual(cats.count, 1)
+        XCTAssertEqual(cats.first?.name, "Ziz")
+        XCTAssertEqual(dogs.count, 1)
+        XCTAssertEqual(dogs.first?.name, "Spud")
+    }
+
     static let allTests = [
         ("testSchema", testSchema),
         ("testModels", testModels),
@@ -163,6 +194,7 @@ class FluentPostgreSQLTests: XCTestCase {
         ("testIndexSupporting", testIndexSupporting),
         ("testMinimumViableModelDeclaration", testMinimumViableModelDeclaration),
         ("testGH24", testGH24),
+        ("testGH21", testGH21),
     ]
 }
 
