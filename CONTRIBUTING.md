@@ -1,6 +1,6 @@
 # Contributing to Fluent PostgreSQL
 
-👋 Welcome to the Vapor team! Join us on Slack ([http://vapor.team](http://vapor.team)) if you haven't already.
+👋 Welcome to the Vapor team! 
 
 ## Bootstrap
 
@@ -24,5 +24,14 @@ If you add a new `XCTestCase` subclass, make sure to add it to the `Tests/LinuxM
 If you are fixing a single GitHub issue in particular, you can add a test named `testGH<issue number>` to ensure
 that your fix is working. This will also help prevent regression.
 
+## SemVer
+
+Vapor tries really hard to follow strict [SemVer](https://semver.org). This means that any changes to the source code that can cause
+existing code to stop compiling _must_ wait until the next major version to be included. 
+
+Code that is only additive and will not break any existing code can be included in the next minor release.
+
 
 Thanks! 🙌
+
+Join us on Slack if you have any questions: [http://vapor.team](http://vapor.team).

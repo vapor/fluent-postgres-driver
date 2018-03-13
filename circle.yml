@@ -15,7 +15,6 @@ jobs:
         environment:
           POSTGRES_USER: vapor_username
           POSTGRES_DB: vapor_database
-          POSTGRES_PASSWORD: vapor_password
     steps:
       - run:
           name: Update APT

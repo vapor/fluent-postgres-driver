@@ -15,7 +15,7 @@ class FluentPostgreSQLTests: XCTestCase {
             port: 5432,
             username: "vapor_username",
             database: "vapor_database",
-            password: "vapor_password"
+            password: nil
         )
         database = PostgreSQLDatabase(config: config)
         benchmarker = Benchmarker(database, on: eventLoop, onFail: XCTFail)
