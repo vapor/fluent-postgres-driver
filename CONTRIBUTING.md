@@ -31,7 +31,8 @@ existing code to stop compiling _must_ wait until the next major version to be i
 
 Code that is only additive and will not break any existing code can be included in the next minor release.
 
-
-Thanks! 🙌
+----------
 
 Join us on Slack if you have any questions: [http://vapor.team](http://vapor.team).
+
+&mdash; Thanks! 🙌
