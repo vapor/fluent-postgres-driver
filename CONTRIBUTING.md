@@ -26,7 +26,7 @@ that your fix is working. This will also help prevent regression.
 
 ## SemVer
 
-Vapor tries really hard to follow strict [SemVer](https://semver.org). This means that any changes to the source code that can cause
+Vapor follows [SemVer](https://semver.org). This means that any changes to the source code that can cause
 existing code to stop compiling _must_ wait until the next major version to be included. 
 
 Code that is only additive and will not break any existing code can be included in the next minor release.
