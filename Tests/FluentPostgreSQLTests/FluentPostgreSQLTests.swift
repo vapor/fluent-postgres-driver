@@ -2,6 +2,7 @@ import Async
 import XCTest
 import FluentBenchmark
 import FluentPostgreSQL
+import Foundation
 
 class FluentPostgreSQLTests: XCTestCase {
     var benchmarker: Benchmarker<PostgreSQLDatabase>!
@@ -9,7 +10,14 @@ class FluentPostgreSQLTests: XCTestCase {
 
     override func setUp() {
         let eventLoop = MultiThreadedEventLoopGroup(numThreads: 1)
-        database = PostgreSQLDatabase(config: .default())
+        let config = PostgreSQLDatabaseConfig(
+            hostname: ProcessInfo.processInfo.environment["PSQL_HOSTNAME"] ?? "localhost",
+            port: 5432,
+            username: "vapor_username",
+            database: "vapor_database",
+            password: "vapor_password"
+        )
+        database = PostgreSQLDatabase(config: config)
         benchmarker = Benchmarker(database, on: eventLoop, onFail: XCTFail)
     }
 
@@ -101,7 +109,7 @@ class FluentPostgreSQLTests: XCTestCase {
 
     func testDefaultValue() throws {
         let conn = try benchmarker.pool.requestConnection().wait()
-        try? DefaultTest.revert(on: conn).wait()
+        defer { try? DefaultTest.revert(on: conn).wait() }
         try DefaultTest.prepare(on: conn).wait()
         let test = DefaultTest()
         // _ = try test.save(on: conn).await(on: eventLoop)
@@ -114,7 +122,6 @@ class FluentPostgreSQLTests: XCTestCase {
         } else {
             XCTFail()
         }
-        try DefaultTest.revert(on: conn).wait()
         benchmarker.pool.releaseConnection(conn)
     }
 
@@ -122,20 +129,19 @@ class FluentPostgreSQLTests: XCTestCase {
     func testUpdate() throws {
         benchmarker.database.enableLogging(using: .print)
         let conn = try benchmarker.pool.requestConnection().wait()
-        try? User.revert(on: conn).wait()
+        defer { try? User.revert(on: conn).wait() }
         try User.prepare(on: conn).wait()
         let user = User(id: nil, name: "Tanner", pet: Pet(name: "Zizek"))
         user.favoriteColors = ["pink", "blue"]
         _ = try user.save(on: conn).wait()
         try User.query(on: conn).update(["name": "Vapor"]).wait()
-        try User.revert(on: conn).wait()
         benchmarker.pool.releaseConnection(conn)
     }
 
     func testGH24() throws {
         benchmarker.database.enableLogging(using: .print)
         let conn = try benchmarker.pool.requestConnection().wait()
-        try? Allergy.revert(on: conn).wait()
+        defer { try? Allergy.revert(on: conn).wait() }
         try Allergy.prepare(on: conn).wait()
         struct Allergy: PostgreSQLModel, Migration {
             static let entity = "allergies"
@@ -165,7 +171,7 @@ class FluentPostgreSQLTests: XCTestCase {
         /// - prepare db
         benchmarker.database.enableLogging(using: .print)
         let conn = try benchmarker.pool.requestConnection().wait()
-        try? Pet.revert(on: conn).wait()
+        defer { try? Pet.revert(on: conn).wait() }
         try Pet.prepare(on: conn).wait()
 
         /// - tests
@@ -181,16 +187,14 @@ class FluentPostgreSQLTests: XCTestCase {
     
     func testPersistsDateMillisecondPart() throws {
         database.enableLogging(using: DatabaseLogger(handler: { print($0) }))
-        let conn = try database.makeConnection(on: eventLoop).await(on: eventLoop)
-        try? DefaultTest.revert(on: conn).await(on: eventLoop)
-        try DefaultTest.prepare(on: conn).await(on: eventLoop)
+        let conn = try benchmarker.pool.requestConnection().wait()
+        defer { try? DefaultTest.revert(on: conn).wait() }
+        try DefaultTest.prepare(on: conn).wait()
         var test = DefaultTest()
         test.date = PostgreSQLDate(Date(timeIntervalSinceReferenceDate: 123.456))
-        _ = try test.save(on: conn).await(on: eventLoop)
-        let fetched = try DefaultTest.query(on: conn).first().await(on: eventLoop)!
+        _ = try test.save(on: conn).wait()
+        let fetched = try DefaultTest.query(on: conn).first().wait()!
         XCTAssertEqual(123.456, fetched.date!.value!.timeIntervalSinceReferenceDate, accuracy: 1e-6)
-        try DefaultTest.revert(on: conn).await(on: eventLoop)
-        conn.close()
     }
 
     static let allTests = [
@@ -209,6 +213,7 @@ class FluentPostgreSQLTests: XCTestCase {
         ("testMinimumViableModelDeclaration", testMinimumViableModelDeclaration),
         ("testGH24", testGH24),
         ("testGH21", testGH21),
+        ("testPersistsDateMillisecondPart", testPersistsDateMillisecondPart),
     ]
 }
 
