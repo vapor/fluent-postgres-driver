@@ -178,6 +178,20 @@ class FluentPostgreSQLTests: XCTestCase {
         XCTAssertEqual(dogs.count, 1)
         XCTAssertEqual(dogs.first?.name, "Spud")
     }
+    
+    func testPersistsDateMillisecondPart() throws {
+        database.enableLogging(using: DatabaseLogger(handler: { print($0) }))
+        let conn = try database.makeConnection(on: eventLoop).await(on: eventLoop)
+        try? DefaultTest.revert(on: conn).await(on: eventLoop)
+        try DefaultTest.prepare(on: conn).await(on: eventLoop)
+        var test = DefaultTest()
+        test.date = PostgreSQLDate(Date(timeIntervalSinceReferenceDate: 123.456))
+        _ = try test.save(on: conn).await(on: eventLoop)
+        let fetched = try DefaultTest.query(on: conn).first().await(on: eventLoop)!
+        XCTAssertEqual(123.456, fetched.date!.value!.timeIntervalSinceReferenceDate, accuracy: 1e-6)
+        try DefaultTest.revert(on: conn).await(on: eventLoop)
+        conn.close()
+    }
 
     static let allTests = [
         ("testSchema", testSchema),
