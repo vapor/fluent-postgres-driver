@@ -210,6 +210,28 @@ class FluentPostgreSQLTests: XCTestCase {
         try benchmarker.benchmarkContains_withSchema()
     }
 
+    func testGH30() throws {
+        /// - types
+        struct Foo: PostgreSQLModel, Migration {
+            static let entity = "foos"
+            var id: Int?
+            var location: PostgreSQLPoint?
+        }
+
+        /// - prepare db
+        benchmarker.database.enableLogging(using: .print)
+        let conn = try benchmarker.pool.requestConnection().wait()
+        defer { try? Foo.revert(on: conn).wait() }
+        try Foo.prepare(on: conn).wait()
+
+        /// - tests
+        var foo = Foo(id: nil, location: PostgreSQLPoint(x: 1, y: 3.14))
+        foo = try foo.save(on: conn).wait()
+        foo = try Foo.find(foo.requireID(), on: conn).wait()!
+        XCTAssertEqual(foo.location?.x, 1)
+        XCTAssertEqual(foo.location?.y, 3.14)
+    }
+
     static let allTests = [
         ("testSchema", testSchema),
         ("testModels", testModels),
@@ -228,6 +250,7 @@ class FluentPostgreSQLTests: XCTestCase {
         ("testGH21", testGH21),
         ("testPersistsDateMillisecondPart", testPersistsDateMillisecondPart),
         ("testContains", testContains),
+        ("testGH30", testGH30),
     ]
 }
 

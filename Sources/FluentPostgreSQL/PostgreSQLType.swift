@@ -38,3 +38,4 @@ extension Double: PostgreSQLType { }
 extension String: PostgreSQLType { }
 extension Bool: PostgreSQLType { }
 extension Array: PostgreSQLArrayType { }
+extension PostgreSQLPoint: PostgreSQLType { }
