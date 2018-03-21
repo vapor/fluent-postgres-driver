@@ -1,3 +1,4 @@
+import Async
 import Service
 
 /// Adds Fluent PostgreSQL's services to your project.
@@ -17,29 +18,14 @@ public final class FluentPostgreSQLProvider: Provider {
 
     /// See `Provider.register(_:)`
     public func register(_ services: inout Services) throws {
-        try services.register(PostgreSQLVersionCheckProvider())
         try services.register(FluentProvider())
         try services.register(PostgreSQLProvider())
     }
 
     /// See `Provider.boot(_:)`
-    public func boot(_ worker: Container) throws { }
-}
-
-/// check server version and override _globalEnableIdentityColumns
-/// dirty workaround for missing pre migration hook 
-public final class PostgreSQLVersionCheckProvider: Provider {
-    /// See `Provider.repositoryName`
-    public static let repositoryName = "fluent-postgresql"
-
-    public init() {}
-    /// See `Provider.register(_:)`
-    public func register(_ services: inout Services) throws {}
-
-    /// See `Provider.boot(_:)`
-    public func boot(_ worker: Container) throws {
-        try worker.withConnection(to: .psql) { conn in
-            conn.simpleQuery("SELECT current_setting('server_version') as version").map(to: Void.self) { rows in
+    public func willBoot(_ worker: Container) throws -> Future<Void> {
+        return worker.withConnection(to: .psql) { conn in
+            return conn.simpleQuery("SELECT current_setting('server_version') as version").map(to: Void.self) { rows in
                 _serverVersion = try rows[0].firstValue(forColumn: "version")!.decode(String.self)
                 if let versionString = _serverVersion {
                     let pointIndex = versionString.index(of: ".") ?? versionString.endIndex
@@ -49,12 +35,16 @@ public final class PostgreSQLVersionCheckProvider: Provider {
                     }
                 }
             }
-        }.wait()
+        }
     }
 
-    // get current server version
-    public static func getServerVersion() -> String {
-        return _serverVersion ?? "N/A"
+    /// See `Provider.boot(_:)`
+    public func didBoot(_ worker: Container) throws -> Future<Void> {
+        return worker.withConnection(to: .psql) { conn in
+            return conn.simpleQuery("select * from pg_class").map(to: Void.self) { rows in
+                print(rows)
+            }
+        }
     }
 }
 

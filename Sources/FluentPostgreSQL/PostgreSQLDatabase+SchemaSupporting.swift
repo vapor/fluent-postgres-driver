@@ -57,6 +57,9 @@ extension PostgreSQLDatabase: SchemaSupporting, IndexSupporting {
 
     /// See `SchemaSupporting.execute`
     public static func execute(schema: DatabaseSchema<PostgreSQLDatabase>, on connection: PostgreSQLConnection) -> Future<Void> {
+        /// schema is changing, invalidate the table name cache
+        PostgreSQLTableNameCache.invalidate(for: connection)
+
         return Future.flatMap(on: connection) {
             var schemaQuery = schema.makeSchemaQuery(dataTypeFactory: dataType)
             schema.applyReferences(to: &schemaQuery)

@@ -11,7 +11,8 @@ extension PostgreSQLDatabase: QuerySupporting, CustomSQLSupporting {
         into handler: @escaping ([QueryField: PostgreSQLData], PostgreSQLConnection) throws -> (),
         on connection: PostgreSQLConnection
     ) -> EventLoopFuture<Void> {
-        return Future<Void>.flatMap(on: connection) {
+        /// wait for the table name cache before continuing
+        return PostgreSQLTableNameCache.get(for: connection).flatMap(to: Void.self) { tableNameCache in
             // Convert Fluent `DatabaseQuery` to generic FluentSQL `DataQuery`
             var (sqlQuery, bindValues) = query.makeDataQuery()
 
@@ -47,7 +48,7 @@ extension PostgreSQLDatabase: QuerySupporting, CustomSQLSupporting {
             return try connection.query(sqlString, parameters) { row in
                 var res: [QueryField: PostgreSQLData] = [:]
                 for (col, data) in row {
-                    let field = QueryField(entity: col.table, name: col.name)
+                    let field = QueryField(entity: tableNameCache.storage[col.tableOID], name: col.name)
                     res[field] = data
                 }
                 try handler(res, connection)
@@ -109,6 +110,9 @@ extension PostgreSQLDatabase: QuerySupporting, CustomSQLSupporting {
             return PostgreSQLData(type: convertibleType.postgreSQLDataType, format: .binary, data: nil)
         }
     }
+
+    /// See `QuerySupporting.QueryFilter`
+    public typealias QueryFilter = DataPredicateComparison
 }
 
 extension PostgreSQLData: FluentData {}

@@ -1,4 +1,5 @@
 import Async
+import Core
 import XCTest
 import FluentBenchmark
 import FluentPostgreSQL
@@ -9,15 +10,16 @@ class FluentPostgreSQLTests: XCTestCase {
     var database: PostgreSQLDatabase!
 
     override func setUp() {
-        let eventLoop = MultiThreadedEventLoopGroup(numThreads: 1)
         let config = PostgreSQLDatabaseConfig(
-            hostname: ProcessInfo.processInfo.environment["PSQL_HOSTNAME"] ?? "localhost",
+            hostname: (try? Process.execute("docker-machine", "ip")) ?? "192.168.99.100",
             port: 5432,
             username: "vapor_username",
             database: "vapor_database",
             password: nil
         )
-        database = PostgreSQLDatabase(config: config)
+        let main = MultiThreadedEventLoopGroup(numThreads: 1)
+        database = PostgreSQLDatabase(config: config, on: main)
+        let eventLoop = MultiThreadedEventLoopGroup(numThreads: 1)
         benchmarker = Benchmarker(database, on: eventLoop, onFail: XCTFail)
     }
 
@@ -197,6 +199,10 @@ class FluentPostgreSQLTests: XCTestCase {
         XCTAssertEqual(123.456, fetched.date!.value!.timeIntervalSinceReferenceDate, accuracy: 1e-6)
     }
 
+    func testContains() throws {
+        try benchmarker.benchmarkContains_withSchema()
+    }
+
     static let allTests = [
         ("testSchema", testSchema),
         ("testModels", testModels),
@@ -214,6 +220,7 @@ class FluentPostgreSQLTests: XCTestCase {
         ("testGH24", testGH24),
         ("testGH21", testGH21),
         ("testPersistsDateMillisecondPart", testPersistsDateMillisecondPart),
+        ("testContains", testContains),
     ]
 }
 

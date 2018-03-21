@@ -10,18 +10,12 @@ jobs:
       - run: swift test
   linux:
     docker:
-      - image: norionomura/swift:swift-4.1-branch
+      - image: codevapor/swift:4.1
       - image: circleci/postgres:latest
         environment:
           POSTGRES_USER: vapor_username
           POSTGRES_DB: vapor_database
     steps:
-      - run:
-          name: Update APT
-          command: apt-get update
-      - run:
-          name: Install Swift NIO dependencies
-          command: apt-get install -yq pkg-config libssl-dev
       - checkout
       - run: 
           name: Compile code
