@@ -40,11 +40,7 @@ public final class FluentPostgreSQLProvider: Provider {
 
     /// See `Provider.boot(_:)`
     public func didBoot(_ worker: Container) throws -> Future<Void> {
-        return worker.withConnection(to: .psql) { conn in
-            return conn.simpleQuery("select * from pg_class").map(to: Void.self) { rows in
-                print(rows)
-            }
-        }
+        return .done(on: worker)
     }
 }
 
