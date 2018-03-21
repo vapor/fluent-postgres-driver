@@ -10,8 +10,15 @@ class FluentPostgreSQLTests: XCTestCase {
     var database: PostgreSQLDatabase!
 
     override func setUp() {
+        let hostname: String
+        #if Xcode
+        hostname = (try? Process.execute("docker-machine", "ip")) ?? "192.168.99.100"
+        #else
+        hostname = "localhost"
+        #endif
+
         let config = PostgreSQLDatabaseConfig(
-            hostname: (try? Process.execute("docker-machine", "ip")) ?? "192.168.99.100",
+            hostname: hostname,
             port: 5432,
             username: "vapor_username",
             database: "vapor_database",
