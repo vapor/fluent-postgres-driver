@@ -24,8 +24,7 @@ class FluentPostgreSQLTests: XCTestCase {
             database: "vapor_database",
             password: nil
         )
-        let main = MultiThreadedEventLoopGroup(numThreads: 1)
-        database = PostgreSQLDatabase(config: config, on: main)
+        database = PostgreSQLDatabase(config: config)
         let eventLoop = MultiThreadedEventLoopGroup(numThreads: 1)
         benchmarker = Benchmarker(database, on: eventLoop, onFail: XCTFail)
     }
