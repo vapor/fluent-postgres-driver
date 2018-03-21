@@ -1,9 +1,11 @@
+import CodableKit
 import Foundation
 
 /// A type that is compatible with PostgreSQL schema and data.
-public protocol PostgreSQLType: PostgreSQLColumnStaticRepresentable, PostgreSQLDataCustomConvertible { }
+public protocol PostgreSQLType:
+    PostgreSQLColumnStaticRepresentable, PostgreSQLDataConvertible { }
 
-extension PostgreSQLColumnStaticRepresentable where Self: PostgreSQLDataCustomConvertible {
+extension PostgreSQLColumnStaticRepresentable where Self: PostgreSQLDataConvertible {
     /// The `PostgreSQLColumn` type that best represents this type.
     public static var postgreSQLColumn: PostgreSQLColumn { return .init(type: Self.postgreSQLDataType) }
 }
@@ -13,6 +15,8 @@ public protocol PostgreSQLJSONType: PostgreSQLType, PostgreSQLJSONCustomConverti
 
 /// A type that is supports being represented as T[] in a PostgreSQL database.
 public protocol PostgreSQLArrayType: PostgreSQLType, PostgreSQLArrayCustomConvertible { }
+
+public protocol PostgreSQLEnumType: PostgreSQLType, Codable, TupleKeyStringDecodable, RawRepresentable where Self.RawValue: PostgreSQLDataConvertible { }
 
 /// MARK: Default Implementations
 
@@ -34,3 +38,4 @@ extension Double: PostgreSQLType { }
 extension String: PostgreSQLType { }
 extension Bool: PostgreSQLType { }
 extension Array: PostgreSQLArrayType { }
+extension PostgreSQLPoint: PostgreSQLType { }

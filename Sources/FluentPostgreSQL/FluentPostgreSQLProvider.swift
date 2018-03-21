@@ -1,3 +1,4 @@
+import Async
 import Service
 
 /// Adds Fluent PostgreSQL's services to your project.
@@ -22,8 +23,32 @@ public final class FluentPostgreSQLProvider: Provider {
     }
 
     /// See `Provider.boot(_:)`
-    public func boot(_ worker: Container) throws { }
+    public func willBoot(_ worker: Container) throws -> Future<Void> {
+        return worker.withConnection(to: .psql) { conn in
+            return conn.simpleQuery("SELECT current_setting('server_version') as version").map(to: Void.self) { rows in
+                _serverVersion = try rows[0].firstValue(forColumn: "version")!.decode(String.self)
+                if let versionString = _serverVersion {
+                    let pointIndex = versionString.index(of: ".") ?? versionString.endIndex
+                    let majorVersion = versionString[..<pointIndex]
+                    if let ver = Int(majorVersion) {
+                        _globalEnableIdentityColumns = ver < 10 ? false: _globalEnableIdentityColumns
+                    }
+                }
+            }
+        }
+    }
+
+    /// See `Provider.boot(_:)`
+    public func didBoot(_ worker: Container) throws -> Future<Void> {
+        return worker.withConnection(to: .psql) { conn in
+            return conn.simpleQuery("select * from pg_class").map(to: Void.self) { rows in
+                print(rows)
+            }
+        }
+    }
 }
 
+/// server version string
+internal var _serverVersion: String?
 /// Enabled by default
 internal var _globalEnableIdentityColumns: Bool = true
