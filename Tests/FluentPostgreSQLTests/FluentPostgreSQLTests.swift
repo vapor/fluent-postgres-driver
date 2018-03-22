@@ -231,6 +231,10 @@ class FluentPostgreSQLTests: XCTestCase {
         XCTAssertEqual(foo.location?.y, 3.14)
     }
 
+    func testBugs() throws {
+        try benchmarker.benchmarkBugs_withSchema()
+    }
+
     static let allTests = [
         ("testSchema", testSchema),
         ("testModels", testModels),
@@ -250,6 +254,7 @@ class FluentPostgreSQLTests: XCTestCase {
         ("testPersistsDateMillisecondPart", testPersistsDateMillisecondPart),
         ("testContains", testContains),
         ("testGH30", testGH30),
+        ("testBugs", testBugs),
     ]
 }
 
