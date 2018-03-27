@@ -1,7 +1,6 @@
 import Async
-import CodableKit
+import Core
 import FluentSQL
-import Foundation
 
 /// Adds ability to do basic Fluent queries using a `PostgreSQLDatabase`.
 extension PostgreSQLDatabase: QuerySupporting, CustomSQLSupporting {
