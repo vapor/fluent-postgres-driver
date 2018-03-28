@@ -3,6 +3,7 @@ import Core
 import XCTest
 import FluentBenchmark
 import FluentPostgreSQL
+import Fluent
 import Foundation
 
 class FluentPostgreSQLTests: XCTestCase {
@@ -157,7 +158,7 @@ class FluentPostgreSQLTests: XCTestCase {
         }
         _ = try Allergy(id: 2).create(on: conn).wait()
         _ = try Allergy(id: 4).create(on: conn).wait()
-        let stuff = try Allergy.query(on: conn).filter(\Allergy.id, in: [1, 2, 3]).all().wait()
+        let stuff = try Allergy.query(on: conn).filter(\.id ~~ [1, 2, 3]).all().wait()
         XCTAssertEqual(stuff.count, 1)
         XCTAssertEqual(stuff.first?.id, 2)
     }
@@ -165,7 +166,6 @@ class FluentPostgreSQLTests: XCTestCase {
     func testGH21() throws {
         /// - types
         enum PetType: Int, PostgreSQLEnumType {
-            static let keyString: TupleMap = (.cat, .dog)
             case cat = 1
             case dog = 2
         }

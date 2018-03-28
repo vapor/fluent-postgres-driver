@@ -18,7 +18,7 @@ let package = Package(
         .package(url: "https://github.com/vapor/postgresql.git", from: "1.0.0-rc.2"),
     ],
     targets: [
-        .target(name: "FluentPostgreSQL", dependencies: ["Async", "CodableKit", "Fluent", "FluentSQL", "PostgreSQL"]),
+        .target(name: "FluentPostgreSQL", dependencies: ["Async", "Fluent", "FluentSQL", "PostgreSQL"]),
         .testTarget(name: "FluentPostgreSQLTests", dependencies: ["FluentBenchmark", "FluentPostgreSQL"]),
     ]
 )

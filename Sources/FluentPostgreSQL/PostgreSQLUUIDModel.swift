@@ -6,12 +6,6 @@ public protocol PostgreSQLUUIDModel: Model where Self.Database == PostgreSQLData
 }
 
 extension PostgreSQLUUIDModel {
-    /// See `Model.Database`
-    public typealias Database = PostgreSQLDatabase
-
-    /// See `Model.ID`
-    public typealias ID = UUID
-
     /// See `Model.idKey`
     public static var idKey: IDKey { return \.id }
 }

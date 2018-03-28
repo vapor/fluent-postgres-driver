@@ -1,5 +1,4 @@
-import CodableKit
-import Foundation
+import Core
 
 /// A type that is compatible with PostgreSQL schema and data.
 public protocol PostgreSQLType:
@@ -16,7 +15,7 @@ public protocol PostgreSQLJSONType: PostgreSQLType, PostgreSQLJSONCustomConverti
 /// A type that is supports being represented as T[] in a PostgreSQL database.
 public protocol PostgreSQLArrayType: PostgreSQLType, PostgreSQLArrayCustomConvertible { }
 
-public protocol PostgreSQLEnumType: PostgreSQLType, Codable, TupleKeyStringDecodable, RawRepresentable where Self.RawValue: PostgreSQLDataConvertible { }
+public protocol PostgreSQLEnumType: PostgreSQLType, Codable, RawRepresentable where Self.RawValue: PostgreSQLDataConvertible { }
 
 /// MARK: Default Implementations
 
