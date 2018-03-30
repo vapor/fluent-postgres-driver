@@ -15,7 +15,7 @@ public protocol PostgreSQLJSONType: PostgreSQLType, PostgreSQLJSONCustomConverti
 /// A type that is supports being represented as T[] in a PostgreSQL database.
 public protocol PostgreSQLArrayType: PostgreSQLType, PostgreSQLArrayCustomConvertible { }
 
-public protocol PostgreSQLEnumType: PostgreSQLType, Codable, RawRepresentable where Self.RawValue: PostgreSQLDataConvertible { }
+public protocol PostgreSQLEnumType: PostgreSQLType, ReflectionDecodable, Codable, RawRepresentable where Self.RawValue: PostgreSQLDataConvertible { }
 
 /// MARK: Default Implementations
 

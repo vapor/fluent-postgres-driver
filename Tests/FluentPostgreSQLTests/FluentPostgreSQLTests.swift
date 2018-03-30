@@ -176,6 +176,8 @@ class FluentPostgreSQLTests: XCTestCase {
             var name: String
         }
 
+        try print(Pet.reflectProperties())
+
         /// - prepare db
         benchmarker.database.enableLogging(using: .print)
         let conn = try benchmarker.pool.requestConnection().wait()
