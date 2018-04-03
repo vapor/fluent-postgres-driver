@@ -27,7 +27,7 @@ extension PostgreSQLDatabase: SchemaSupporting, IndexSupporting {
                     case .int2: string = "SMALLSERIAL PRIMARY KEY"
                     case .int4: string = "SERIAL PRIMARY KEY"
                     case .int8: string = "BIGSERIAL PRIMARY KEY"
-                    default: fatalError("should be unreachable")
+                    default: fatalError("unexpected primary key type \(field.type.type) in branch that should only handle int2/int4/int8")
                     }
                 }
             default: string += " PRIMARY KEY"
