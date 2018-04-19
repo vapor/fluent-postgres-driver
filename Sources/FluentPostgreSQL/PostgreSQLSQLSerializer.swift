@@ -1,6 +1,6 @@
 import FluentSQL
 
-internal class PostgreSQLSQLSerializer: SQLSerializer {
+public final class PostgreSQLSQLSerializer: SQLSerializer {
     /// The current placeholder offset used to create PostgreSQL
     /// placeholders for parameterized queries.
     var placeholderOffset: Int
