@@ -10,13 +10,13 @@ internal class PostgreSQLSQLSerializer: SQLSerializer {
         self.placeholderOffset = 1
     }
 
-    /// See `SQLSerializer.makeEscapedString(from:)`
+    /// See `SQLSerializer`
     func makeEscapedString(from string: String) -> String {
         return "\"\(string)\""
     }
 
-    /// See `SQLSerializer.makePlaceholder(name:)`
-    func makePlaceholder(name: String) -> String {
+    /// See `SQLSerializer`
+    func makePlaceholder() -> String {
         defer { placeholderOffset += 1 }
         return "$\(placeholderOffset)"
     }

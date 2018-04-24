@@ -77,9 +77,6 @@ extension PostgreSQLDatabase: SchemaSupporting, IndexSupporting {
             }
 
             let sqlString = PostgreSQLSQLSerializer().serialize(sqlQuery)
-            if let logger = connection.logger {
-                logger.log(query: sqlString, parameters: [])
-            }
             return connection.query(sqlString).map(to: Void.self) { rows in
                 assert(rows.count == 0)
             }.flatMap(to: Void.self) {

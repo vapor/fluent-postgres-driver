@@ -3,7 +3,7 @@ import Core
 import FluentSQL
 
 /// Adds ability to do basic Fluent queries using a `PostgreSQLDatabase`.
-extension PostgreSQLDatabase: QuerySupporting, CustomSQLSupporting {
+extension PostgreSQLDatabase: QuerySupporting, CustomSQLSupporting, KeyedCacheSupporting {
     /// See `QuerySupporting.execute`
     public static func execute(
         query: DatabaseQuery<PostgreSQLDatabase>,
@@ -32,6 +32,7 @@ extension PostgreSQLDatabase: QuerySupporting, CustomSQLSupporting {
                     return .init(column: col, value: .placeholder)
                 }
                 parameters = modelData + bindValues
+                sqlQuery = .manipulation(m)
             case .query: parameters = bindValues
             case .definition: parameters = []
             }
@@ -44,11 +45,6 @@ extension PostgreSQLDatabase: QuerySupporting, CustomSQLSupporting {
             // Create a PostgreSQL-flavored SQL serializer to create a SQL string
             let sqlSerializer = PostgreSQLSQLSerializer()
             let sqlString = sqlSerializer.serialize(sqlQuery)
-
-            /// Log supporting
-            if let logger = connection.logger {
-                logger.log(query: sqlString, parameters: parameters)
-            }
 
             // Run the query
             return connection.query(sqlString, parameters) { row in
