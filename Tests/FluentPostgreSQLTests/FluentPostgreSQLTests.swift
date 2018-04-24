@@ -166,8 +166,8 @@ class FluentPostgreSQLTests: XCTestCase {
     func testGH21() throws {
         /// - types
         enum PetType: Int, PostgreSQLEnumType {
-            case cat = 1
-            case dog = 2
+            case cat = 0
+            case dog = 1
         }
         struct Pet: PostgreSQLModel, Migration {
             static let entity = "pets"
@@ -175,6 +175,8 @@ class FluentPostgreSQLTests: XCTestCase {
             var type: PetType
             var name: String
         }
+
+        try print(Pet.reflectProperties())
 
         /// - prepare db
         benchmarker.database.enableLogging(using: .print)
