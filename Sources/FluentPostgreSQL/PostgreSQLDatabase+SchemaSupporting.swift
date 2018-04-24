@@ -68,11 +68,19 @@ extension PostgreSQLDatabase: SchemaSupporting, IndexSupporting {
         return Future.flatMap(on: connection) {
             var schemaQuery = schema.makeSchemaQuery(dataTypeFactory: dataType)
             schema.applyReferences(to: &schemaQuery)
-            let sqlString = PostgreSQLSQLSerializer().serialize(schema: schemaQuery)
+
+            var sqlQuery: SQLQuery = .definition(schemaQuery)
+
+            /// Apply custom sql transformations
+            for customSQL in schema.customSQL {
+                customSQL.closure(&sqlQuery)
+            }
+
+            let sqlString = PostgreSQLSQLSerializer().serialize(sqlQuery)
             if let logger = connection.logger {
                 logger.log(query: sqlString, parameters: [])
             }
-            return try connection.query(sqlString).map(to: Void.self) { rows in
+            return connection.query(sqlString).map(to: Void.self) { rows in
                 assert(rows.count == 0)
             }.flatMap(to: Void.self) {
                 /// handle indexes as separate query
