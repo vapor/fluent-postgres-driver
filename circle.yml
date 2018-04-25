@@ -1,6 +1,9 @@
 version: 2
 
 jobs:
+
+
+
   macos:
     macos:
       xcode: "9.2"
@@ -8,6 +11,10 @@ jobs:
       - checkout
       - run: swift build
       - run: swift test
+
+
+
+
   linux:
     docker:
       - image: codevapor/swift:4.1
@@ -23,6 +30,14 @@ jobs:
       - run: 
           name: Run unit tests
           command: swift test
+
+
+
+  linux-release:
+    docker:
+      - image: codevapor/swift:4.1
+    steps:
+      - checkout
       - run: 
           name: Compile code with optimizations
           command: swift build -c release
@@ -33,6 +48,7 @@ workflows:
   tests:
     jobs:
       - linux
+      - linux-release
       # - macos
 
   nightly:
