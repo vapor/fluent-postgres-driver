@@ -24,7 +24,7 @@ public final class FluentPostgreSQLProvider: Provider {
 
     /// See `Provider.boot(_:)`
     public func willBoot(_ worker: Container) throws -> Future<Void> {
-        return worker.withConnection(to: .psql) { conn in
+        return worker.withPooledConnection(to: .psql) { conn in
             return conn.simpleQuery("SELECT current_setting('server_version') as version").map(to: Void.self) { rows in
                 _serverVersion = try rows[0].firstValue(forColumn: "version")!.decode(String.self)
                 if let versionString = _serverVersion {

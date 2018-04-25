@@ -27,7 +27,7 @@ class FluentPostgreSQLTests: XCTestCase {
         )
         database = PostgreSQLDatabase(config: config)
         let eventLoop = MultiThreadedEventLoopGroup(numThreads: 1)
-        benchmarker = Benchmarker(database, on: eventLoop, onFail: XCTFail)
+        benchmarker = try! Benchmarker(database, on: eventLoop, onFail: XCTFail)
     }
 
     func testSchema() throws {
@@ -136,7 +136,6 @@ class FluentPostgreSQLTests: XCTestCase {
 
 
     func testUpdate() throws {
-        benchmarker.database.enableLogging(using: .print)
         let conn = try benchmarker.pool.requestConnection().wait()
         defer { try? User.revert(on: conn).wait() }
         try User.prepare(on: conn).wait()
@@ -148,7 +147,6 @@ class FluentPostgreSQLTests: XCTestCase {
     }
 
     func testGH24() throws {
-        benchmarker.database.enableLogging(using: .print)
         let conn = try benchmarker.pool.requestConnection().wait()
         defer { try? Allergy.revert(on: conn).wait() }
         try Allergy.prepare(on: conn).wait()
@@ -179,7 +177,6 @@ class FluentPostgreSQLTests: XCTestCase {
         try print(Pet.reflectProperties())
 
         /// - prepare db
-        benchmarker.database.enableLogging(using: .print)
         let conn = try benchmarker.pool.requestConnection().wait()
         defer { try? Pet.revert(on: conn).wait() }
         try Pet.prepare(on: conn).wait()
@@ -196,7 +193,6 @@ class FluentPostgreSQLTests: XCTestCase {
     }
     
     func testPersistsDateMillisecondPart() throws {
-        database.enableLogging(using: DatabaseLogger(handler: { print($0) }))
         let conn = try benchmarker.pool.requestConnection().wait()
         defer { try? DefaultTest.revert(on: conn).wait() }
         try DefaultTest.prepare(on: conn).wait()
@@ -220,7 +216,6 @@ class FluentPostgreSQLTests: XCTestCase {
         }
 
         /// - prepare db
-        benchmarker.database.enableLogging(using: .print)
         let conn = try benchmarker.pool.requestConnection().wait()
         defer { try? Foo.revert(on: conn).wait() }
         try Foo.prepare(on: conn).wait()

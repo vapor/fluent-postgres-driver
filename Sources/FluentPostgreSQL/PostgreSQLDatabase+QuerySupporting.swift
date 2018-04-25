@@ -3,7 +3,7 @@ import Core
 import FluentSQL
 
 /// Adds ability to do basic Fluent queries using a `PostgreSQLDatabase`.
-extension PostgreSQLDatabase: QuerySupporting, CustomSQLSupporting {
+extension PostgreSQLDatabase: QuerySupporting, CustomSQLSupporting, KeyedCacheSupporting {
     /// See `QuerySupporting.execute`
     public static func execute(
         query: DatabaseQuery<PostgreSQLDatabase>,
@@ -15,15 +15,26 @@ extension PostgreSQLDatabase: QuerySupporting, CustomSQLSupporting {
             // Convert Fluent `DatabaseQuery` to generic FluentSQL `DataQuery`
             var (sqlQuery, bindValues) = query.makeDataQuery()
 
-            // If the query has an Encodable model attached serialize it.
-            // Dictionary keys should be added to the DataQuery as columns.
-            // Dictionary values should be added to the parameterized array.
-            var modelData: [PostgreSQLData] = []
-            modelData.reserveCapacity(query.data.count)
-            for (field, data) in query.data {
-                if case .create = query.action, data.isNull && field.name == "id" { continue } // bad hack
-                sqlQuery.columns.append(DataColumn(table: field.entity, name: field.name))
-                modelData.append(data)
+            /// Convert params
+            let parameters: [PostgreSQLData]
+
+            switch sqlQuery {
+            case .manipulation(var m):
+                // If the query has an Encodable model attached serialize it.
+                // Dictionary keys should be added to the DataQuery as columns.
+                // Dictionary values should be added to the parameterized array.
+                var modelData: [PostgreSQLData] = []
+                modelData.reserveCapacity(query.data.count)
+                m.columns = query.data.compactMap { (field, data) in
+                    // if case .create = query.action, data.isNull && field.name == "id" { return nil } // bad hack
+                    modelData.append(data)
+                    let col = DataColumn(table: field.entity, name: field.name)
+                    return .init(column: col, value: .placeholder)
+                }
+                parameters = modelData + bindValues
+                sqlQuery = .manipulation(m)
+            case .query: parameters = bindValues
+            case .definition: parameters = []
             }
 
             /// Apply custom sql transformations
@@ -33,18 +44,10 @@ extension PostgreSQLDatabase: QuerySupporting, CustomSQLSupporting {
 
             // Create a PostgreSQL-flavored SQL serializer to create a SQL string
             let sqlSerializer = PostgreSQLSQLSerializer()
-            let sqlString = sqlSerializer.serialize(data: sqlQuery)
-
-            /// Convert params
-            let parameters: [PostgreSQLData] = modelData + bindValues
-
-            /// Log supporting
-            if let logger = connection.logger {
-                logger.log(query: sqlString, parameters: parameters)
-            }
+            let sqlString = sqlSerializer.serialize(sqlQuery)
 
             // Run the query
-            return try connection.query(sqlString, parameters) { row in
+            return connection.query(sqlString, parameters) { row in
                 var res: [QueryField: PostgreSQLData] = [:]
                 for (col, data) in row {
                     let field = QueryField(entity: tableNameCache.storage[col.tableOID], name: col.name)
