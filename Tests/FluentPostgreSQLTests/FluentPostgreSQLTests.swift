@@ -13,7 +13,7 @@ class FluentPostgreSQLTests: XCTestCase {
     override func setUp() {
         let hostname: String
         #if Xcode
-        hostname = (try? Process.execute("docker-machine", "ip")) ?? "192.168.99.100"
+        hostname = (try? Process.execute("docker-machine", "ip")) ?? "192.168.99.101"
         #else
         hostname = "localhost"
         #endif
