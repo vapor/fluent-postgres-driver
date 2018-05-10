@@ -3,7 +3,7 @@ import Async
 /// Caches table OID to string name associations.
 final class PostgreSQLTableNameCache {
     /// The internal cache.
-    var storage: [Int32: String]
+    var storage: [UInt32: String]
 
     /// Static shared cache, stored by connections.
     private static var _shared: ThreadSpecificVariable<PostgreSQLTableNameCaches> = .init()
@@ -22,7 +22,7 @@ final class PostgreSQLTableNameCache {
     }
 
     /// Creates a new cache.
-    private init(_ cache: [Int32: String]) {
+    private init(_ cache: [UInt32: String]) {
         self.storage = cache
     }
 
@@ -37,10 +37,10 @@ final class PostgreSQLTableNameCache {
             return Future.map(on: connection) { existing }
         } else {
             return connection.simpleQuery("select oid, relname from pg_class").map(to: PostgreSQLTableNameCache.self) { rows in
-                var cache: [Int32: String] = [:]
+                var cache: [UInt32: String] = [:]
 
                 for row in rows {
-                    let oid = try row.firstValue(forColumn: "oid")!.decode(Int32.self)
+                    let oid = try row.firstValue(forColumn: "oid")!.decode(UInt32.self)
                     let name = try row.firstValue(forColumn: "relname")!.decode(String.self)
                     cache[oid] = name
                 }
