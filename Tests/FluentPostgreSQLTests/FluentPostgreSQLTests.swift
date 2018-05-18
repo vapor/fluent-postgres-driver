@@ -78,13 +78,20 @@ class FluentPostgreSQLTests: XCTestCase {
         let conn = try benchmarker.pool.requestConnection().wait()
         try? User.revert(on: conn).wait()
         try User.prepare(on: conn).wait()
+		
         let user = User(id: nil, name: "Tanner", pet: Pet(name: "Zizek"))
+        let document = User.Document(number: 42, text: "Some document")
         user.favoriteColors = ["pink", "blue"]
+        user.document = User.Document(number: 432, text: "Some document")
+        user.documents = [document, document]
+		
         _ = try user.save(on: conn).wait()
         if let fetched = try User.query(on: conn).first().wait() {
-            XCTAssertEqual(user.id, fetched.id)
+            XCTAssertEqual(fetched.id, user.id)
             XCTAssertNil(user.age)
-            XCTAssertEqual(fetched.favoriteColors, ["pink", "blue"])
+            XCTAssertEqual(fetched.favoriteColors, user.favoriteColors)
+            XCTAssertEqual(fetched.document, user.document)
+            XCTAssertEqual(fetched.documents, user.documents)
         } else {
             XCTFail()
         }
@@ -305,12 +312,19 @@ final class User: PostgreSQLModel, Migration {
     var age: Int?
     var favoriteColors: [String]
     var pet: Pet
+    var document: Document?
+    var documents: [Document]?
 
     init(id: Int? = nil, name: String, pet: Pet) {
         self.favoriteColors = []
         self.id = id
         self.name = name
         self.pet = pet
+    }
+	
+    struct Document: Codable, PostgreSQLJSONType, Equatable {
+        var number: Int?
+		var text: String
     }
 }
 
