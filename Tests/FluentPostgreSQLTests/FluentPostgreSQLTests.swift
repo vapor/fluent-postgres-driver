@@ -259,6 +259,7 @@ class FluentPostgreSQLTests: XCTestCase {
         ("testContains", testContains),
         ("testGH30", testGH30),
         ("testBugs", testBugs),
+        ("testNestedStruct", testNestedStruct)
     ]
 }
 
