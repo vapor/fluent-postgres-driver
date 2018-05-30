@@ -1,13 +1,12 @@
 import Async
 
 extension PostgreSQLDatabase: TransactionSupporting {
-    /// See `TransactionSupporting.execute(transaction:on:)`
-    public static func execute(transaction: DatabaseTransaction<PostgreSQLDatabase>, on connection: PostgreSQLConnection) -> Future<Void> {
-        return connection.simpleQuery("BEGIN TRANSACTION").flatMap(to: Void.self) { results in
-            return transaction.run(on: connection).flatMap(to: Void.self) { void in
-                return connection.simpleQuery("END TRANSACTION").transform(to: ())
+    public static func transactionExecute<T>(_ transaction: @escaping (PostgreSQLConnection) throws -> Future<T>, on connection: PostgreSQLConnection) -> Future<T> {
+        return connection.simpleQuery("BEGIN TRANSACTION").flatMap(to: T.self) { results in
+            return try transaction(connection).flatMap(to: T.self) { res in
+                return connection.simpleQuery("END TRANSACTION").transform(to: res)
             }.catchFlatMap { error in
-                return connection.simpleQuery("ROLLBACK").map(to: Void.self) { results in
+                return connection.simpleQuery("ROLLBACK").map(to: T.self) { results in
                     throw error
                 }
             }

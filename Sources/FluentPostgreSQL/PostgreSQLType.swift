@@ -6,7 +6,7 @@ public protocol PostgreSQLType:
 
 extension PostgreSQLColumnStaticRepresentable where Self: PostgreSQLDataConvertible {
     /// The `PostgreSQLColumn` type that best represents this type.
-    public static var postgreSQLColumn: PostgreSQLColumn { return .init(type: Self.postgreSQLDataType) }
+    public static var postgreSQLColumn: PostgreSQLColumnType { return .init(name: Self.postgreSQLDataType.knownSQLName ?? "UNKOWN") }
 }
 
 /// A type that is supports being represented as JSONB in a PostgreSQL database.
