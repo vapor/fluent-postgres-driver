@@ -1,17 +1,37 @@
-import Foundation
+/// Encodes `Encodable` objects to PostgreSQL row data.
+public struct PostgreSQLRowEncoder {
+    /// Creates a new `PostgreSQLRowEncoder`.
+    public init() { }
+    
+    /// Encodes an `Encodable` object to `[DataColumn: PostgreSQLData]`.
+    ///
+    /// - parameters:
+    ///     - encodable: Item to encode.
+    ///     - tableName: Optional table name to use when encoding.
+    public func encode<E>(_ encodable: E, tableName: String? = nil) throws -> [DataColumn: PostgreSQLData]
+        where E: Encodable
+    {
+        let encoder = _PostgreSQLRowEncoder(tableName: tableName)
+        try encodable.encode(to: encoder)
+        return encoder.data
+    }
+}
 
-internal final class PostgreSQLRowEncoder: Encoder {
-    var codingPath: [CodingKey]
-    var userInfo: [CodingUserInfoKey : Any]
-    var data: [String: PostgreSQLData]
-    init() {
-        self.codingPath = []
-        self.userInfo = [:]
+
+// MARK: Private
+
+private final class _PostgreSQLRowEncoder: Encoder {
+    let codingPath: [CodingKey] = []
+    let userInfo: [CodingUserInfoKey: Any] = [:]
+    var data: [DataColumn: PostgreSQLData]
+    let tableName: String?
+    init(tableName: String?) {
         self.data = [:]
+        self.tableName = tableName
     }
 
     func container<Key>(keyedBy type: Key.Type) -> KeyedEncodingContainer<Key> where Key : CodingKey {
-        let container = PostgreSQLRowKeyedEncodingContainer<Key>(encoder: self)
+        let container = _PostgreSQLRowKeyedEncodingContainer<Key>(encoder: self)
         return KeyedEncodingContainer(container)
     }
 
@@ -25,41 +45,35 @@ internal final class PostgreSQLRowEncoder: Encoder {
 
 }
 
-private func unsupported() -> Never {
-    fatalError("""
-    PostgreSQL rows only support a flat, keyed structure `[String: T]`.
-
-    Query data must be an encodable dictionary, struct, or class.
-
-    You can also conform nested types to `PostgreSQLJSONType` or `PostgreSQLArrayType`. (Nested types must be `PostgreSQLDataCustomConvertible`.)
-    """)
-}
-
-fileprivate struct PostgreSQLRowKeyedEncodingContainer<K>: KeyedEncodingContainerProtocol
+private struct _PostgreSQLRowKeyedEncodingContainer<K>: KeyedEncodingContainerProtocol
     where K: CodingKey
 {
     var codingPath: [CodingKey]
-    let encoder: PostgreSQLRowEncoder
-    init(encoder: PostgreSQLRowEncoder) {
+    let encoder: _PostgreSQLRowEncoder
+    init(encoder: _PostgreSQLRowEncoder) {
         self.encoder = encoder
         self.codingPath = []
     }
-
-    mutating func encodeNil(forKey key: K) throws { encoder.data[key.stringValue] = PostgreSQLData(type: .void, data: nil) }
-    mutating func encode(_ value: Bool, forKey key: K) throws { encoder.data[key.stringValue] = try value.convertToPostgreSQLData() }
-    mutating func encode(_ value: Int, forKey key: K) throws { encoder.data[key.stringValue] = try value.convertToPostgreSQLData() }
-    mutating func encode(_ value: Int16, forKey key: K) throws { encoder.data[key.stringValue] = try value.convertToPostgreSQLData() }
-    mutating func encode(_ value: Int32, forKey key: K) throws { encoder.data[key.stringValue] = try value.convertToPostgreSQLData() }
-    mutating func encode(_ value: Int64, forKey key: K) throws { encoder.data[key.stringValue] = try value.convertToPostgreSQLData() }
-    mutating func encode(_ value: UInt, forKey key: K) throws { encoder.data[key.stringValue] = try value.convertToPostgreSQLData() }
-    mutating func encode(_ value: UInt8, forKey key: K) throws { encoder.data[key.stringValue] = try value.convertToPostgreSQLData() }
-    mutating func encode(_ value: UInt16, forKey key: K) throws { encoder.data[key.stringValue] = try value.convertToPostgreSQLData() }
-    mutating func encode(_ value: UInt32, forKey key: K) throws { encoder.data[key.stringValue] = try value.convertToPostgreSQLData() }
-    mutating func encode(_ value: UInt64, forKey key: K) throws { encoder.data[key.stringValue] = try value.convertToPostgreSQLData() }
-    mutating func encode(_ value: Double, forKey key: K) throws { encoder.data[key.stringValue] = try value.convertToPostgreSQLData() }
-    mutating func encode(_ value: Float, forKey key: K) throws { encoder.data[key.stringValue] = try value.convertToPostgreSQLData() }
-    mutating func encode(_ value: String, forKey key: K) throws { encoder.data[key.stringValue] = try value.convertToPostgreSQLData() }
     
+    func set(_ key: CodingKey, to value: PostgreSQLDataConvertible) throws {
+        let col = DataColumn(table: encoder.tableName, name: key.stringValue)
+        self.encoder.data[col] = try value.convertToPostgreSQLData()
+    }
+
+    mutating func encodeNil(forKey key: K) throws { try set(key, to: PostgreSQLData(type: .void, data: nil)) }
+    mutating func encode(_ value: Bool, forKey key: K) throws { try set(key, to: value) }
+    mutating func encode(_ value: Int, forKey key: K) throws { try set(key, to: value) }
+    mutating func encode(_ value: Int16, forKey key: K) throws { try set(key, to: value) }
+    mutating func encode(_ value: Int32, forKey key: K) throws { try set(key, to: value) }
+    mutating func encode(_ value: Int64, forKey key: K) throws { try set(key, to: value) }
+    mutating func encode(_ value: UInt, forKey key: K) throws { try set(key, to: value) }
+    mutating func encode(_ value: UInt8, forKey key: K) throws { try set(key, to: value) }
+    mutating func encode(_ value: UInt16, forKey key: K) throws { try set(key, to: value) }
+    mutating func encode(_ value: UInt32, forKey key: K) throws { try set(key, to: value) }
+    mutating func encode(_ value: UInt64, forKey key: K) throws { try set(key, to: value) }
+    mutating func encode(_ value: Double, forKey key: K) throws { try set(key, to: value) }
+    mutating func encode(_ value: Float, forKey key: K) throws { try set(key, to: value) }
+    mutating func encode(_ value: String, forKey key: K) throws { try set(key, to: value) }
     mutating func encodeIfPresent(_ value: Bool?, forKey key: K) throws { try _encodeIfPresent(value, forKey: key) }
     mutating func encodeIfPresent(_ value: Int?, forKey key: K) throws { try _encodeIfPresent(value, forKey: key) }
     mutating func encodeIfPresent(_ value: Int16?, forKey key: K) throws { try _encodeIfPresent(value, forKey: key) }
@@ -82,12 +96,13 @@ fileprivate struct PostgreSQLRowKeyedEncodingContainer<K>: KeyedEncodingContaine
             try encode(value, forKey: key)
         } else {
             if let convertibleType = T.self as? PostgreSQLDataConvertible.Type {
-                encoder.data[key.stringValue] = PostgreSQLData(type: convertibleType.postgreSQLDataType, data: nil)
+                try set(key, to: PostgreSQLData(type: convertibleType.postgreSQLDataType, data: nil))
             } else {
                 try encodeNil(forKey: key)
             }
         }
     }
+    
     mutating func encode<T>(_ value: T, forKey key: K) throws where T: Encodable {
         guard let convertible = value as? PostgreSQLDataConvertible else {
             let type = Swift.type(of: value)
@@ -100,7 +115,7 @@ fileprivate struct PostgreSQLRowKeyedEncodingContainer<K>: KeyedEncodingContaine
                 source: .capture()
             )
         }
-        encoder.data[key.stringValue] = try convertible.convertToPostgreSQLData()
+        try set(key, to: convertible)
     }
     mutating func nestedContainer<NestedKey>(keyedBy keyType: NestedKey.Type, forKey key: K) -> KeyedEncodingContainer<NestedKey> where NestedKey : CodingKey {
         return encoder.container(keyedBy: NestedKey.self)
@@ -110,3 +125,14 @@ fileprivate struct PostgreSQLRowKeyedEncodingContainer<K>: KeyedEncodingContaine
         return encoder.unkeyedContainer()
     }
 }
+
+private func unsupported() -> Never {
+    fatalError("""
+    PostgreSQL rows only support a flat, keyed structure `[String: T]`.
+
+    Query data must be an encodable dictionary, struct, or class.
+
+    You can also conform nested types to `PostgreSQLJSONType` or `PostgreSQLArrayType`. (Nested types must be `PostgreSQLDataCustomConvertible`.)
+    """)
+}
+

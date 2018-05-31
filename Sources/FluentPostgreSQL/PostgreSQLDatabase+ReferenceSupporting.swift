@@ -1,4 +1,0 @@
-import Async
-
-extension PostgreSQLDatabase {
-}

@@ -1,13 +1,5 @@
-import Core
-
 /// A type that is compatible with PostgreSQL schema and data.
-public protocol PostgreSQLType:
-    PostgreSQLColumnStaticRepresentable, PostgreSQLDataConvertible { }
-
-extension PostgreSQLColumnStaticRepresentable where Self: PostgreSQLDataConvertible {
-    /// The `PostgreSQLColumn` type that best represents this type.
-    public static var postgreSQLColumn: PostgreSQLColumnType { return .init(name: Self.postgreSQLDataType.knownSQLName ?? "UNKOWN") }
-}
+public protocol PostgreSQLType: PostgreSQLDataConvertible { }
 
 /// A type that is supports being represented as JSONB in a PostgreSQL database.
 public protocol PostgreSQLJSONType: PostgreSQLType, PostgreSQLJSONCustomConvertible { }
@@ -15,6 +7,7 @@ public protocol PostgreSQLJSONType: PostgreSQLType, PostgreSQLJSONCustomConverti
 /// A type that is supports being represented as T[] in a PostgreSQL database.
 public protocol PostgreSQLArrayType: PostgreSQLType, PostgreSQLArrayCustomConvertible { }
 
+/// An enum type compatible with PostgreSQL.
 public protocol PostgreSQLEnumType: PostgreSQLType, ReflectionDecodable, Codable, RawRepresentable where Self.RawValue: PostgreSQLDataConvertible { }
 
 /// MARK: Default Implementations

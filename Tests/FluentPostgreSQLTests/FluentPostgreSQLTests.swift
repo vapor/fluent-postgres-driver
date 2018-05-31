@@ -237,7 +237,7 @@ class FluentPostgreSQLTests: XCTestCase {
             var id: Int
             var name: String
         }
-        
+
         try XCTAssertEqual(SimpleUser.query("users", on: conn).count().wait(), 0)
         
         let user = SimpleUser(id: 1, name: "Vapor")
@@ -293,11 +293,7 @@ struct PostgreSQLDate: PostgreSQLType, Codable {
     static var postgreSQLDataArrayType: PostgreSQLDataType {
         return ._timestamp
     }
-
-    static var postgreSQLColumn: PostgreSQLColumnType {
-        return PostgreSQLColumnType(name: "TIMESTAMP", attributes: ["DEFAULT CURRENT_TIMESTAMP"])
-    }
-
+    
     var value: Date?
 
     init(_ value: Date? = nil) {

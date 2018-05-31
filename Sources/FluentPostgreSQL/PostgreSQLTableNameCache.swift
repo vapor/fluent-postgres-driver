@@ -1,5 +1,3 @@
-import Async
-
 /// Caches table OID to string name associations.
 final class PostgreSQLTableNameCache {
     /// The internal cache.

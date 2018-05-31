@@ -1,11 +1,34 @@
-internal final class PostgreSQLRowDecoder: Decoder {
-    var codingPath: [CodingKey]
-    var userInfo: [CodingUserInfoKey: Any]
-    let data: [String: PostgreSQLData]
-    init(row: [String: PostgreSQLData]) {
+/// Decodes `Decodable` types from PostgreSQL row data.
+public struct PostgreSQLRowDecoder {
+    /// Creates a new `PostgreSQLRowDecoder`.
+    public init() { }
+    
+    /// Decodes a `Decodable` object from `[DataColumn: PostgreSQLData]`.
+    ///
+    /// - parameters:
+    ///     - decodable: Type to decode.
+    ///     - row: PostgreSQL row to decode.
+    ///     - tableName: Optional table name to use when decoding. If supplied, columns with table names
+    ///                  can be matched while decoding. Columns without table names will always match if the column name matches.
+    /// - returns: Instance of Decodable type.
+    public func decode<D>(_ decodable: D.Type, from row: [DataColumn: PostgreSQLData], tableName: String? = nil) throws -> D
+        where D: Decodable
+    {
+        let decoder = _PostgreSQLRowDecoder(row: row, tableName: tableName)
+        return try D.init(from: decoder)
+    }
+}
+
+// MARK: Private
+
+private final class _PostgreSQLRowDecoder: Decoder {
+    let codingPath: [CodingKey] = []
+    let userInfo: [CodingUserInfoKey: Any] = [:]
+    let data: [DataColumn: PostgreSQLData]
+    let tableName: String?
+    init(row: [DataColumn: PostgreSQLData], tableName: String?) {
         self.data = row
-        self.codingPath = []
-        self.userInfo = [:]
+        self.tableName = tableName
     }
 
     func container<Key>(keyedBy type: Key.Type) throws -> KeyedDecodingContainer<Key> where Key : CodingKey {
@@ -21,8 +44,18 @@ internal final class PostgreSQLRowDecoder: Decoder {
         throw unsupported()
     }
 
+    func get(key: CodingKey) -> PostgreSQLData? {
+        guard let value = data[.init(table: tableName, name: key.stringValue)] else {
+            guard let value = data[.init(table: nil, name: key.stringValue)], tableName != nil else {
+                return nil
+            }
+            return value
+        }
+        return value
+    }
+    
     func require(key: CodingKey) throws -> PostgreSQLData {
-        guard let data = self.data[key.stringValue] else {
+        guard let data = get(key: key) else {
             throw PostgreSQLError(identifier: "decode", reason: "No value found at key: \(key)", source: .capture())
         }
         return data
@@ -30,32 +63,32 @@ internal final class PostgreSQLRowDecoder: Decoder {
 
 }
 
-private func unsupported() -> PostgreSQLError {
-    return PostgreSQLError(
-        identifier: "rowDecode",
-        reason: "PostgreSQL rows only support a flat, keyed structure `[String: T]`",
-        suggestedFixes: [
-            "You can conform nested types to `PostgreSQLJSONType` or `PostgreSQLArrayType`. (Nested types must be `PostgreSQLDataCustomConvertible`.)"
-        ],
-        source: .capture()
-    )
-}
-
-
-fileprivate struct PostgreSQLRowKeyedDecodingContainer<K>: KeyedDecodingContainerProtocol
+private struct PostgreSQLRowKeyedDecodingContainer<K>: KeyedDecodingContainerProtocol
     where K: CodingKey
 {
     var allKeys: [K]
     typealias Key = K
-    var codingPath: [CodingKey]
-    let decoder: PostgreSQLRowDecoder
-    init(decoder: PostgreSQLRowDecoder) {
+    let codingPath: [CodingKey] = []
+    let decoder: _PostgreSQLRowDecoder
+    init(decoder: _PostgreSQLRowDecoder) {
         self.decoder = decoder
-        codingPath = []
-        allKeys = self.decoder.data.keys.compactMap { K(stringValue: $0) }
+        allKeys = self.decoder.data.keys.compactMap {
+            if $0.table == decoder.tableName {
+                return K(stringValue: $0.name)
+            } else {
+                return nil
+            }
+        }
     }
-    func contains(_ key: K) -> Bool { return decoder.data.keys.contains(key.stringValue) }
-    func decodeNil(forKey key: K) -> Bool { return decoder.data[key.stringValue]?.data == nil }
+    
+    func contains(_ key: K) -> Bool { return allKeys.contains { $0.stringValue == key.stringValue } }
+    func decodeNil(forKey key: K) -> Bool {
+        if let value = decoder.get(key: key) {
+            return value.isNull
+        } else {
+            return true
+        }
+    }
     func decode(_ type: Int.Type, forKey key: K) throws -> Int { return try decoder.require(key: key).decode(Int.self) }
     func decode(_ type: Int8.Type, forKey key: K) throws -> Int8 { return try decoder.require(key: key).decode(Int8.self) }
     func decode(_ type: Int16.Type, forKey key: K) throws -> Int16 { return try decoder.require(key: key).decode(Int16.self) }
@@ -94,5 +127,15 @@ fileprivate struct PostgreSQLRowKeyedDecodingContainer<K>: KeyedDecodingContaine
 
     func superDecoder() throws -> Decoder { return decoder }
     func superDecoder(forKey key: K) throws -> Decoder { return decoder }
+}
 
+private func unsupported() -> PostgreSQLError {
+    return PostgreSQLError(
+        identifier: "rowDecode",
+        reason: "PostgreSQL rows only support a flat, keyed structure `[String: T]`",
+        suggestedFixes: [
+            "You can conform nested types to `PostgreSQLJSONType` or `PostgreSQLArrayType`. (Nested types must be `PostgreSQLDataCustomConvertible`.)"
+        ],
+        source: .capture()
+    )
 }
