@@ -23,6 +23,14 @@ jobs:
           POSTGRES_USER: vapor_username
           POSTGRES_DB: vapor_database
           POSTGRES_PASSWORD: vapor_password
+    steps:
+      - checkout
+      - run: 
+          name: Compile code
+          command: swift build
+      - run: 
+          name: Run unit tests
+          command: swift test
   linux-release:
     docker:
       - image: codevapor/swift:4.1
