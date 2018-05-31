@@ -225,6 +225,42 @@ class FluentPostgreSQLTests: XCTestCase {
     func testBugs() throws {
         try benchmarker.benchmarkBugs_withSchema()
     }
+    
+    func testCodableSimple() throws {
+        let conn = try benchmarker.pool.requestConnection().wait()
+        defer { benchmarker.pool.releaseConnection(conn) }
+        
+        _ = try conn.simpleQuery("create table users (id int, name text)").wait()
+        defer { _ = try! conn.simpleQuery("drop table users").wait() }
+        
+        struct SimpleUser: Codable {
+            var id: Int
+            var name: String
+        }
+        
+        try XCTAssertEqual(SimpleUser.query("users", on: conn).count().wait(), 0)
+        
+        let user = SimpleUser(id: 1, name: "Vapor")
+        try SimpleUser.query("users", on: conn).create(data: user).wait()
+        
+        try XCTAssertEqual(SimpleUser.query("users", on: conn).count().wait(), 1)
+        try XCTAssertEqual(SimpleUser.query("users", on: conn).all().wait().count, 1)
+        
+        
+        struct SimpleUserComputed: Codable {
+            var id: Int
+            var name: String
+            var computed: String
+        }
+
+        let builder = SimpleUserComputed.query("users", on: conn)
+        builder.query.keys = [
+            .column("id", key: nil),
+            .column("name", key: nil),
+            .computed(.init(function: "md5", keys: [.column("name", key: nil)]), key: "computed")
+        ]
+        try print(builder.all().wait())
+    }
 
     static let allTests = [
         ("testSchema", testSchema),

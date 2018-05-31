@@ -59,9 +59,25 @@ fileprivate struct PostgreSQLRowKeyedEncodingContainer<K>: KeyedEncodingContaine
     mutating func encode(_ value: Double, forKey key: K) throws { encoder.data[key.stringValue] = try value.convertToPostgreSQLData() }
     mutating func encode(_ value: Float, forKey key: K) throws { encoder.data[key.stringValue] = try value.convertToPostgreSQLData() }
     mutating func encode(_ value: String, forKey key: K) throws { encoder.data[key.stringValue] = try value.convertToPostgreSQLData() }
+    
+    mutating func encodeIfPresent(_ value: Bool?, forKey key: K) throws { try _encodeIfPresent(value, forKey: key) }
+    mutating func encodeIfPresent(_ value: Int?, forKey key: K) throws { try _encodeIfPresent(value, forKey: key) }
+    mutating func encodeIfPresent(_ value: Int16?, forKey key: K) throws { try _encodeIfPresent(value, forKey: key) }
+    mutating func encodeIfPresent(_ value: Int32?, forKey key: K) throws { try _encodeIfPresent(value, forKey: key) }
+    mutating func encodeIfPresent(_ value: Int64?, forKey key: K) throws { try _encodeIfPresent(value, forKey: key) }
+    mutating func encodeIfPresent(_ value: UInt?, forKey key: K) throws { try _encodeIfPresent(value, forKey: key) }
+    mutating func encodeIfPresent(_ value: UInt8?, forKey key: K) throws { try _encodeIfPresent(value, forKey: key) }
+    mutating func encodeIfPresent(_ value: UInt16?, forKey key: K) throws { try _encodeIfPresent(value, forKey: key) }
+    mutating func encodeIfPresent(_ value: UInt32?, forKey key: K) throws { try _encodeIfPresent(value, forKey: key) }
+    mutating func encodeIfPresent(_ value: UInt64?, forKey key: K) throws { try _encodeIfPresent(value, forKey: key) }
+    mutating func encodeIfPresent(_ value: Double?, forKey key: K) throws { try _encodeIfPresent(value, forKey: key) }
+    mutating func encodeIfPresent(_ value: Float?, forKey key: K) throws { try _encodeIfPresent(value, forKey: key) }
+    mutating func encodeIfPresent(_ value: String?, forKey key: K) throws { try _encodeIfPresent(value, forKey: key) }
+    mutating func encodeIfPresent<T>(_ value: T?, forKey key: K) throws where T: Encodable { try _encodeIfPresent(value, forKey: key) }
+    
     mutating func superEncoder() -> Encoder { return encoder }
     mutating func superEncoder(forKey key: K) -> Encoder { return encoder }
-    mutating func encodeIfPresent<T>(_ value: T?, forKey key: K) throws where T : Encodable {
+    mutating func _encodeIfPresent<T>(_ value: T?, forKey key: K) throws where T : Encodable {
         if let value = value {
             try encode(value, forKey: key)
         } else {

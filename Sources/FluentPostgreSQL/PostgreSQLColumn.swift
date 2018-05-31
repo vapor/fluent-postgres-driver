@@ -30,4 +30,14 @@ public protocol PostgreSQLColumnStaticRepresentable {
 }
 
 
-extension Optional: PostgreSQLColumnStaticRepresentable { }
+extension Optional: PostgreSQLColumnStaticRepresentable {
+    /// See `PostgreSQLColumnStaticRepresentable`.
+    public static var postgreSQLColumn: PostgreSQLColumnType {
+        guard let wrapped = Wrapped.self as? PostgreSQLColumnStaticRepresentable.Type else {
+            fatalError("\(Wrapped.self) is not PostgreSQLColumnStaticRepresentable")
+        }
+        var dataType = wrapped.postgreSQLColumn
+        dataType.dataType.attributes = dataType.dataType.attributes.filter { $0 != "NOT NULL" }
+        return dataType
+    }
+}
