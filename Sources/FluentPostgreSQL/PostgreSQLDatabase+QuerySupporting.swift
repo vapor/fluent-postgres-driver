@@ -64,7 +64,7 @@ extension PostgreSQLDatabase: QuerySupporting, CustomSQLSupporting, KeyedCacheSu
     {
         switch event {
         case .willCreate:
-            if M.ID.self == UUID.self {
+            if M.ID.self == UUID.self && model.fluentID == nil {
                 var model = model
                 model.fluentID = UUID() as? M.ID
                 return Future.map(on: connection) { model }

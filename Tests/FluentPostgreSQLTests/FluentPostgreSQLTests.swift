@@ -134,6 +134,20 @@ class FluentPostgreSQLTests: XCTestCase {
         benchmarker.pool.releaseConnection(conn)
     }
 
+    func testCreateUUIDModel() throws {
+        let conn = try benchmarker.pool.requestConnection().wait()
+        defer { try? UUIDUser.revert(on: conn).wait() }
+        try UUIDUser.prepare(on: conn).wait()
+        
+        let user1 = try UUIDUser(id: nil, name: "Tanner", pet: Pet(name: "Zizek")).create(on: conn).wait()
+        XCTAssertNotNil(user1.id)
+        
+        let uuid = UUID()
+        let user2 = try UUIDUser(id: uuid, name: "Tanner", pet: Pet(name: "Zizek")).create(on: conn).wait()
+        XCTAssertEqual(uuid, user2.id)
+        
+        benchmarker.pool.releaseConnection(conn)
+    }
 
     func testUpdate() throws {
         let conn = try benchmarker.pool.requestConnection().wait()
@@ -246,6 +260,7 @@ class FluentPostgreSQLTests: XCTestCase {
         ("testReferentialActions", testReferentialActions),
         ("testIndexSupporting", testIndexSupporting),
         ("testMinimumViableModelDeclaration", testMinimumViableModelDeclaration),
+        ("testCreateUUIDModel", testCreateUUIDModel),
         ("testGH24", testGH24),
         ("testGH21", testGH21),
         ("testPersistsDateMillisecondPart", testPersistsDateMillisecondPart),
@@ -307,6 +322,22 @@ final class User: PostgreSQLModel, Migration {
     var pet: Pet
 
     init(id: Int? = nil, name: String, pet: Pet) {
+        self.favoriteColors = []
+        self.id = id
+        self.name = name
+        self.pet = pet
+    }
+}
+
+final class UUIDUser: PostgreSQLUUIDModel, Migration {
+    static let idKey: WritableKeyPath<UUIDUser, UUID?> = \UUIDUser.id
+    var id: UUID?
+    var name: String
+    var age: Int?
+    var favoriteColors: [String]
+    var pet: Pet
+    
+    init(id: UUID? = nil, name: String, pet: Pet) {
         self.favoriteColors = []
         self.id = id
         self.name = name
