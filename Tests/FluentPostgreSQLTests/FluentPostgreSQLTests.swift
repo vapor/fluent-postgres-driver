@@ -261,6 +261,27 @@ class FluentPostgreSQLTests: XCTestCase {
         ]
         try print(builder.all().wait())
     }
+    
+    // https://github.com/vapor/fluent-postgresql/issues/32
+    func testURL() throws {
+        struct User: PostgreSQLModel, Migration {
+            static let entity = "users"
+            var id: Int?
+            var name: String
+            var website: URL
+        }
+        let conn = try benchmarker.pool.requestConnection().wait()
+        defer { benchmarker.pool.releaseConnection(conn) }
+        
+        try User.prepare(on: conn).wait()
+        defer { try! User.revert(on: conn).wait() }
+        
+        var user = User(id: nil, name: "Tanner", website: URL(string: "http://tanner.xyz")!)
+        user = try user.save(on: conn).wait()
+        
+        let fetched = try User.query(on: conn).filter(\.id == 1).first().wait()
+        XCTAssertEqual(fetched?.website.absoluteString, "http://tanner.xyz")
+    }
 
     static let allTests = [
         ("testSchema", testSchema),
@@ -282,6 +303,8 @@ class FluentPostgreSQLTests: XCTestCase {
         ("testContains", testContains),
         ("testGH30", testGH30),
         ("testBugs", testBugs),
+        ("testCodableSimple", testCodableSimple),
+        ("testURL", testURL),
     ]
 }
 
