@@ -18,9 +18,13 @@ public final class FluentPostgreSQLProvider: Provider {
 
     /// See `Provider`.
     public func willBoot(_ worker: Container) throws -> Future<Void> {
+        struct Setting: Codable {
+            var version: String
+        }
+        
         return worker.withPooledConnection(to: .psql) { conn in
-            return conn.simpleQuery("SELECT current_setting('server_version') as version").map(to: Void.self) { rows in
-                _serverVersion = try rows[0].firstValue(forColumn: "version")!.decode(String.self)
+            return conn.simpleQuery("SELECT current_setting('server_version') as version", decoding: Setting.self).map { rows in
+                _serverVersion = rows[0].version
                 if let versionString = _serverVersion {
                     let pointIndex = versionString.index(of: ".") ?? versionString.endIndex
                     let majorVersion = versionString[..<pointIndex]

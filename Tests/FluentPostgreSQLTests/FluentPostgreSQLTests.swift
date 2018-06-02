@@ -20,7 +20,7 @@ class FluentPostgreSQLTests: XCTestCase {
             password: "vapor_password"
         )
         database = PostgreSQLDatabase(config: config)
-        let eventLoop = MultiThreadedEventLoopGroup(numThreads: 1)
+        let eventLoop = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         benchmarker = try! Benchmarker(database, on: eventLoop, onFail: XCTFail)
     }
 
@@ -255,9 +255,9 @@ class FluentPostgreSQLTests: XCTestCase {
 
         let builder = SimpleUserComputed.query("users", on: conn)
         builder.query.keys = [
-            .column("id", key: nil),
-            .column("name", key: nil),
-            .computed(.init(function: "md5", keys: [.column("name", key: nil)]), key: "computed")
+            .column("id", as: nil),
+            .column("name", as: nil),
+            .computed(.function("md5", .column("name")), as: "computed")
         ]
         try print(builder.all().wait())
     }
@@ -286,12 +286,8 @@ class FluentPostgreSQLTests: XCTestCase {
 }
 
 struct PostgreSQLDate: PostgreSQLType, Codable {
-    static var postgreSQLDataType: PostgreSQLDataType {
-        return .timestamp
-    }
-
-    static var postgreSQLDataArrayType: PostgreSQLDataType {
-        return ._timestamp
+    static var postgreSQLColumnType: String {
+        return PostgreSQLDatabase.ColumnType.timestamp
     }
     
     var value: Date?
@@ -305,7 +301,7 @@ struct PostgreSQLDate: PostgreSQLType, Codable {
     }
 
     func convertToPostgreSQLData() throws -> PostgreSQLData {
-        return try value?.convertToPostgreSQLData() ?? PostgreSQLData(type: .timestamp, format: .binary, data: nil)
+        return try value?.convertToPostgreSQLData() ?? .null
     }
 }
 
@@ -320,7 +316,7 @@ struct DefaultTest: PostgreSQLModel, Migration {
     }
 }
 
-struct Pet: PostgreSQLJSONType, Codable {
+struct Pet: Codable {
     var name: String
 }
 

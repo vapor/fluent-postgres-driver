@@ -1,68 +1,77 @@
-extension DataColumn: Hashable {
-    /// See `Equatable.`
-    public static func ==(lhs: DataColumn, rhs: DataColumn) -> Bool {
-        return lhs.table == rhs.table && lhs.name == rhs.name
-    }
-    
-    /// See `Hashable.`
-    public var hashValue: Int {
-        if let table = table {
-            return table.hashValue &+ name.hashValue
-        } else {
-            return name.hashValue
-        }
-    }
-}
-
-
 /// Adds ability to do basic Fluent queries using a `PostgreSQLDatabase`.
 extension PostgreSQLDatabase: SQLSupporting {
     /// See `SQLDatabase`.
+    public typealias QueryJoin = SQLQuery.DML.Join
+    
+    /// See `SQLDatabase`.
+    public typealias QueryJoinMethod = SQLQuery.DML.Join.Method
+    
+    /// See `SQLDatabase`.
+    public typealias Query = SQLQuery.DML
+    
+    /// See `SQLDatabase`.
+    public typealias Output = [PostgreSQLColumn: PostgreSQLData]
+    
+    /// See `SQLDatabase`.
+    public typealias QueryAction = SQLQuery.DML.Statement
+    
+    /// See `SQLDatabase`.
+    public typealias QueryAggregate = String
+    
+    /// See `SQLDatabase`.
+    public typealias QueryData = [SQLQuery.DML.Column: SQLQuery.DML.Value]
+    
+    /// See `SQLDatabase`.
+    public typealias QueryField = SQLQuery.DML.Column
+    
+    /// See `SQLDatabase`.
+    public typealias QueryFilterMethod = SQLQuery.DML.Predicate.Comparison
+    
+    /// See `SQLDatabase`.
+    public typealias QueryFilterValue = SQLQuery.DML.Value
+    
+    /// See `SQLDatabase`.
+    public typealias QueryFilter = SQLQuery.DML.Predicate
+    
+    /// See `SQLDatabase`.
+    public typealias QueryFilterRelation = SQLQuery.DML.Predicate.Relation
+    
+    /// See `SQLDatabase`.
+    public typealias QueryKey = SQLQuery.DML.Key
+    
+    /// See `SQLDatabase`.
+    public typealias QuerySort = SQLQuery.DML.OrderBy
+    
+    /// See `SQLDatabase`.
+    public typealias QuerySortDirection = SQLQuery.DML.OrderBy.Direction
+    
+    /// See `SQLDatabase`.
     public static func queryExecute(
-        _ dml: DataManipulationQuery,
+        _ query: SQLQuery.DML,
         on conn: PostgreSQLConnection,
-        into handler: @escaping ([DataColumn: PostgreSQLData], PostgreSQLConnection) throws -> ()
+        into handler: @escaping ([PostgreSQLColumn: PostgreSQLData], PostgreSQLConnection) throws -> ()
     ) -> Future<Void> {
-        // wait for the table name cache before continuing
-        return PostgreSQLTableNameCache.get(for: conn).flatMap { tableNameCache in
-            var binds = Binds()
-            let sql = PostgreSQLSerializer().serialize(query: dml, binds: &binds)
-            let params = try binds.values.map { encodable -> PostgreSQLData in
-                guard let convertible = encodable as? PostgreSQLDataConvertible else {
-                    throw PostgreSQLError(identifier: "dataConvertible", reason: "Could not convert \(type(of: encodable)) to PostgreSQL data.", source: .capture())
-                }
-                return try convertible.convertToPostgreSQLData()
-            }
-            
-            return conn.query(sql, params) { row in
-                var res: [DataColumn: PostgreSQLData] = [:]
-                for (col, data) in row {
-                    let field = DataColumn(table: tableNameCache.storage[col.tableOID], name: col.name)
-                    res[field] = data
-                }
-                try handler(res, conn)
+        // always cache the names first
+        return conn.tableNames().flatMap { names in
+            return conn.query(.init(.dml(query))) { row in
+                try handler(row, conn)
             }
         }
     }
     
     /// See `SQLDatabase`.
-    public static func queryEncode<E>(_ encodable: E, entity: String) throws -> [DataManipulationColumn] where E: Encodable {
-        return try PostgreSQLRowEncoder().encode(encodable, tableName: entity).map { row in
-            if row.value.isNull {
-                return .init(column: row.key, value: .null)
-            } else {
-                return .init(column: row.key, value: .binds([row.value]))
-            }
-        }
-    }
-    
-    /// See `SQLDatabase`.
-    public static func queryDecode<D>(_ data: [DataColumn: PostgreSQLData], entity: String, as decodable: D.Type) throws -> D
+    public static func queryDecode<D>(_ data: [PostgreSQLColumn: PostgreSQLData], entity: String, as decodable: D.Type, on conn: PostgreSQLConnection) -> Future<D>
         where D: Decodable
     {
-        return try PostgreSQLRowDecoder().decode(D.self, from: data, tableName: entity)
+        return conn.tableNames().map { names in
+            return try PostgreSQLRowDecoder().decode(D.self, from: data, tableOID: names.tableOID(name: entity) ?? 0)
+        }
     }
 
+    struct InsertMetadata<ID>: Codable where ID: Codable {
+        var lastval: ID
+    }
+    
     /// See `QuerySupporting.modelEvent`
     public static func modelEvent<M>(event: ModelEvent, model: M, on conn: PostgreSQLConnection) -> Future<M>
         where PostgreSQLDatabase == M.Database, M: Model
@@ -76,10 +85,14 @@ extension PostgreSQLDatabase: SQLSupporting {
             }
         case .didCreate:
             if M.ID.self == Int.self, model.fluentID == nil {
-                return conn.simpleQuery("SELECT LASTVAL();").map(to: M.self) { row in
-                    var model = model
-                    try model.fluentID = row[0].firstValue(forColumn: "lastval")?.decode(Int.self) as? M.ID
-                    return model
+                return conn.simpleQuery("SELECT LASTVAL();", decoding: InsertMetadata<M.ID>.self).map { rows in
+                    switch rows.count {
+                    case 1:
+                        var model = model
+                        model.fluentID = rows[0].lastval
+                        return model
+                    default: throw PostgreSQLError(identifier: "lastval", reason: "Unexpected row count when querying LASTVAL.")
+                    }
                 }
             }
         default: break
@@ -90,41 +103,56 @@ extension PostgreSQLDatabase: SQLSupporting {
 
     
     /// See `SQLSupporting`.
-    public static func schemaDataType(for type: Any.Type, primaryKey: Bool) -> DataDefinitionDataType {
-        guard let representable = type as? PostgreSQLDataConvertible.Type else {
-            fatalError("""
-                `\(type)` is not `PostgreSQLDataConvertible`.
-                
-                Suggested Fixes:
-                - Conform \(type) to `PostgreSQLDataConvertible` to specify field type or implement a custom migration.
-                - Specify the data type manually using the schema builder in a migration.
-                """)
+    public static func schemaColumnType(for type: Any.Type, primaryKey: Bool) -> SQLQuery.DDL.ColumnDefinition.ColumnType {
+        var type = type
+        
+        var attributes: [String] = []
+        
+        if let optional = type as? AnyOptionalType.Type {
+            type = optional.anyWrappedType
+        } else {
+            attributes.append("NOT NULL")
         }
         
-        var dataType = DataDefinitionDataType(name: representable.postgreSQLDataType.knownSQLName ?? "VOID")
-        
-        if type as? AnyOptionalType.Type == nil {
-            dataType.attributes.append("NOT NULL")
+        let isArray: Bool
+        if let array = type as? AnyArray.Type {
+            type = array.anyElementType
+            isArray = true
+        } else {
+            isArray = false
         }
         
-        if primaryKey {
-            if dataType.name.contains("INT") {
-                if _globalEnableIdentityColumns {
-                    dataType.attributes.append("GENERATED BY DEFAULT AS IDENTITY")
-                } else {
-                    dataType.name = dataType.name.replacingOccurrences(of: "INT", with: "SERIAL")
+        var name: String
+        
+        if let representable = type as? PostgreSQLType.Type {
+            name = representable.postgreSQLColumnType
+            if primaryKey {
+                attributes.append("PRIMARY KEY")
+                switch name {
+                case "INT", "SMALLINT", "BIGINT":
+                    if _globalEnableIdentityColumns {
+                        attributes.append("GENERATED BY DEFAULT AS IDENTITY")
+                    } else {
+                        name = name.replacingOccurrences(of: "INT", with: "SERIAL")
+                    }
+                default: break
                 }
             }
-            dataType.attributes.append("PRIMARY KEY")
+        } else {
+            // for any unrecognized types, assume they will be serialized to JSON.
+            name = PostgreSQLDatabase.ColumnType.jsonb
         }
         
-        return dataType
-        
+        if isArray {
+            name += "[]"
+        }
+
+        return .init(name: name, parameters: [], attributes: attributes)
     }
     
     /// See `SQLSupporting`.
-    public static func schemaExecute(_ ddl: DataDefinitionQuery, on connection: PostgreSQLConnection) -> Future<Void> {
-        let sql = PostgreSQLSerializer().serialize(query: ddl)
+    public static func schemaExecute(_ ddl: SQLQuery.DDL, on connection: PostgreSQLConnection) -> Future<Void> {
+        let sql = PostgreSQLSerializer().serialize(ddl: ddl)
         return connection.query(sql).transform(to: ())
     }
     
@@ -138,32 +166,20 @@ extension PostgreSQLDatabase: SQLSupporting {
     /// See `SQLSupporting`.
     public static func disableReferences(on connection: PostgreSQLConnection) -> Future<Void> {
         return Future.map(on: connection) {
-            throw PostgreSQLError(identifier: "disableReferences", reason: "PostgreSQL does not support disabling foreign key checks.", source: .capture())
+            throw PostgreSQLError(identifier: "disableReferences", reason: "PostgreSQL does not support disabling foreign key checks.")
         }
     }
     
     /// See `SQLSupporting`.
     public static func transactionExecute<T>(_ transaction: @escaping (PostgreSQLConnection) throws -> Future<T>, on connection: PostgreSQLConnection) -> Future<T> {
-        return connection.simpleQuery("BEGIN TRANSACTION").flatMap(to: T.self) { results in
-            return try transaction(connection).flatMap(to: T.self) { res in
+        return connection.simpleQuery("BEGIN TRANSACTION").flatMap { results in
+            return try transaction(connection).flatMap { res in
                 return connection.simpleQuery("END TRANSACTION").transform(to: res)
-                }.catchFlatMap { error in
-                    return connection.simpleQuery("ROLLBACK").map(to: T.self) { results in
-                        throw error
-                    }
+            }.catchFlatMap { error in
+                return connection.simpleQuery("ROLLBACK").map { results in
+                    throw error
+                }
             }
-        }
-    }
-}
-
-extension PostgreSQLData: Encodable {
-    /// See `Encodable`.
-    public func encode(to encoder: Encoder) throws {
-        var single = encoder.singleValueContainer()
-        if let data = data {
-            try single.encode(data)
-        } else {
-            try single.encodeNil()
         }
     }
 }
