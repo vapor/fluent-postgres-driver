@@ -231,6 +231,10 @@ class FluentPostgreSQLTests: XCTestCase {
     func testBugs() throws {
         try benchmarker.benchmarkBugs_withSchema()
     }
+    
+    func testLifecycle() throws {
+        try benchmarker.benchmarkLifecycleHooks_withSchema()
+    }
 
     static let allTests = [
         ("testSchema", testSchema),
@@ -252,6 +256,7 @@ class FluentPostgreSQLTests: XCTestCase {
         ("testContains", testContains),
         ("testGH30", testGH30),
         ("testBugs", testBugs),
+        ("testLifecycle", testLifecycle)
     ]
 }
 
