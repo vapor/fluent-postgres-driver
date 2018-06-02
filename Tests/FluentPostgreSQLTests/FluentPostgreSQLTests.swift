@@ -279,7 +279,7 @@ class FluentPostgreSQLTests: XCTestCase {
         var user = User(id: nil, name: "Tanner", website: URL(string: "http://tanner.xyz")!)
         user = try user.save(on: conn).wait()
         
-        let fetched = try User.query(on: conn).filter(\.id == 1).first().wait()
+        let fetched = try User.find(1, on: conn).wait()
         XCTAssertEqual(fetched?.website.absoluteString, "http://tanner.xyz")
     }
 
