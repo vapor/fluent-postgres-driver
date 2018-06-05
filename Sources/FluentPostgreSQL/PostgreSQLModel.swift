@@ -9,3 +9,5 @@ extension PostgreSQLModel {
 }
 
 public protocol PostgreSQLPivot: Pivot, PostgreSQLModel { }
+
+public protocol PostgreSQLMigration: Migration where Self.Database == PostgreSQLDatabase { }

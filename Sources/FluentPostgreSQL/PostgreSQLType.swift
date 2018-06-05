@@ -1,107 +1,108 @@
-/// A type that is compatible with PostgreSQL schema and data.
-public protocol PostgreSQLType: PostgreSQLDataConvertible {
+public protocol PostgreSQLStaticColumnTypeRepresentable {
     /// Appropriate PostgreSQL column type for storing this type.
-    static var postgreSQLColumnType: String { get }
+    static var postgreSQLColumnType: PostgreSQLColumnType { get }
 }
 
-/// An enum type compatible with PostgreSQL.
-public protocol PostgreSQLEnumType: PostgreSQLType, ReflectionDecodable, Codable, RawRepresentable where Self.RawValue: PostgreSQLDataConvertible { }
-
-extension RawRepresentable where RawValue: PostgreSQLType {
-    /// See `PostgreSQLType`.
-    public static var postgreSQLColumnType: String {
-        return RawValue.postgreSQLColumnType
+extension PostgreSQLConnection {
+    public func createEnum<E>(_ enumType: E.Type, as columnType: PostgreSQLColumnType) -> Future<Void> where E: CaseIterable {
+        let cases = E.allCases.map { "'\($0)'" }.joined(separator: ", ")
+        return simpleQuery("CREATE TYPE \(columnType.name) AS ENUM (\(cases))").transform(to: ())
     }
 }
 
 /// MARK: Default Implementations
 
-extension Data: PostgreSQLType {
-    /// See `PostgreSQLType`.
-    public static var postgreSQLColumnType: String { return PostgreSQLDatabase.ColumnType.bytea }
+extension Data: PostgreSQLStaticColumnTypeRepresentable {
+    /// See `PostgreSQLStaticColumnTypeRepresentable`.
+    public static var postgreSQLColumnType: PostgreSQLColumnType { return .bytea }
 }
 
-extension UUID: PostgreSQLType {
-    /// See `PostgreSQLType`.
-    public static var postgreSQLColumnType: String { return PostgreSQLDatabase.ColumnType.uuid }
+extension UUID: PostgreSQLStaticColumnTypeRepresentable {
+    /// See `PostgreSQLStaticColumnTypeRepresentable`.
+    public static var postgreSQLColumnType: PostgreSQLColumnType { return .uuid }
 }
 
-extension Date: PostgreSQLType {
-    /// See `PostgreSQLType`.
-    public static var postgreSQLColumnType: String { return PostgreSQLDatabase.ColumnType.timestamp }
+extension Date: PostgreSQLStaticColumnTypeRepresentable {
+    /// See `PostgreSQLStaticColumnTypeRepresentable`.
+    public static var postgreSQLColumnType: PostgreSQLColumnType { return .timestamp }
 }
 
-extension Int: PostgreSQLType {
-    /// See `PostgreSQLType`.
-    public static var postgreSQLColumnType: String { return PostgreSQLDatabase.ColumnType.int }
+extension Int: PostgreSQLStaticColumnTypeRepresentable {
+    /// See `PostgreSQLStaticColumnTypeRepresentable`.
+    public static var postgreSQLColumnType: PostgreSQLColumnType { return .int }
 }
 
-extension Int8: PostgreSQLType  {
-    /// See `PostgreSQLType`.
-    public static var postgreSQLColumnType: String { return PostgreSQLDatabase.ColumnType.char }
+extension Int8: PostgreSQLStaticColumnTypeRepresentable  {
+    /// See `PostgreSQLStaticColumnTypeRepresentable`.
+    public static var postgreSQLColumnType: PostgreSQLColumnType { return .char }
 }
 
-extension Int16: PostgreSQLType {
-    /// See `PostgreSQLType`.
-    public static var postgreSQLColumnType: String { return PostgreSQLDatabase.ColumnType.smallint }
+extension Int16: PostgreSQLStaticColumnTypeRepresentable {
+    /// See `PostgreSQLStaticColumnTypeRepresentable`.
+    public static var postgreSQLColumnType: PostgreSQLColumnType { return .smallint }
 }
 
-extension Int32: PostgreSQLType {
-    /// See `PostgreSQLType`.
-    public static var postgreSQLColumnType: String { return PostgreSQLDatabase.ColumnType.int }
+extension Int32: PostgreSQLStaticColumnTypeRepresentable {
+    /// See `PostgreSQLStaticColumnTypeRepresentable`.
+    public static var postgreSQLColumnType: PostgreSQLColumnType { return .int }
 }
 
-extension Int64: PostgreSQLType {
-    /// See `PostgreSQLType`.
-    public static var postgreSQLColumnType: String { return PostgreSQLDatabase.ColumnType.bigint }
+extension Int64: PostgreSQLStaticColumnTypeRepresentable {
+    /// See `PostgreSQLStaticColumnTypeRepresentable`.
+    public static var postgreSQLColumnType: PostgreSQLColumnType { return .bigint }
 }
 
-extension UInt: PostgreSQLType {
-    /// See `PostgreSQLType`.
-    public static var postgreSQLColumnType: String { return PostgreSQLDatabase.ColumnType.bigint }
+extension UInt: PostgreSQLStaticColumnTypeRepresentable {
+    /// See `PostgreSQLStaticColumnTypeRepresentable`.
+    public static var postgreSQLColumnType: PostgreSQLColumnType { return .bigint }
 }
 
-extension UInt8: PostgreSQLType {
-    /// See `PostgreSQLType`.
-    public static var postgreSQLColumnType: String { return PostgreSQLDatabase.ColumnType.char }
+extension UInt8: PostgreSQLStaticColumnTypeRepresentable {
+    /// See `PostgreSQLStaticColumnTypeRepresentable`.
+    public static var postgreSQLColumnType: PostgreSQLColumnType { return .char }
 }
 
-extension UInt16: PostgreSQLType {
-    /// See `PostgreSQLType`.
-    public static var postgreSQLColumnType: String { return PostgreSQLDatabase.ColumnType.smallint }
+extension UInt16: PostgreSQLStaticColumnTypeRepresentable {
+    /// See `PostgreSQLStaticColumnTypeRepresentable`.
+    public static var postgreSQLColumnType: PostgreSQLColumnType { return .smallint }
 }
 
-extension UInt32: PostgreSQLType {
-    /// See `PostgreSQLType`.
-    public static var postgreSQLColumnType: String { return PostgreSQLDatabase.ColumnType.int }
+extension UInt32: PostgreSQLStaticColumnTypeRepresentable {
+    /// See `PostgreSQLStaticColumnTypeRepresentable`.
+    public static var postgreSQLColumnType: PostgreSQLColumnType { return .int }
 }
 
-extension UInt64: PostgreSQLType {
-    /// See `PostgreSQLType`.
-    public static var postgreSQLColumnType: String { return PostgreSQLDatabase.ColumnType.bigint }
+extension UInt64: PostgreSQLStaticColumnTypeRepresentable {
+    /// See `PostgreSQLStaticColumnTypeRepresentable`.
+    public static var postgreSQLColumnType: PostgreSQLColumnType { return .bigint }
 }
 
-extension Float: PostgreSQLType {
-    /// See `PostgreSQLType`.
-    public static var postgreSQLColumnType: String { return PostgreSQLDatabase.ColumnType.real }
+extension Float: PostgreSQLStaticColumnTypeRepresentable {
+    /// See `PostgreSQLStaticColumnTypeRepresentable`.
+    public static var postgreSQLColumnType: PostgreSQLColumnType { return .real }
 }
 
-extension Double: PostgreSQLType {
-    /// See `PostgreSQLType`.
-    public static var postgreSQLColumnType: String { return PostgreSQLDatabase.ColumnType.doublePrecision }
+extension Double: PostgreSQLStaticColumnTypeRepresentable {
+    /// See `PostgreSQLStaticColumnTypeRepresentable`.
+    public static var postgreSQLColumnType: PostgreSQLColumnType { return .doublePrecision }
 }
 
-extension String: PostgreSQLType {
-    /// See `PostgreSQLType`.
-    public static var postgreSQLColumnType: String { return PostgreSQLDatabase.ColumnType.text }
+extension String: PostgreSQLStaticColumnTypeRepresentable {
+    /// See `PostgreSQLStaticColumnTypeRepresentable`.
+    public static var postgreSQLColumnType: PostgreSQLColumnType { return .text }
 }
 
-extension Bool: PostgreSQLType {
-    /// See `PostgreSQLType`.
-    public static var postgreSQLColumnType: String { return PostgreSQLDatabase.ColumnType.bool }
+extension Bool: PostgreSQLStaticColumnTypeRepresentable {
+    /// See `PostgreSQLStaticColumnTypeRepresentable`.
+    public static var postgreSQLColumnType: PostgreSQLColumnType { return .bool }
 }
 
-extension PostgreSQLPoint: PostgreSQLType {
-    /// See `PostgreSQLType`.
-    public static var postgreSQLColumnType: String { return PostgreSQLDatabase.ColumnType.point }
+extension PostgreSQLPoint: PostgreSQLStaticColumnTypeRepresentable, ReflectionDecodable {
+    /// See `PostgreSQLStaticColumnTypeRepresentable`.
+    public static var postgreSQLColumnType: PostgreSQLColumnType { return .point }
+    
+    /// See `ReflectionDecodable`.
+    public static func reflectDecoded() throws -> (PostgreSQLPoint, PostgreSQLPoint) {
+        return (.init(x: 0, y: 0), .init(x: 1, y: 1))
+    }
 }

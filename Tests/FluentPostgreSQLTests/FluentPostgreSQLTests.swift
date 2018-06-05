@@ -157,7 +157,7 @@ class FluentPostgreSQLTests: XCTestCase {
 
     func testGH21() throws {
         /// - types
-        enum PetType: Int, PostgreSQLEnumType {
+        enum PetType: Int, CaseIterable, ReflectionDecodable, Codable {
             case cat = 0
             case dog = 1
         }
@@ -166,6 +166,14 @@ class FluentPostgreSQLTests: XCTestCase {
             var id: Int?
             var type: PetType
             var name: String
+            
+            static func prepare(on conn: PostgreSQLConnection) -> EventLoopFuture<Void> {
+                return PostgreSQLDatabase.create(Pet.self, on: conn) { builder in
+                    builder.field(for: \.id, primaryKey: true)
+                    builder.field(for: \.type, type: .bigint)
+                    builder.field(for: \.name, type: .text)
+                }
+            }
         }
 
         try print(Pet.reflectProperties())
@@ -187,14 +195,31 @@ class FluentPostgreSQLTests: XCTestCase {
     }
     
     func testPersistsDateMillisecondPart() throws {
+        struct DefaultTest: PostgreSQLModel, Migration {
+            var id: Int?
+            var date: Date?
+            var foo: String
+            init() {
+                self.id = nil
+                self.date = nil
+                self.foo = "bar"
+            }
+            static func prepare(on conn: PostgreSQLConnection) -> EventLoopFuture<Void> {
+                return PostgreSQLDatabase.create(DefaultTest.self, on: conn) { builder in
+                    builder.field(for: \.id, primaryKey: true)
+                    builder.field(for: \.date, type: .timestamp, default: "current_timestamp")
+                    builder.field(for: \.foo)
+                }
+            }
+        }
+        
         let conn = try benchmarker.pool.requestConnection().wait()
         defer { try? DefaultTest.revert(on: conn).wait() }
         try DefaultTest.prepare(on: conn).wait()
-        var test = DefaultTest()
-        test.date = PostgreSQLDate(Date(timeIntervalSinceReferenceDate: 123.456))
-        _ = try test.save(on: conn).wait()
+        _ = try DefaultTest().save(on: conn).wait()
         let fetched = try DefaultTest.query(on: conn).first().wait()!
-        XCTAssertEqual(123.456, fetched.date!.value!.timeIntervalSinceReferenceDate, accuracy: 1e-6)
+        // within 10 seconds
+        XCTAssertEqual(Date().timeIntervalSinceReferenceDate, fetched.date!.timeIntervalSinceReferenceDate, accuracy: 10)
     }
 
     func testContains() throws {
@@ -282,6 +307,39 @@ class FluentPostgreSQLTests: XCTestCase {
         let fetched = try User.find(1, on: conn).wait()
         XCTAssertEqual(fetched?.website.absoluteString, "http://tanner.xyz")
     }
+    
+    func testDocs_type() throws {
+        enum PlanetType: String, Codable, CaseIterable, ReflectionDecodable {
+            case smallRocky
+            case gasGiant
+            case dwarf
+        }
+
+        struct Planet: PostgreSQLModel, PostgreSQLMigration {
+            var id: Int?
+            let name: String
+            let type: PlanetType
+            
+            static func prepare(on conn: PostgreSQLConnection) -> Future<Void> {
+//                return conn.createEnum(PlanetType.self, as: .planetType).flatMap { builder in
+                    return PostgreSQLDatabase.create(Planet.self, on: conn) { builder in
+                        builder.field(for: \.id)
+                        builder.field(for: \.name, type: .varchar(64))
+                        builder.field(for: \.type, type: "PLANET_TYPE")
+                    }
+//                }
+            }
+        }
+        
+        let conn = try benchmarker.pool.requestConnection().wait()
+        defer { benchmarker.pool.releaseConnection(conn) }
+        
+        try Planet.prepare(on: conn).wait()
+        defer { try! Planet.revert(on: conn).wait() }
+        
+        let rows = try Planet.query(on: conn).filter(\.type == .gasGiant).all().wait()
+        XCTAssertEqual(rows.count, 0)
+    }
 
     static let allTests = [
         ("testSchema", testSchema),
@@ -308,34 +366,9 @@ class FluentPostgreSQLTests: XCTestCase {
     ]
 }
 
-struct PostgreSQLDate: PostgreSQLType, Codable {
-    static var postgreSQLColumnType: String {
-        return PostgreSQLDatabase.ColumnType.timestamp
-    }
-    
-    var value: Date?
-
-    init(_ value: Date? = nil) {
-        self.value = value
-    }
-
-    static func convertFromPostgreSQLData(_ data: PostgreSQLData) throws -> PostgreSQLDate {
-        return try PostgreSQLDate(Date.convertFromPostgreSQLData(data))
-    }
-
-    func convertToPostgreSQLData() throws -> PostgreSQLData {
-        return try value?.convertToPostgreSQLData() ?? .null
-    }
-}
-
-struct DefaultTest: PostgreSQLModel, Migration {
-    var id: Int?
-    var date: PostgreSQLDate?
-    var foo: String
-    init() {
-        self.id = nil
-        self.date = nil
-        self.foo = "bar'"
+extension PostgreSQLColumnType {
+    static var planetType: PostgreSQLColumnType {
+        return "PLANET_TYPE"
     }
 }
 
@@ -362,14 +395,14 @@ final class User: PostgreSQLModel, Migration {
 /// Adds a new field to `User`'s table.
 struct AddUsernameToUser: PostgreSQLMigration {
     static func prepare(on conn: PostgreSQLConnection) -> Future<Void> {
-        return PostgreSQLDatabase.update(User.self) { builder in
-            builder.field(for: \.username)
+        return PostgreSQLDatabase.update(User.self, on: conn) { builder in
+            builder.field(for: \.name)
         }
     }
 
     static func revert(on conn: PostgreSQLConnection) -> Future<Void> {
-        return PostgreSQLDatabase.update(User.self) { builder in
-            builder.deleteField(for: \.username)
+        return PostgreSQLDatabase.update(User.self, on: conn) { builder in
+            builder.deleteField(for: \.name)
         }
     }
 }
