@@ -158,13 +158,13 @@ extension PostgreSQLDatabase: SQLSupporting {
     
     
     /// See `SQLSupporting`.
-    public static func enableReferences(on connection: PostgreSQLConnection) -> Future<Void> {
+    public static func enableForeignKeys(on connection: PostgreSQLConnection) -> Future<Void> {
         // enabled by default
         return .done(on: connection)
     }
     
     /// See `SQLSupporting`.
-    public static func disableReferences(on connection: PostgreSQLConnection) -> Future<Void> {
+    public static func disableForeignKeys(on connection: PostgreSQLConnection) -> Future<Void> {
         return Future.map(on: connection) {
             throw PostgreSQLError(identifier: "disableReferences", reason: "PostgreSQL does not support disabling foreign key checks.")
         }

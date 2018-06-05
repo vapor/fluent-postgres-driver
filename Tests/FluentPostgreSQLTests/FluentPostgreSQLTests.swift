@@ -359,3 +359,17 @@ final class User: PostgreSQLModel, Migration {
     }
 }
 
+/// Adds a new field to `User`'s table.
+struct AddUsernameToUser: PostgreSQLMigration {
+    static func prepare(on conn: PostgreSQLConnection) -> Future<Void> {
+        return PostgreSQLDatabase.update(User.self) { builder in
+            builder.field(for: \.username)
+        }
+    }
+
+    static func revert(on conn: PostgreSQLConnection) -> Future<Void> {
+        return PostgreSQLDatabase.update(User.self) { builder in
+            builder.deleteField(for: \.username)
+        }
+    }
+}
