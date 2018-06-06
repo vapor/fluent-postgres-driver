@@ -1,17 +1,9 @@
-public typealias PostgreSQLColumnType = PostgreSQLQuery.DDL.ColumnDefinition.DataType
+public typealias PostgreSQLColumnType = PostgreSQLQuery.DataType
 
 public protocol PostgreSQLStaticColumnTypeRepresentable {
     /// Appropriate PostgreSQL column type for storing this type.
     static var postgreSQLColumnType: PostgreSQLColumnType { get }
 }
-
-#warning("create enum code")
-//extension PostgreSQLConnection {
-//    public func createEnum<E>(_ enumType: E.Type, as columnType: PostgreSQLColumnType) -> Future<Void> where E: CaseIterable {
-//        let cases = E.allCases.map { "'\($0)'" }.joined(separator: ", ")
-//        return simpleQuery(.raw("CREATE TYPE \(columnType.name) AS ENUM (\(cases))")).transform(to: ())
-//    }
-//}
 
 /// MARK: Default Implementations
 
@@ -32,7 +24,7 @@ extension Date: PostgreSQLStaticColumnTypeRepresentable {
 
 extension Int: PostgreSQLStaticColumnTypeRepresentable {
     /// See `PostgreSQLStaticColumnTypeRepresentable`.
-    public static var postgreSQLColumnType: PostgreSQLColumnType { return .int }
+    public static var postgreSQLColumnType: PostgreSQLColumnType { return .bigint }
 }
 
 extension Int8: PostgreSQLStaticColumnTypeRepresentable  {

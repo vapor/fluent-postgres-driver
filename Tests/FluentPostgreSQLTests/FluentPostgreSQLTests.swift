@@ -72,9 +72,9 @@ class FluentPostgreSQLTests: XCTestCase {
         let conn = try benchmarker.pool.requestConnection().wait()
         try? User.revert(on: conn).wait()
         try User.prepare(on: conn).wait()
-        let user = User(id: nil, name: "Tanner", pet: Pet(name: "Zizek"))
+        var user = User(id: nil, name: "Tanner", pet: Pet(name: "Zizek"))
         user.favoriteColors = ["pink", "blue"]
-        _ = try user.save(on: conn).wait()
+        user = try user.save(on: conn).wait()
         if let fetched = try User.query(on: conn).first().wait() {
             XCTAssertEqual(user.id, fetched.id)
             XCTAssertNil(user.age)
@@ -207,7 +207,9 @@ class FluentPostgreSQLTests: XCTestCase {
             static func prepare(on conn: PostgreSQLConnection) -> EventLoopFuture<Void> {
                 return PostgreSQLDatabase.create(DefaultTest.self, on: conn) { builder in
                     builder.field(for: \.id, isIdentifier: true)
-                    builder.field(.init(name: "date", dataType: .timestamp, constraints: [.default(.function("current_timestamp"))]))
+                    builder.field(.init(name: "date", dataType: .timestamp, constraints: [
+                        .default(.function("current_timestamp"))
+                    ]))
                     builder.field(for: \.foo)
                 }
             }
@@ -276,7 +278,7 @@ class FluentPostgreSQLTests: XCTestCase {
 
         let res = try SimpleUserComputed
             .query("users", on: conn)
-            .select("id", "name", .function("md5", "name", as: "computed"))
+            .keys("id", "name", .expression(.function(.init(name: "md5", parameters: ["name"])), alias: "computed"))
             .all()
             .wait()
         
@@ -305,7 +307,7 @@ class FluentPostgreSQLTests: XCTestCase {
     }
     
     func testDocs_type() throws {
-        enum PlanetType: String, Codable, CaseIterable, ReflectionDecodable {
+        enum PlanetType: String, PostgreSQLEnum, PostgreSQLMigration {
             case smallRocky
             case gasGiant
             case dwarf
@@ -317,22 +319,23 @@ class FluentPostgreSQLTests: XCTestCase {
             let type: PlanetType
             
             static func prepare(on conn: PostgreSQLConnection) -> Future<Void> {
-//                return conn.createEnum(PlanetType.self, as: .planetType).flatMap { builder in
-                    return PostgreSQLDatabase.create(Planet.self, on: conn) { builder in
-                        builder.field(for: \.id)
-                        builder.field(for: \.name, type: .varchar(64))
-                        builder.field(for: \.type, type: .custom("PLANET_TYPE"))
-                    }
-//                }
+                return PostgreSQLDatabase.create(Planet.self, on: conn) { builder in
+                    builder.field(for: \.id)
+                    builder.field(for: \.name, type: .varchar(64))
+                    builder.field(for: \.type)
+                }
             }
         }
-        
+
         let conn = try benchmarker.pool.requestConnection().wait()
         defer { benchmarker.pool.releaseConnection(conn) }
-        
+
+        try PlanetType.prepare(on: conn).wait()
+        // try PostgreSQLDatabase.alter(enum: PlanetType.self, add: .dwarf, on: conn).wait()
+        defer { try? PlanetType.revert(on: conn).wait() }
         try Planet.prepare(on: conn).wait()
-        defer { try! Planet.revert(on: conn).wait() }
-        
+        defer { try? Planet.revert(on: conn).wait() }
+
         let rows = try Planet.query(on: conn).filter(\.type == .gasGiant).all().wait()
         XCTAssertEqual(rows.count, 0)
     }
