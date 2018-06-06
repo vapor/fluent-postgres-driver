@@ -9,11 +9,6 @@ public protocol PostgreSQLJSONType: PostgreSQLType { }
 @available(*, deprecated, renamed: "PostgreSQLType")
 public protocol PostgreSQLArrayType: PostgreSQLType { }
 
-
-/// - warning: Deprecated.
-@available(*, deprecated, renamed: "SQLSupporting")
-public typealias SchemaSupporting = SQLSupporting
-
 // - warning: Deprecated.
 @available(*, deprecated, message: "Use custom migration instead.")
 public protocol PostgreSQLEnumType { }
@@ -22,3 +17,11 @@ public protocol PostgreSQLEnumType { }
 @available(*, deprecated, message: "Use custom migration instead.")
 public protocol PostgreSQLType { }
 
+
+extension QueryBuilder where Database == PostgreSQLDatabase {
+    /// - warning: Deprecated.
+    @available(*, deprecated, renamed: "groupBy(_:)")
+    public func group<T>(by field: KeyPath<Result, T>) -> Self {
+        return groupBy(field)
+    }
+}

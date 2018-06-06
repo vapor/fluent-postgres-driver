@@ -1,59 +1,399 @@
+infix operator ~=
+/// Has prefix
+public func ~= <Result>(lhs: KeyPath<Result, String>, rhs: String) -> FilterOperator<PostgreSQLDatabase, Result> {
+    return .make(lhs, .like, ["%" + rhs])
+}
+/// Has prefix
+public func ~= <Result>(lhs: KeyPath<Result, String?>, rhs: String) -> FilterOperator<PostgreSQLDatabase, Result> {
+    return .make(lhs, .like, ["%" + rhs])
+}
+
+infix operator =~
+/// Has suffix.
+public func =~ <Result>(lhs: KeyPath<Result, String>, rhs: String) -> FilterOperator<PostgreSQLDatabase, Result> {
+    return .make(lhs, .like, [rhs + "%"])
+}
+/// Has suffix.
+public func =~ <Result>(lhs: KeyPath<Result, String?>, rhs: String) -> FilterOperator<PostgreSQLDatabase, Result> {
+    return .make(lhs, .like, [rhs + "%"])
+}
+
+infix operator ~~
+/// Contains.
+public func ~~ <Result>(lhs: KeyPath<Result, String>, rhs: String) -> FilterOperator<PostgreSQLDatabase, Result> {
+    return .make(lhs, .like, ["%" + rhs + "%"])
+}
+/// Contains.
+public func ~~ <Result>(lhs: KeyPath<Result, String?>, rhs: String) -> FilterOperator<PostgreSQLDatabase, Result> {
+    return .make(lhs, .like, ["%" + rhs + "%"])
+}
+
+
+public enum PostgreSQLQueryAction {
+    case create
+    case read
+    case update
+    case delete
+}
+
+extension QueryBuilder where Database == PostgreSQLDatabase {
+    public func select(_ keys: PostgreSQLQuery.Expression...) -> Self {
+        switch query {
+        case .select(var select):
+            select.keys = keys
+            query = .select(select)
+        default: break
+        }
+        return self
+    }
+    
+    // MARK: Group By
+    
+    /// Adds a group by to the query builder.
+    ///
+    ///     query.groupBy(\.name)
+    ///
+    /// - parameters:
+    ///     - field: Swift `KeyPath` to field on model to group by.
+    /// - returns: Query builder for chaining.
+    public func groupBy<T>(_ field: KeyPath<Result, T>) -> Self {
+        return groupBy(.column(PostgreSQLDatabase.queryField(.keyPath(field))))
+    }
+    
+    /// Adds a manually created group by to the query builder.
+    /// - parameters:
+    ///     - groupBy: New `Query.GroupBy` to add.
+    /// - returns: Query builder for chaining.
+    public func groupBy(_ groupBy: PostgreSQLQuery.Expression) -> Self {
+        switch query {
+        case .select(var select):
+            select.groupBys.append(groupBy)
+            query = .select(select)
+        default: break
+        }
+        return self
+    }
+}
+
+
 /// Adds ability to do basic Fluent queries using a `PostgreSQLDatabase`.
-extension PostgreSQLDatabase: SQLSupporting {
-    /// See `SQLDatabase`.
-    public typealias QueryJoin = SQLQuery.DML.Join
+extension PostgreSQLDatabase: QuerySupporting & JoinSupporting & MigrationSupporting & TransactionSupporting & KeyedCacheSupporting {
+    public static var queryJoinMethodDefault: PostgreSQLQuery.DML.Join.Method {
+        return .inner
+    }
+    
+    public static func queryJoin(_ method: PostgreSQLQuery.DML.Join.Method, base: PostgreSQLQuery.Column, joined: PostgreSQLQuery.Column) -> PostgreSQLQuery.DML.Join {
+        return .init(method: method, local: base, foreign: joined)
+    }
+    
+    public static func queryJoinApply(_ join: PostgreSQLQuery.DML.Join, to query: inout PostgreSQLQuery.DML) {
+        switch query {
+        case .insert: break
+        case .select(var select):
+            select.joins.append(join)
+            query = .select(select)
+        }
+    }
+    
+    public static func prepareMigrationMetadata(on conn: PostgreSQLConnection) -> EventLoopFuture<Void> {
+        fatalError()
+    }
+    
+    public static func query(_ entity: String) -> PostgreSQLQuery.DML {
+        return .select(.init(tables: [.init(name: entity)]))
+    }
+    
+    public static func queryEntity(for query: PostgreSQLQuery.DML) -> String {
+        switch query {
+        case .insert(let insert): return insert.table.name
+        case .select(let select): return select.tables.first?.name ?? ""
+        }
+    }
+    
+    public static func queryEncode<E>(_ encodable: E, entity: String) throws -> [String : PostgreSQLQuery.DML.Value] where E : Encodable {
+        return try PostgreSQLQueryEncoder().encode(encodable)
+    }
+    
+    public static var queryActionCreate: PostgreSQLQueryAction {
+        return .create
+    }
+    
+    public static var queryActionRead: PostgreSQLQueryAction {
+        return .read
+    }
+    
+    public static var queryActionUpdate: PostgreSQLQueryAction {
+        return .update
+    }
+    
+    public static var queryActionDelete: PostgreSQLQueryAction {
+        return .delete
+    }
+    
+    public static func queryActionIsCreate(_ action: PostgreSQLQueryAction) -> Bool {
+        switch action {
+        case .create: return true
+        default: return false
+        }
+    }
+    
+    public static func queryActionApply(_ action: PostgreSQLQueryAction, to query: inout PostgreSQLQuery.DML) {
+        switch action {
+        case .create:
+            switch query {
+            case .select(let select): query = .insert(.init(table: select.tables.first!, values: [:]))
+            default: break
+            }
+        case .update: break
+        case .read: break
+        case .delete: break
+        }
+    }
+    
+    public static var queryAggregateCount: String {
+        return "COUNT"
+    }
+    
+    public static var queryAggregateSum: String {
+        return "SUM"
+    }
+    
+    public static var queryAggregateAverage: String {
+        return "AVG"
+    }
+    
+    public static var queryAggregateMinimum: String {
+        return "MIN"
+    }
+    
+    public static var queryAggregateMaximum: String {
+        return "MAX"
+    }
+    
+    public static func queryDataSet(_ column: PostgreSQLQuery.Column, to data: Encodable, on query: inout PostgreSQLQuery.DML) {
+        switch query {
+        case .insert(var insert):
+            #warning("Fix non-throwable query data conversion.")
+            insert.values[column.name] = try! .bind(data)
+            query = .insert(insert)
+        case .select: break
+        }
+    }
+    
+    public static func queryDataApply(_ data: [String : PostgreSQLQuery.DML.Value], to query: inout PostgreSQLQuery.DML) {
+        switch query {
+        case .insert(var insert):
+            insert.values = data
+            query = .insert(insert)
+        case .select: break
+        }
+    }
+    
+    public static func queryField(_ property: FluentProperty) -> PostgreSQLQuery.Column {
+        guard let model = property.rootType as? AnyModel.Type else {
+            #warning("Fix query field fatal error.")
+            fatalError("`\(property.rootType)` does not conform to `Model`.")
+        }
+        return .init(table: model.entity, name: property.path.first ?? "")
+    }
+    
+    public static var queryFilterMethodEqual: PostgreSQLQuery.DML.Predicate.ComparisonOperator {
+        return .equal
+    }
+    
+    public static var queryFilterMethodNotEqual: PostgreSQLQuery.DML.Predicate.ComparisonOperator {
+        return .notEqual
+    }
+    
+    public static var queryFilterMethodGreaterThan: PostgreSQLQuery.DML.Predicate.ComparisonOperator {
+        return .greaterThan
+    }
+    
+    public static var queryFilterMethodLessThan: PostgreSQLQuery.DML.Predicate.ComparisonOperator {
+        return .lessThan
+    }
+    
+    public static var queryFilterMethodGreaterThanOrEqual: PostgreSQLQuery.DML.Predicate.ComparisonOperator {
+        return .greaterThanOrEqual
+    }
+    
+    public static var queryFilterMethodLessThanOrEqual: PostgreSQLQuery.DML.Predicate.ComparisonOperator {
+        return .lessThanOrEqual
+    }
+    
+    public static var queryFilterMethodInSubset: PostgreSQLQuery.DML.Predicate.ComparisonOperator {
+        return .in
+    }
+    
+    public static var queryFilterMethodNotInSubset: PostgreSQLQuery.DML.Predicate.ComparisonOperator {
+        return .notIn
+    }
+    
+    public static func queryFilterValue(_ encodables: [Encodable]) -> PostgreSQLQuery.DML.Value {
+        #warning("Fix non throwing binds conversion.")
+        return try! .binds(encodables)
+    }
+    
+    public static var queryFilterValueNil: PostgreSQLQuery.DML.Value {
+        return .null
+    }
+    
+    public static func queryFilter(_ column: PostgreSQLQuery.Column, _ comparison: PostgreSQLQuery.DML.Predicate.ComparisonOperator, _ value: PostgreSQLQuery.DML.Value) -> PostgreSQLQuery.DML.Predicate {
+        return .predicate(column, comparison, value)
+    }
+    
+    public static func queryFilters(for query: PostgreSQLQuery.DML) -> [PostgreSQLQuery.DML.Predicate] {
+        switch query {
+        case .insert: return []
+        case .select(let select):
+            if let predicate = select.predicate {
+                return [predicate]
+            } else {
+                return []
+            }
+        }
+    }
+    
+    public static func queryFilterApply(_ filter: PostgreSQLQuery.DML.Predicate, to query: inout PostgreSQLQuery.DML) {
+        switch query {
+        case .select(var select):
+            if let predicate = select.predicate {
+                select.predicate = predicate && filter
+            } else {
+                select.predicate = filter
+            }
+            query = .select(select)
+        default: break
+        }
+    }
+    
+    public static var queryFilterRelationAnd: PostgreSQLQuery.DML.Predicate.InfixOperator {
+        return .and
+    }
+    
+    public static var queryFilterRelationOr: PostgreSQLQuery.DML.Predicate.InfixOperator {
+        return .or
+    }
+    
+    public static func queryFilterGroup(_ op: PostgreSQLQuery.DML.Predicate.InfixOperator, _ filters: [PostgreSQLQuery.DML.Predicate]) -> PostgreSQLQuery.DML.Predicate {
+        switch filters.count {
+        case 0: fatalError("No filters added.")
+        case 1: return filters[0]
+        case 2: return .infix(op, filters[0], filters[1])
+        default: return .infix(op, filters[0], queryFilterGroup(op, .init(filters[1...])))
+        }
+    }
+    
+    public static var queryKeyAll: PostgreSQLQuery.Expression {
+        return .all
+    }
+    
+    public static func queryAggregate(_ aggregate: String, _ fields: [PostgreSQLQuery.Expression]) -> PostgreSQLQuery.Expression {
+        return .function(aggregate, fields, as: "fluentAggregate")
+    }
+    
+    public static func queryKey(_ column: PostgreSQLQuery.Column) -> PostgreSQLQuery.Expression {
+        return .column(column)
+    }
+    
+    public static func queryKeyApply(_ key: PostgreSQLQuery.Expression, to query: inout PostgreSQLQuery.DML) {
+        switch query {
+        case .select(var select):
+            select.keys.append(key)
+            query = .select(select)
+        case .insert: break
+        }
+    }
+    
+    public static func queryRangeApply(lower: Int, upper: Int?, to query: inout PostgreSQLQuery.DML) {
+        switch query {
+        case .select(var select):
+            if let upper = upper {
+                select.limit = upper - lower
+                select.offset = lower
+            } else {
+                select.offset = lower
+            }
+            query = .select(select)
+        case .insert: break
+        }
+    }
+    
+    public static func querySort(_ column: PostgreSQLQuery.Column, _ direction: PostgreSQLQuery.DML.OrderBy.Direction) -> PostgreSQLQuery.DML.OrderBy {
+        return .init(columns: [column], direction: direction)
+    }
+    
+    public static var querySortDirectionAscending: PostgreSQLQuery.DML.OrderBy.Direction {
+        return .ascending
+    }
+    
+    public static var querySortDirectionDescending: PostgreSQLQuery.DML.OrderBy.Direction {
+        return .descending
+    }
+    
+    public static func querySortApply(_ orderBy: PostgreSQLQuery.DML.OrderBy, to query: inout PostgreSQLQuery.DML) {
+        switch query {
+        case .select(var select):
+            select.orderBys.append(orderBy)
+            query = .select(select)
+        default: break
+        }
+    }
     
     /// See `SQLDatabase`.
-    public typealias QueryJoinMethod = SQLQuery.DML.Join.Method
+    public typealias QueryJoin = PostgreSQLQuery.DML.Join
     
     /// See `SQLDatabase`.
-    public typealias Query = SQLQuery.DML
+    public typealias QueryJoinMethod = PostgreSQLQuery.DML.Join.Method
+    
+    /// See `SQLDatabase`.
+    public typealias Query = PostgreSQLQuery.DML
     
     /// See `SQLDatabase`.
     public typealias Output = [PostgreSQLColumn: PostgreSQLData]
     
     /// See `SQLDatabase`.
-    public typealias QueryAction = SQLQuery.DML.Statement
+    public typealias QueryAction = PostgreSQLQueryAction
     
     /// See `SQLDatabase`.
     public typealias QueryAggregate = String
     
     /// See `SQLDatabase`.
-    public typealias QueryData = [SQLQuery.DML.Column: SQLQuery.DML.Value]
+    public typealias QueryData = [String: PostgreSQLQuery.DML.Value]
     
     /// See `SQLDatabase`.
-    public typealias QueryField = SQLQuery.DML.Column
+    public typealias QueryField = PostgreSQLQuery.Column
     
     /// See `SQLDatabase`.
-    public typealias QueryFilterMethod = SQLQuery.DML.Predicate.Comparison
+    public typealias QueryFilterMethod = PostgreSQLQuery.DML.Predicate.ComparisonOperator
     
     /// See `SQLDatabase`.
-    public typealias QueryFilterValue = SQLQuery.DML.Value
+    public typealias QueryFilterValue = PostgreSQLQuery.DML.Value
     
     /// See `SQLDatabase`.
-    public typealias QueryFilter = SQLQuery.DML.Predicate
+    public typealias QueryFilter = PostgreSQLQuery.DML.Predicate
     
     /// See `SQLDatabase`.
-    public typealias QueryFilterRelation = SQLQuery.DML.Predicate.Relation
+    public typealias QueryFilterRelation = PostgreSQLQuery.DML.Predicate.InfixOperator
     
     /// See `SQLDatabase`.
-    public typealias QueryKey = SQLQuery.DML.Key
+    public typealias QueryKey = PostgreSQLQuery.Expression
     
     /// See `SQLDatabase`.
-    public typealias QuerySort = SQLQuery.DML.OrderBy
+    public typealias QuerySort = PostgreSQLQuery.DML.OrderBy
     
     /// See `SQLDatabase`.
-    public typealias QuerySortDirection = SQLQuery.DML.OrderBy.Direction
+    public typealias QuerySortDirection = PostgreSQLQuery.DML.OrderBy.Direction
     
     /// See `SQLDatabase`.
     public static func queryExecute(
-        _ query: SQLQuery.DML,
+        _ query: PostgreSQLQuery.DML,
         on conn: PostgreSQLConnection,
         into handler: @escaping ([PostgreSQLColumn: PostgreSQLData], PostgreSQLConnection) throws -> ()
     ) -> Future<Void> {
         // always cache the names first
         return conn.tableNames().flatMap { names in
-            return conn.query(.init(.dml(query))) { row in
+            return conn.query(.dml(query)) { row in
                 try handler(row, conn)
             }
         }
@@ -100,80 +440,27 @@ extension PostgreSQLDatabase: SQLSupporting {
 
         return conn.future(model)
     }
-
     
-    /// See `SQLSupporting`.
-    public static func schemaColumnType(for type: Any.Type, primaryKey: Bool) -> SQLQuery.DDL.ColumnDefinition.ColumnType {
-        var type = type
-        var attributes: [String] = []
-        
-        if let optional = type as? AnyOptionalType.Type {
-            type = optional.anyWrappedType
-        } else {
-            attributes.append("NOT NULL")
-        }
-        
-        let isArray: Bool
-        if let array = type as? AnyArray.Type {
-            type = array.anyElementType
-            isArray = true
-        } else {
-            isArray = false
-        }
-        
-        var psqlType: PostgreSQLColumnType
-        
-        if let representable = type as? PostgreSQLStaticColumnTypeRepresentable.Type {
-            psqlType = representable.postgreSQLColumnType
-            if primaryKey {
-                attributes.append("PRIMARY KEY")
-                switch psqlType.name {
-                case "INT", "SMALLINT", "BIGINT":
-                    if _globalEnableIdentityColumns {
-                        attributes.append("GENERATED BY DEFAULT AS IDENTITY")
-                    } else {
-                        psqlType.name = psqlType.name.replacingOccurrences(of: "INT", with: "SERIAL")
-                    }
-                default: break
-                }
-            }
-        } else {
-            // for any unrecognized types, assume they will be serialized to JSON.
-            psqlType = .jsonb
-        }
-        
-        var name = psqlType.name
-        if !psqlType.parameters.isEmpty {
-            name += "(" + psqlType.parameters.joined(separator: ",") + ")"
-        }
-        if isArray {
-            name += "[]"
-        }
-
-        return .init(name: name, parameters: [], attributes: attributes)
-    }
-    
-    /// See `SQLSupporting`.
-    public static func schemaExecute(_ ddl: SQLQuery.DDL, on connection: PostgreSQLConnection) -> Future<Void> {
-        let sql = PostgreSQLSerializer().serialize(ddl: ddl)
-        return connection.query(sql).transform(to: ())
+    /// See `SchemaSupporting`.
+    public static func schemaExecute(_ ddl: PostgreSQLQuery.DDL, on connection: PostgreSQLConnection) -> Future<Void> {
+        return connection.query(.ddl(ddl)).transform(to: ())
     }
     
     
-    /// See `SQLSupporting`.
+    /// See `SchemaSupporting`.
     public static func enableForeignKeys(on connection: PostgreSQLConnection) -> Future<Void> {
         // enabled by default
         return .done(on: connection)
     }
     
-    /// See `SQLSupporting`.
+    /// See `SchemaSupporting`.
     public static func disableForeignKeys(on connection: PostgreSQLConnection) -> Future<Void> {
         return Future.map(on: connection) {
             throw PostgreSQLError(identifier: "disableReferences", reason: "PostgreSQL does not support disabling foreign key checks.")
         }
     }
     
-    /// See `SQLSupporting`.
+    /// See `SchemaSupporting`.
     public static func transactionExecute<T>(_ transaction: @escaping (PostgreSQLConnection) throws -> Future<T>, on connection: PostgreSQLConnection) -> Future<T> {
         return connection.simpleQuery("BEGIN TRANSACTION").flatMap { results in
             return try transaction(connection).flatMap { res in

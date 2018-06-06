@@ -169,7 +169,7 @@ class FluentPostgreSQLTests: XCTestCase {
             
             static func prepare(on conn: PostgreSQLConnection) -> EventLoopFuture<Void> {
                 return PostgreSQLDatabase.create(Pet.self, on: conn) { builder in
-                    builder.field(for: \.id, primaryKey: true)
+                    builder.field(for: \.id, isIdentifier: true)
                     builder.field(for: \.type, type: .bigint)
                     builder.field(for: \.name, type: .text)
                 }
@@ -206,8 +206,8 @@ class FluentPostgreSQLTests: XCTestCase {
             }
             static func prepare(on conn: PostgreSQLConnection) -> EventLoopFuture<Void> {
                 return PostgreSQLDatabase.create(DefaultTest.self, on: conn) { builder in
-                    builder.field(for: \.id, primaryKey: true)
-                    builder.field(for: \.date, type: .timestamp, default: "current_timestamp")
+                    builder.field(for: \.id, isIdentifier: true)
+                    builder.field(.init(name: "date", dataType: .timestamp, constraints: [.default(.function("current_timestamp"))]))
                     builder.field(for: \.foo)
                 }
             }
@@ -220,10 +220,6 @@ class FluentPostgreSQLTests: XCTestCase {
         let fetched = try DefaultTest.query(on: conn).first().wait()!
         // within 10 seconds
         XCTAssertEqual(Date().timeIntervalSinceReferenceDate, fetched.date!.timeIntervalSinceReferenceDate, accuracy: 10)
-    }
-
-    func testContains() throws {
-        try benchmarker.benchmarkContains_withSchema()
     }
 
     func testGH30() throws {
@@ -278,13 +274,13 @@ class FluentPostgreSQLTests: XCTestCase {
             var computed: String
         }
 
-        let builder = SimpleUserComputed.query("users", on: conn)
-        builder.query.keys = [
-            .column("id", as: nil),
-            .column("name", as: nil),
-            .computed(.function("md5", .column("name")), as: "computed")
-        ]
-        try print(builder.all().wait())
+        let res = try SimpleUserComputed
+            .query("users", on: conn)
+            .select("id", "name", .function("md5", "name", as: "computed"))
+            .all()
+            .wait()
+        
+        print(res)
     }
     
     // https://github.com/vapor/fluent-postgresql/issues/32
@@ -325,7 +321,7 @@ class FluentPostgreSQLTests: XCTestCase {
                     return PostgreSQLDatabase.create(Planet.self, on: conn) { builder in
                         builder.field(for: \.id)
                         builder.field(for: \.name, type: .varchar(64))
-                        builder.field(for: \.type, type: "PLANET_TYPE")
+                        builder.field(for: \.type, type: .custom("PLANET_TYPE"))
                     }
 //                }
             }
@@ -339,6 +335,55 @@ class FluentPostgreSQLTests: XCTestCase {
         
         let rows = try Planet.query(on: conn).filter(\.type == .gasGiant).all().wait()
         XCTAssertEqual(rows.count, 0)
+    }
+    
+    func testContains() throws {
+        struct User: PostgreSQLModel, PostgreSQLMigration {
+            var id: Int?
+            var name: String
+            var age: Int
+        }
+        let conn = try benchmarker.pool.requestConnection().wait()
+        defer { benchmarker.pool.releaseConnection(conn) }
+        
+        try User.prepare(on: conn).wait()
+        defer { try! User.revert(on: conn).wait() }
+        
+        // create
+        let tanner1 = User(id: nil, name: "tanner", age: 23)
+        _ = try tanner1.save(on: conn).wait()
+        let tanner2 = User(id: nil, name: "ner", age: 23)
+        _ = try tanner2.save(on: conn).wait()
+        let tanner3 = User(id: nil, name: "tan", age: 23)
+        _ = try tanner3.save(on: conn).wait()
+        
+        let tas = try User.query(on: conn).filter(\.name =~ "ta").count().wait()
+        if tas != 2 {
+            XCTFail("tas == \(tas)")
+        }
+        #warning("fix ambig operator")
+//        let ers = try User.query(on: conn).filter(\.name ~= "er").count().wait()
+//        if ers != 2 {
+//            XCTFail("ers == \(tas)")
+//        }
+        let annes = try User.query(on: conn).filter(\.name ~~ "anne").count().wait()
+        if annes != 1 {
+            XCTFail("annes == \(tas)")
+        }
+        let ns = try User.query(on: conn).filter(\.name ~~ "n").count().wait()
+        if ns != 3 {
+            XCTFail("ns == \(tas)")
+        }
+        
+        let nertan = try User.query(on: conn).filter(\.name ~~ ["ner", "tan"]).count().wait()
+        if nertan != 2 {
+            XCTFail("nertan == \(tas)")
+        }
+        
+        let notner = try User.query(on: conn).filter(\.name !~ ["ner"]).count().wait()
+        if notner != 2 {
+            XCTFail("nertan == \(tas)")
+        }
     }
 
     static let allTests = [
@@ -368,7 +413,7 @@ class FluentPostgreSQLTests: XCTestCase {
 
 extension PostgreSQLColumnType {
     static var planetType: PostgreSQLColumnType {
-        return "PLANET_TYPE"
+        return .custom("PLANET_TYPE")
     }
 }
 
