@@ -221,7 +221,7 @@ class FluentPostgreSQLTests: XCTestCase {
         _ = try DefaultTest().save(on: conn).wait()
         let fetched = try DefaultTest.query(on: conn).first().wait()!
         // within 10 seconds
-        XCTAssertEqual(Date().timeIntervalSinceReferenceDate, fetched.date!.timeIntervalSinceReferenceDate, accuracy: 10)
+        XCTAssertEqual(Date().timeIntervalSinceReferenceDate, fetched.date!.timeIntervalSinceReferenceDate, accuracy: 15)
     }
 
     func testGH30() throws {

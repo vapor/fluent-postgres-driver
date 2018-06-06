@@ -159,4 +159,17 @@ extension PostgreSQLDatabase: SchemaSupporting {
     public typealias SchemaConstraint = PostgreSQLQuery.TableConstraint
     
     public typealias SchemaReferenceAction = PostgreSQLQuery.ForeignKeyAction
+    
+    /// See `SchemaSupporting`.
+    public static func enableReferences(on connection: PostgreSQLConnection) -> Future<Void> {
+        // enabled by default
+        return .done(on: connection)
+    }
+    
+    /// See `SchemaSupporting`.
+    public static func disableReferences(on connection: PostgreSQLConnection) -> Future<Void> {
+        return Future.map(on: connection) {
+            throw PostgreSQLError(identifier: "disableReferences", reason: "PostgreSQL does not support disabling foreign key checks.")
+        }
+    }
 }

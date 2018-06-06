@@ -480,20 +480,6 @@ extension PostgreSQLDatabase: QuerySupporting & JoinSupporting & MigrationSuppor
         return connection.query(.fluent(schema)).transform(to: ())
     }
     
-    
-    /// See `SchemaSupporting`.
-    public static func enableForeignKeys(on connection: PostgreSQLConnection) -> Future<Void> {
-        // enabled by default
-        return .done(on: connection)
-    }
-    
-    /// See `SchemaSupporting`.
-    public static func disableForeignKeys(on connection: PostgreSQLConnection) -> Future<Void> {
-        return Future.map(on: connection) {
-            throw PostgreSQLError(identifier: "disableReferences", reason: "PostgreSQL does not support disabling foreign key checks.")
-        }
-    }
-    
     /// See `SchemaSupporting`.
     public static func transactionExecute<T>(_ transaction: @escaping (PostgreSQLConnection) throws -> Future<T>, on connection: PostgreSQLConnection) -> Future<T> {
         return connection.simpleQuery("BEGIN TRANSACTION").flatMap { results in
