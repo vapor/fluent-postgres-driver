@@ -229,7 +229,7 @@ extension PostgreSQLDatabase: QuerySupporting & JoinSupporting & MigrationSuppor
     }
     
     public static func queryDataSet(_ column: PostgreSQLQuery.Column, to data: Encodable, on query: inout PostgreSQLQuery.FluentQuery) {
-        #warning("Allow query data set to throw if needed.")
+        // FIXME: ("Allow query data set to throw if needed.")
         query.values[column.name] = try! .bind(data)
     }
     
@@ -239,7 +239,6 @@ extension PostgreSQLDatabase: QuerySupporting & JoinSupporting & MigrationSuppor
     
     public static func queryField(_ property: FluentProperty) -> PostgreSQLQuery.Column {
         guard let model = property.rootType as? AnyModel.Type else {
-            #warning("Fix query field fatal error.")
             fatalError("`\(property.rootType)` does not conform to `Model`.")
         }
         return .init(table: model.entity, name: property.path.first ?? "")
@@ -278,7 +277,7 @@ extension PostgreSQLDatabase: QuerySupporting & JoinSupporting & MigrationSuppor
     }
     
     public static func queryFilterValue(_ encodables: [Encodable]) -> PostgreSQLQuery.Value {
-        #warning("Fix non throwing binds conversion.")
+        // FIXME: ("Fix non throwing binds conversion.")
         return try! .binds(encodables)
     }
     

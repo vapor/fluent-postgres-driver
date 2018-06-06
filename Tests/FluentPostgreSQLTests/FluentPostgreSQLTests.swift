@@ -364,7 +364,6 @@ class FluentPostgreSQLTests: XCTestCase {
         if tas != 2 {
             XCTFail("tas == \(tas)")
         }
-        #warning("fix ambig operator")
 //        let ers = try User.query(on: conn).filter(\.name ~= "er").count().wait()
 //        if ers != 2 {
 //            XCTFail("ers == \(tas)")
