@@ -158,6 +158,7 @@ class FluentPostgreSQLTests: XCTestCase {
     func testGH21() throws {
         /// - types
         enum PetType: Int, CaseIterable, ReflectionDecodable, Codable {
+            static let allCases: [PetType] = [.cat, .dog]
             case cat = 0
             case dog = 1
         }
@@ -207,7 +208,7 @@ class FluentPostgreSQLTests: XCTestCase {
             static func prepare(on conn: PostgreSQLConnection) -> EventLoopFuture<Void> {
                 return PostgreSQLDatabase.create(DefaultTest.self, on: conn) { builder in
                     builder.field(for: \.id, isIdentifier: true)
-                    builder.field(.init(name: "date", dataType: .timestamp, constraints: [
+                    builder.field(.init(name: "date", dataType: .timestamp(nil), constraints: [
                         .default(.function("current_timestamp"))
                     ]))
                     builder.field(for: \.foo)
@@ -308,6 +309,8 @@ class FluentPostgreSQLTests: XCTestCase {
     
     func testDocs_type() throws {
         enum PlanetType: String, PostgreSQLEnum, PostgreSQLMigration {
+            static let postgreSQLEnumTypeName = "PLANET_TYPE"
+            static let allCases: [PlanetType] = [.smallRocky, .gasGiant, .dwarf]
             case smallRocky
             case gasGiant
             case dwarf

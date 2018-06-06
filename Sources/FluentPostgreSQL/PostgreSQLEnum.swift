@@ -29,14 +29,23 @@ extension PostgreSQLEnum where Self: PostgreSQLMigration {
 extension PostgreSQLDatabase {
     public static func create<E>(enum: E.Type, on conn: PostgreSQLConnection) -> Future<Void> where E: PostgreSQLEnum {
         let cases = E.allCases.map { "'" + $0.rawValue.description + "'" }.joined(separator: ", ")
-        return conn.simpleQuery(.raw("CREATE TYPE \(E.postgreSQLEnumTypeName) AS ENUM (\(cases))")).transform(to: ())
+        return conn.simpleQuery(.raw(
+            query: "CREATE TYPE \(E.postgreSQLEnumTypeName) AS ENUM (\(cases))",
+            binds: []
+        )).transform(to: ())
     }
     
     public static func alter<E>(enum: E.Type, add value: E, on conn: PostgreSQLConnection) -> Future<Void> where E: PostgreSQLEnum {
-        return conn.simpleQuery(.raw("ALTER TYPE \(E.postgreSQLEnumTypeName) ADD VALUE '\(value.rawValue.description)'")).transform(to: ())
+        return conn.simpleQuery(.raw(
+            query: "ALTER TYPE \(E.postgreSQLEnumTypeName) ADD VALUE '\(value.rawValue.description)'",
+            binds: []
+        )).transform(to: ())
     }
     
     public static func drop<E>(enum: E.Type, on conn: PostgreSQLConnection) -> Future<Void> where E: PostgreSQLEnum {
-        return conn.simpleQuery(.raw("DROP TYPE \(E.postgreSQLEnumTypeName)")).transform(to: ())
+        return conn.simpleQuery(.raw(
+            query: "DROP TYPE \(E.postgreSQLEnumTypeName)",
+            binds: []
+        )).transform(to: ())
     }
 }

@@ -19,7 +19,7 @@ extension UUID: PostgreSQLStaticColumnTypeRepresentable {
 
 extension Date: PostgreSQLStaticColumnTypeRepresentable {
     /// See `PostgreSQLStaticColumnTypeRepresentable`.
-    public static var postgreSQLColumnType: PostgreSQLColumnType { return .timestamp }
+    public static var postgreSQLColumnType: PostgreSQLColumnType { return .timestamp(nil) }
 }
 
 extension Int: PostgreSQLStaticColumnTypeRepresentable {
@@ -29,7 +29,7 @@ extension Int: PostgreSQLStaticColumnTypeRepresentable {
 
 extension Int8: PostgreSQLStaticColumnTypeRepresentable  {
     /// See `PostgreSQLStaticColumnTypeRepresentable`.
-    public static var postgreSQLColumnType: PostgreSQLColumnType { return .char }
+    public static var postgreSQLColumnType: PostgreSQLColumnType { return .char(nil) }
 }
 
 extension Int16: PostgreSQLStaticColumnTypeRepresentable {
@@ -54,7 +54,7 @@ extension UInt: PostgreSQLStaticColumnTypeRepresentable {
 
 extension UInt8: PostgreSQLStaticColumnTypeRepresentable {
     /// See `PostgreSQLStaticColumnTypeRepresentable`.
-    public static var postgreSQLColumnType: PostgreSQLColumnType { return .char }
+    public static var postgreSQLColumnType: PostgreSQLColumnType { return .char(nil) }
 }
 
 extension UInt16: PostgreSQLStaticColumnTypeRepresentable {

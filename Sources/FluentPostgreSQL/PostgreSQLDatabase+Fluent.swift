@@ -133,7 +133,7 @@ extension QueryBuilder where Database == PostgreSQLDatabase {
     ///     - field: Swift `KeyPath` to field on model to group by.
     /// - returns: Query builder for chaining.
     public func groupBy<T>(_ field: KeyPath<Result, T>) -> Self {
-        return groupBy(.expression(.column(PostgreSQLDatabase.queryField(.keyPath(field)))))
+        return groupBy(.expression(.column(PostgreSQLDatabase.queryField(.keyPath(field))), alias: nil))
     }
     
     /// Adds a manually created group by to the query builder.
@@ -338,7 +338,7 @@ extension PostgreSQLDatabase: QuerySupporting & JoinSupporting & MigrationSuppor
     }
     
     public static func queryKey(_ column: PostgreSQLQuery.Column) -> PostgreSQLQuery.Key {
-        return .expression(.column(column))
+        return .expression(.column(column), alias: nil)
     }
     
     public static func queryKeyApply(_ key: PostgreSQLQuery.Key, to query: inout PostgreSQLQuery.FluentQuery) {
