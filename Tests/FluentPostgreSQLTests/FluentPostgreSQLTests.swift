@@ -11,8 +11,13 @@ class FluentPostgreSQLTests: XCTestCase {
     var database: PostgreSQLDatabase!
 
     override func setUp() {
+        #if os(macOS)
         let hostname = "localhost"
-        let config = PostgreSQLDatabaseConfig(
+        #else
+        let hostname = "psql-cleartext"
+        #endif
+        
+        let config: PostgreSQLDatabaseConfig = .init(
             hostname: hostname,
             port: 5432,
             username: "vapor_username",
@@ -390,6 +395,22 @@ class FluentPostgreSQLTests: XCTestCase {
             XCTFail("nertan == \(tas)")
         }
     }
+    
+    func testEmptySubset() throws {
+        struct User: PostgreSQLModel, PostgreSQLMigration {
+            var id: Int?
+        }
+        let conn = try benchmarker.pool.requestConnection().wait()
+        defer { benchmarker.pool.releaseConnection(conn) }
+        try User.prepare(on: conn).wait()
+        defer { _ = try? User.revert(on: conn).wait() }
+
+        let res = try User.query(on: conn).filter(\.id ~~ []).all().wait()
+        XCTAssertEqual(res.count, 0)
+        _ = try User.query(on: conn).filter(\.id ~~ [1]).all().wait()
+        _ = try User.query(on: conn).filter(\.id ~~ [1, 2]).all().wait()
+        _ = try User.query(on: conn).filter(\.id ~~ [1, 2, 3]).all().wait()
+    }
 
     static let allTests = [
         ("testSchema", testSchema),
@@ -413,6 +434,9 @@ class FluentPostgreSQLTests: XCTestCase {
         ("testBugs", testBugs),
         ("testCodableSimple", testCodableSimple),
         ("testURL", testURL),
+        ("testDocs_type", testDocs_type),
+        ("testContains", testContains),
+        ("testEmptySubset", testEmptySubset),
     ]
 }
 
