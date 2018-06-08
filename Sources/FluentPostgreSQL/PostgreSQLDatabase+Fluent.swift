@@ -82,7 +82,8 @@ extension PostgreSQLQuery {
         case .insert:
             query = .insert(.init(
                 table: fluent.table,
-                values: fluent.values,
+                columns: .init(fluent.values.keys),
+                values: [.init(fluent.values.values)],
                 returning: fluent.returning
             ))
         case .select:
@@ -163,10 +164,6 @@ extension PostgreSQLDatabase: QuerySupporting & JoinSupporting & MigrationSuppor
     
     public static func queryJoinApply(_ join: PostgreSQLQuery.Join, to query: inout PostgreSQLQuery.FluentQuery) {
         query.joins.append(join)
-    }
-    
-    public static func prepareMigrationMetadata(on conn: PostgreSQLConnection) -> EventLoopFuture<Void> {
-        fatalError()
     }
     
     public static func query(_ entity: String) -> PostgreSQLQuery.FluentQuery {
@@ -363,7 +360,7 @@ extension PostgreSQLDatabase: QuerySupporting & JoinSupporting & MigrationSuppor
     }
     
     public static func querySort(_ column: PostgreSQLQuery.Column, _ direction: PostgreSQLQuery.OrderBy.Direction) -> PostgreSQLQuery.OrderBy {
-        return .init(columns: [column], direction: direction)
+        return .init(.column(column), direction: direction)
     }
     
     public static var querySortDirectionAscending: PostgreSQLQuery.OrderBy.Direction {

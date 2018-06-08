@@ -226,8 +226,8 @@ class FluentPostgreSQLTests: XCTestCase {
         try DefaultTest.prepare(on: conn).wait()
         _ = try DefaultTest().save(on: conn).wait()
         let fetched = try DefaultTest.query(on: conn).first().wait()!
-        // within 10 seconds
-        XCTAssertEqual(Date().timeIntervalSinceReferenceDate, fetched.date!.timeIntervalSinceReferenceDate, accuracy: 15)
+        // within 1 minute
+        XCTAssertEqual(Date().timeIntervalSinceReferenceDate, fetched.date!.timeIntervalSinceReferenceDate, accuracy: 60)
     }
 
     func testGH30() throws {
@@ -411,6 +411,29 @@ class FluentPostgreSQLTests: XCTestCase {
         _ = try User.query(on: conn).filter(\.id ~~ [1, 2]).all().wait()
         _ = try User.query(on: conn).filter(\.id ~~ [1, 2, 3]).all().wait()
     }
+    
+    func testSort() throws {
+        struct Planet: PostgreSQLModel, PostgreSQLMigration, Equatable {
+            var id: Int?
+            var name: String
+            init(id: Int? = nil, name: String) {
+                self.id = id
+                self.name = name
+            }
+        }
+        let conn = try benchmarker.pool.requestConnection().wait()
+        defer { benchmarker.pool.releaseConnection(conn) }
+        try Planet.prepare(on: conn).wait()
+        defer { _ = try? Planet.revert(on: conn).wait() }
+        
+        _ = try Planet(name: "Jupiter").save(on: conn).wait()
+        _ = try Planet(name: "Earth").save(on: conn).wait()
+        _ = try Planet(name: "Mars").save(on: conn).wait()
+        
+        let unordered = try Planet.query(on: conn).all().wait()
+        let ordered = try Planet.query(on: conn).sort(\.name).all().wait()
+        XCTAssertNotEqual(unordered, ordered)
+    }
 
     static let allTests = [
         ("testSchema", testSchema),
@@ -437,6 +460,7 @@ class FluentPostgreSQLTests: XCTestCase {
         ("testDocs_type", testDocs_type),
         ("testContains", testContains),
         ("testEmptySubset", testEmptySubset),
+        ("testSort", testSort),
     ]
 }
 
