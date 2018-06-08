@@ -228,7 +228,9 @@ extension PostgreSQLDatabase: QuerySupporting & JoinSupporting & MigrationSuppor
         return "MAX"
     }
     
-    public static func queryDataSet(_ column: PostgreSQLQuery.Column, to data: Encodable, on query: inout PostgreSQLQuery.FluentQuery) {
+    public static func queryDataSet<E>(_ column: PostgreSQLQuery.Column, to data: E, on query: inout PostgreSQLQuery.FluentQuery)
+        where E: Encodable
+    {
         // FIXME: ("Allow query data set to throw if needed.")
         query.values[column.name] = try! .bind(data)
     }
@@ -276,7 +278,9 @@ extension PostgreSQLDatabase: QuerySupporting & JoinSupporting & MigrationSuppor
         return .notIn
     }
     
-    public static func queryFilterValue(_ encodables: [Encodable]) -> PostgreSQLQuery.Value {
+    public static func queryFilterValue<E>(_ encodables: [E]) -> PostgreSQLQuery.Value
+        where E: Encodable
+    {
         // FIXME: ("Fix non throwing binds conversion.")
         return try! .binds(encodables)
     }
@@ -315,6 +319,10 @@ extension PostgreSQLDatabase: QuerySupporting & JoinSupporting & MigrationSuppor
     
     public static var queryFilterRelationOr: PostgreSQLQuery.Predicate.Relation {
         return .or
+    }
+    
+    public static func queryDefaultFilterRelation(_ relation: PostgreSQLQuery.Predicate.Relation, on: inout PostgreSQLQuery.FluentQuery) {
+        // skip
     }
     
     public static func queryFilterGroup(_ op: PostgreSQLQuery.Predicate.Relation, _ filters: [PostgreSQLQuery.Predicate]) -> PostgreSQLQuery.Predicate {
