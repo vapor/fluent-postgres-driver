@@ -12,12 +12,12 @@ internal class PostgreSQLSQLSerializer: SQLSerializer {
 
     /// See `SQLSerializer`
     func makeEscapedString(from string: String) -> String {
-        return "\"\(string)\""
+        return "\"" + string + "\""
     }
 
     /// See `SQLSerializer`
     func makePlaceholder() -> String {
         defer { placeholderOffset += 1 }
-        return "$\(placeholderOffset)"
+        return "$" + String(describing: placeholderOffset)
     }
 }
