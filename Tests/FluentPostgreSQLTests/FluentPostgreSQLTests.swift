@@ -175,7 +175,7 @@ class FluentPostgreSQLTests: XCTestCase {
             
             static func prepare(on conn: PostgreSQLConnection) -> EventLoopFuture<Void> {
                 return PostgreSQLDatabase.create(Pet.self, on: conn) { builder in
-                    builder.field(for: \.id, isIdentifier: true)
+                    builder.field(for: \.id, type: .bigint, .notNull, .primaryKey, .generated(.byDefault))
                     builder.field(for: \.type, type: .bigint)
                     builder.field(for: \.name, type: .text)
                 }
