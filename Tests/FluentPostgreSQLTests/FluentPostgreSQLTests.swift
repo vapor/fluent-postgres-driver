@@ -413,14 +413,6 @@ class FluentPostgreSQLTests: XCTestCase {
     }
     
     func testSort() throws {
-        struct Planet: PostgreSQLModel, PostgreSQLMigration, Equatable {
-            var id: Int?
-            var name: String
-            init(id: Int? = nil, name: String) {
-                self.id = id
-                self.name = name
-            }
-        }
         let conn = try benchmarker.pool.requestConnection().wait()
         defer { benchmarker.pool.releaseConnection(conn) }
         try Planet.prepare(on: conn).wait()
@@ -433,6 +425,20 @@ class FluentPostgreSQLTests: XCTestCase {
         let unordered = try Planet.query(on: conn).all().wait()
         let ordered = try Planet.query(on: conn).sort(\.name).all().wait()
         XCTAssertNotEqual(unordered, ordered)
+    }
+    
+    func testCustomFilter() throws {
+        let conn = try benchmarker.pool.requestConnection().wait()
+        defer { benchmarker.pool.releaseConnection(conn) }
+        try Planet.prepare(on: conn).wait()
+        defer { _ = try? Planet.revert(on: conn).wait() }
+        
+        _ = try Planet(name: "Jupiter").save(on: conn).wait()
+        _ = try Planet(name: "Earth").save(on: conn).wait()
+        _ = try Planet(name: "Mars").save(on: conn).wait()
+
+        let earth = try Planet.query(on: conn).filter(\.name, .ilike, "earth").first().wait()
+        XCTAssertEqual(earth?.name, "Earth")
     }
 
     static let allTests = [
@@ -461,7 +467,17 @@ class FluentPostgreSQLTests: XCTestCase {
         ("testContains", testContains),
         ("testEmptySubset", testEmptySubset),
         ("testSort", testSort),
+        ("testCustomFilter", testCustomFilter),
     ]
+}
+
+struct Planet: PostgreSQLModel, PostgreSQLMigration, Equatable {
+    var id: Int?
+    var name: String
+    init(id: Int? = nil, name: String) {
+        self.id = id
+        self.name = name
+    }
 }
 
 extension PostgreSQLColumnType {
