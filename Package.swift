@@ -9,16 +9,16 @@ let package = Package(
     ],
     dependencies: [
         // 🌎 Utility package containing tools for byte manipulation, Codable, OS APIs, and debugging.
-        .package(url: "https://github.com/vapor/core.git", from: "3.0.0"),
+        .package(url: "https://github.com/vapor/core.git", .branch("fluent-gm")),
 
         // Swift ORM framework (queries, models, and relations) for building NoSQL and SQL database integrations.
-        .package(url: "https://github.com/vapor/fluent.git", from: "3.0.0-rc"),
+        .package(url: "https://github.com/vapor/fluent.git", .branch("master")),
 
         // 🐘 Non-blocking, event-driven Swift client for PostgreSQL.
-        .package(url: "https://github.com/vapor/postgresql.git", from: "1.0.0-rc.2"),
+        .package(url: "https://github.com/vapor/postgresql.git", .branch("master")),
     ],
     targets: [
-        .target(name: "FluentPostgreSQL", dependencies: ["Async", "Fluent", "FluentSQL", "PostgreSQL"]),
+        .target(name: "FluentPostgreSQL", dependencies: ["Async", "Fluent", "PostgreSQL"]),
         .testTarget(name: "FluentPostgreSQLTests", dependencies: ["FluentBenchmark", "FluentPostgreSQL"]),
     ]
 )

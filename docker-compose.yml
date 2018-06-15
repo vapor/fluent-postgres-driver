@@ -1,0 +1,17 @@
+version: '3'
+
+services:
+  test:
+    build: 
+      context: .
+      dockerfile: test.Dockerfile
+    depends_on: 
+      - psql-cleartext
+  psql-cleartext:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: vapor_username
+      POSTGRES_DB: vapor_database
+      POSTGRES_PASSWORD: vapor_password
+    ports:
+      - 5432:5432

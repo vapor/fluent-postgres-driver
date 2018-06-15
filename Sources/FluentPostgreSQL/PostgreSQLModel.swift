@@ -4,8 +4,10 @@ public protocol PostgreSQLModel: Model where Self.Database == PostgreSQLDatabase
 }
 
 extension PostgreSQLModel {
-    /// See `Model.idKey`
+    /// See `Model`.
     public static var idKey: IDKey { return \.id }
 }
 
 public protocol PostgreSQLPivot: Pivot, PostgreSQLModel { }
+
+public protocol PostgreSQLMigration: Migration where Self.Database == PostgreSQLDatabase { }

@@ -1,5 +1,3 @@
-import Foundation
-
 public protocol PostgreSQLUUIDModel: Model where Self.Database == PostgreSQLDatabase, Self.ID == UUID {
     /// This model's unique identifier.
     var id: UUID? { get set }
