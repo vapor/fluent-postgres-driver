@@ -34,7 +34,15 @@ extension PostgreSQLQuery {
                 columns: fluent.createColumns,
                 constraints: fluent.createConstraints
             ))
-        case .alter: fatalError()
+        case .alter:
+            query = .alterTable(.init(
+                ifExists: false,
+                name: fluent.table,
+                addColumns: fluent.createColumns,
+                dropColumns: fluent.deleteColumns.map { $0.name },
+                addConstraints: fluent.createConstraints,
+                dropConstraints: fluent.deleteConstraints.map { $0.name ?? "unknown" }
+            ))
         case .drop:
             query = .dropTable(.init(name: fluent.table, ifExists: false))
         }
@@ -61,7 +69,7 @@ extension PostgreSQLDatabase: SchemaSupporting {
     
     public static func schemaField(for type: Any.Type, isIdentifier: Bool, _ column: PostgreSQLQuery.Column) -> PostgreSQLQuery.ColumnDefinition {
         var constraints: [PostgreSQLQuery.ColumnConstraint] = []
-        let dataType: PostgreSQLQuery.DataType
+        var dataType: PostgreSQLQuery.DataType
         
         var type = type
         if let optional = type as? AnyOptionalType.Type {
@@ -90,10 +98,19 @@ extension PostgreSQLDatabase: SchemaSupporting {
         }
         
         if isIdentifier {
-            switch dataType {
-            case .smallint, .integer, .bigint:
-                constraints.append(.init(.generated(.byDefault)))
-            default: break
+            if _globalEnableIdentityColumns {
+                switch dataType {
+                case .smallint, .integer, .bigint:
+                    constraints.append(.init(.generated(.byDefault)))
+                default: break
+                }
+            } else {
+                switch dataType {
+                case .smallint: dataType = .smallserial
+                case .integer: dataType = .serial
+                case .bigint: dataType = .bigserial
+                default: break
+                }
             }
             
             // create a unique name for the primary key since it will be added

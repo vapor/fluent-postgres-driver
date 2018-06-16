@@ -325,6 +325,7 @@ class FluentPostgreSQLTests: XCTestCase {
             var id: Int?
             let name: String
             let type: PlanetType
+            let test: String?
             
             static func prepare(on conn: PostgreSQLConnection) -> Future<Void> {
                 return PostgreSQLDatabase.create(Planet.self, on: conn) { builder in
@@ -346,6 +347,10 @@ class FluentPostgreSQLTests: XCTestCase {
 
         let rows = try Planet.query(on: conn).filter(\.type == .gasGiant).all().wait()
         XCTAssertEqual(rows.count, 0)
+        
+        try PostgreSQLDatabase.update(Planet.self, on: conn) { builder in
+            builder.field(for: \.test)
+        }.wait()
     }
     
     func testContains() throws {
