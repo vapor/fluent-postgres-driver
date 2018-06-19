@@ -24,6 +24,7 @@ public struct FluentPostgreSQLQuery: FluentSQLQuery {
     public typealias SelectExpression = PostgreSQLSelectExpression
     public typealias Join = PostgreSQLJoin
     public typealias OrderBy = PostgreSQLOrderBy
+    public typealias Upsert = PostgreSQLUpsert
     
     public var statement: Statement
     public var table: TableIdentifier
@@ -34,6 +35,7 @@ public struct FluentPostgreSQLQuery: FluentSQLQuery {
     public var orderBy: [OrderBy]
     public var limit: Int?
     public var offset: Int?
+    public var upsert: PostgreSQLUpsert?
     public var defaultBinaryOperator: GenericSQLBinaryOperator
     
     public static func query(_ statement: Statement, _ table: TableIdentifier) -> FluentPostgreSQLQuery {
@@ -47,6 +49,7 @@ public struct FluentPostgreSQLQuery: FluentSQLQuery {
             orderBy: [],
             limit: nil,
             offset: nil,
+            upsert: nil,
             defaultBinaryOperator: .and
         )
     }

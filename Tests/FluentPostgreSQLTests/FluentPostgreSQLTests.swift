@@ -360,7 +360,23 @@ class FluentPostgreSQLTests: XCTestCase {
         // let earth = try Planet.query(on: conn).filter(\.name, .ilike, "earth").first().wait()
         // XCTAssertEqual(earth?.name, "Earth")
     }
+    
+    func testCreateOrUpdate() throws {
+        let conn = try benchmarker.pool.requestConnection().wait()
+        defer { benchmarker.pool.releaseConnection(conn) }
+        defer { try? Planet.revert(on: conn).wait() }
+        try Planet.prepare(on: conn).wait()
 
+        let a = Planet(id: 1, name: "Mars")
+        let b = Planet(id: 1, name: "Earth")
+
+        _ = try a.create(orUpdate: true, on: conn).wait()
+        _ = try b.create(orUpdate: true, on: conn).wait()
+
+        let c = try Planet.find(1, on: conn).wait()
+        XCTAssertEqual(c?.name, "Earth")
+    }
+    
     static let allTests = [
         ("testMinimumViableModelDeclaration", testMinimumViableModelDeclaration),
         ("testGH24", testGH24),
@@ -374,6 +390,7 @@ class FluentPostgreSQLTests: XCTestCase {
         ("testEmptySubset", testEmptySubset),
         ("testSort", testSort),
         ("testCustomFilter", testCustomFilter),
+        ("testCreateOrUpdate", testCreateOrUpdate),
     ]
 }
 
