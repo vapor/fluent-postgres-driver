@@ -18,10 +18,10 @@ public protocol PostgreSQLEnumType { }
 public protocol PostgreSQLType { }
 
 
-extension QueryBuilder where Database == PostgreSQLDatabase {
-    /// - warning: Deprecated.
-    @available(*, deprecated, renamed: "groupBy(_:)")
-    public func group<T>(by field: KeyPath<Result, T>) -> Self {
-        return groupBy(field)
-    }
-}
+//extension QueryBuilder where Database == PostgreSQLDatabase {
+//    /// - warning: Deprecated.
+//    @available(*, deprecated, renamed: "groupBy(_:)")
+//    public func group<T>(by field: KeyPath<Result, T>) -> Self {
+//        return groupBy(field)
+//    }
+//}
