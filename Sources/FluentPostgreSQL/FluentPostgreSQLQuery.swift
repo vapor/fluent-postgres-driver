@@ -36,7 +36,7 @@ public struct FluentPostgreSQLQuery: FluentSQLQuery {
     public var limit: Int?
     public var offset: Int?
     public var upsert: PostgreSQLUpsert?
-    public var defaultBinaryOperator: GenericSQLBinaryOperator
+    public var defaultBinaryOperator: PostgreSQLBinaryOperator
     
     public static func query(_ statement: Statement, _ table: TableIdentifier) -> FluentPostgreSQLQuery {
         return .init(

@@ -356,9 +356,8 @@ class FluentPostgreSQLTests: XCTestCase {
         _ = try Planet(name: "Earth").save(on: conn).wait()
         _ = try Planet(name: "Mars").save(on: conn).wait()
 
-        let a = 5 // FIXME: ilike
-        // let earth = try Planet.query(on: conn).filter(\.name, .ilike, "earth").first().wait()
-        // XCTAssertEqual(earth?.name, "Earth")
+        let earth = try Planet.query(on: conn).filter(\.name, .ilike, "earth").first().wait()
+        XCTAssertEqual(earth?.name, "Earth")
     }
     
     func testCreateOrUpdate() throws {
