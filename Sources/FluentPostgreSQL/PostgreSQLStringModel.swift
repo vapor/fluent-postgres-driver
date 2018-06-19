@@ -1,6 +1,4 @@
-import Foundation
-
-public protocol PostgreSQLStringModel: Model where Self.Database == PostgreSQLDatabase, Self.ID == String {
+public protocol PostgreSQLStringModel: _PostgreSQLModel where Self.ID == String {
     /// This model's unique identifier.
     var id: String? { get set }
 }

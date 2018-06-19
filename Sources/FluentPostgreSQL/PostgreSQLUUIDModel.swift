@@ -1,4 +1,4 @@
-public protocol PostgreSQLUUIDModel: Model where Self.Database == PostgreSQLDatabase, Self.ID == UUID {
+public protocol PostgreSQLUUIDModel: _PostgreSQLModel where Self.ID == UUID {
     /// This model's unique identifier.
     var id: UUID? { get set }
 }

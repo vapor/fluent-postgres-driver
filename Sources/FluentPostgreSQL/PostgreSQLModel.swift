@@ -1,4 +1,13 @@
-public protocol PostgreSQLModel: Model where Self.Database == PostgreSQLDatabase, Self.ID == Int {
+public protocol _PostgreSQLModel: Model, PostgreSQLTable where Self.Database == PostgreSQLDatabase { }
+
+extension _PostgreSQLModel {
+    /// See `SQLTable`.
+    public static var sqlTableIdentifierString: String {
+        return entity
+    }
+}
+
+public protocol PostgreSQLModel: _PostgreSQLModel where Self.ID == Int {
     /// This model's unique identifier.
     var id: Int? { get set }
 }
