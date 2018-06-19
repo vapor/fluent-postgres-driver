@@ -24,6 +24,7 @@ public struct FluentPostgreSQLQuery: FluentSQLQuery {
     public typealias SelectExpression = PostgreSQLSelectExpression
     public typealias Join = PostgreSQLJoin
     public typealias OrderBy = PostgreSQLOrderBy
+    public typealias GroupBy = PostgreSQLGroupBy
     public typealias Upsert = PostgreSQLUpsert
     
     public var statement: Statement
@@ -33,6 +34,7 @@ public struct FluentPostgreSQLQuery: FluentSQLQuery {
     public var joins: [Join]
     public var predicate: Expression?
     public var orderBy: [OrderBy]
+    public var groupBy: [GroupBy]
     public var limit: Int?
     public var offset: Int?
     public var upsert: PostgreSQLUpsert?
@@ -47,6 +49,7 @@ public struct FluentPostgreSQLQuery: FluentSQLQuery {
             joins: [],
             predicate: nil,
             orderBy: [],
+            groupBy: [],
             limit: nil,
             offset: nil,
             upsert: nil,
