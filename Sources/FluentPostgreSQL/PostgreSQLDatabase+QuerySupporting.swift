@@ -65,6 +65,7 @@ extension PostgreSQLDatabase: QuerySupporting {
                 values.append(row.value)
             }
             insert.values.append(values)
+            insert.returning.append(.all)
             query = .insert(insert)
         case ._select:
             var select: PostgreSQLSelect = .select()

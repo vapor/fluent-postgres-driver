@@ -39,7 +39,6 @@ extension PostgreSQLDatabase: SchemaSupporting {
             constraints.append(.notNull)
         }
         
-        // FIXME: is array support
         let isArray: Bool
         if let array = type as? AnyArray.Type {
             type = array.anyElementType
@@ -56,19 +55,22 @@ extension PostgreSQLDatabase: SchemaSupporting {
         
         if isIdentifier {
             if _globalEnableIdentityColumns {
+                let pkDefault: PostgreSQLPrimaryKeyDefault?
+                // create a unique name for the primary key since it will be added
+                // as a separate index.
+                let unique: String
+                if let table = column.table {
+                    unique = table.identifier.string + "." + column.identifier.string
+                } else {
+                    unique = column.identifier.string
+                }
                 switch dataType {
                 case .smallint, .integer, .bigint:
-                    // create a unique name for the primary key since it will be added
-                    // as a separate index.
-                    let unique: String
-                    if let table = column.table {
-                        unique = table.identifier.string + "." + column.identifier.string
-                    } else {
-                        unique = column.identifier.string
-                    }
-                    constraints.append(.primaryKey(default: .generated(.byDefault), identifier: .identifier("pk:\(unique)")))
-                default: break
+                    pkDefault = .generated(.byDefault)
+                default:
+                    pkDefault = nil
                 }
+                constraints.append(.primaryKey(default: pkDefault, identifier: .identifier("pk:\(unique)")))
             } else {
                 switch dataType {
                 case .smallint: dataType = .smallserial
@@ -77,6 +79,10 @@ extension PostgreSQLDatabase: SchemaSupporting {
                 default: break
                 }
             }
+        }
+        
+        if isArray {
+            dataType = .array(dataType)
         }
         
         // FIXME: is array support

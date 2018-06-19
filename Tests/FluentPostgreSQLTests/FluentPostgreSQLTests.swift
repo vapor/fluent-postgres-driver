@@ -169,7 +169,7 @@ class FluentPostgreSQLTests: XCTestCase {
             static func prepare(on conn: PostgreSQLConnection) -> EventLoopFuture<Void> {
                 return PostgreSQLDatabase.create(DefaultTest.self, on: conn) { builder in
                     builder.field(for: \.id, isIdentifier: true)
-                    builder.field(for: \.date, type: .timestamp(nil), .default(.function(.function("current_timestamp", []))))
+                    builder.field(for: \.date, type: .timestamp, .default(.literal(.numeric("current_timestamp"))))
                     builder.field(for: \.foo)
                 }
             }
@@ -386,7 +386,7 @@ struct Planet: PostgreSQLModel, PostgreSQLMigration, Equatable {
     }
 }
 
-extension PostgreSQLColumnType {
+extension PostgreSQLDataType {
     static var planetType: PostgreSQLDataType {
         return .custom("PLANET_TYPE")
     }
