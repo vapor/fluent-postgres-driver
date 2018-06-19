@@ -85,7 +85,6 @@ extension PostgreSQLDatabase: SchemaSupporting {
             dataType = .array(dataType)
         }
         
-        // FIXME: is array support
         return .columnDefinition(column, dataType, constraints)
     }
     
