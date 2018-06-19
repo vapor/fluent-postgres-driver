@@ -23,7 +23,7 @@ public final class FluentPostgreSQLProvider: Provider {
         }
         
         return worker.withPooledConnection(to: .psql) { conn in
-            return conn.simpleQuery("SELECT current_setting('server_version') as version", decoding: Setting.self).map { rows in
+            return conn.select().column(.function("current_setting", [.expression(.literal(.string("server_version")))], as: .identifier("version"))).all(decoding: Setting.self).map { rows in
                 _serverVersion = rows[0].version
                 if let versionString = _serverVersion {
                     let pointIndex = versionString.index(of: ".") ?? versionString.endIndex
