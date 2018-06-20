@@ -117,7 +117,7 @@ class FluentPostgreSQLTests: XCTestCase {
 
     func testGH21() throws {
         /// - types
-        enum PetType: Int, Swift.CaseIterable, ReflectionDecodable, Codable {
+        enum PetType: Int, CaseIterable, ReflectionDecodable, Codable {
             static let allCases: [PetType] = [.cat, .dog]
             case cat = 0
             case dog = 1

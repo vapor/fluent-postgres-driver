@@ -1,4 +1,4 @@
-public protocol PostgreSQLEnum: PostgreSQLExpressionRepresentable, Swift.CaseIterable, Codable, ReflectionDecodable, PostgreSQLDataTypeStaticRepresentable, RawRepresentable where Self.RawValue: LosslessStringConvertible {
+public protocol PostgreSQLEnum: PostgreSQLExpressionRepresentable, CaseIterable, Codable, ReflectionDecodable, PostgreSQLDataTypeStaticRepresentable, RawRepresentable where Self.RawValue: LosslessStringConvertible {
     static var postgreSQLEnumTypeName: String { get }
 }
 
