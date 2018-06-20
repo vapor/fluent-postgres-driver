@@ -11,12 +11,8 @@ class FluentPostgreSQLTests: XCTestCase {
     var database: PostgreSQLDatabase!
 
     override func setUp() {
-        #if os(macOS)
         let hostname = "localhost"
-        #else
-        let hostname = "psql-cleartext"
-        #endif
-        
+
         let config: PostgreSQLDatabaseConfig = .init(
             hostname: hostname,
             port: 5432,
@@ -27,6 +23,9 @@ class FluentPostgreSQLTests: XCTestCase {
         database = PostgreSQLDatabase(config: config)
         let eventLoop = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         benchmarker = try! Benchmarker(database, on: eventLoop, onFail: XCTFail)
+        let conn = try! benchmarker.pool.requestConnection().wait()
+        defer { benchmarker.pool.releaseConnection(conn) }
+        try! FluentPostgreSQLProvider._setup(on: conn).wait()
     }
     
     func testBenchmark() throws {
@@ -118,7 +117,7 @@ class FluentPostgreSQLTests: XCTestCase {
 
     func testGH21() throws {
         /// - types
-        enum PetType: Int, CaseIterable, ReflectionDecodable, Codable {
+        enum PetType: Int, Swift.CaseIterable, ReflectionDecodable, Codable {
             static let allCases: [PetType] = [.cat, .dog]
             case cat = 0
             case dog = 1
@@ -131,7 +130,7 @@ class FluentPostgreSQLTests: XCTestCase {
             
             static func prepare(on conn: PostgreSQLConnection) -> EventLoopFuture<Void> {
                 return PostgreSQLDatabase.create(Pet.self, on: conn) { builder in
-                    builder.field(for: \.id, type: .bigint, .notNull, .primaryKey(default: .generated(.byDefault)))
+                    builder.field(for: \.id)
                     builder.field(for: \.type, type: .bigint)
                     builder.field(for: \.name, type: .text)
                 }
