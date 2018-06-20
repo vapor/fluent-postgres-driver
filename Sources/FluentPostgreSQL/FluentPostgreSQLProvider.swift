@@ -18,19 +18,23 @@ public final class FluentPostgreSQLProvider: Provider {
 
     /// See `Provider`.
     public func willBoot(_ worker: Container) throws -> Future<Void> {
+        
+        return worker.withPooledConnection(to: .psql) { conn in
+            return FluentPostgreSQLProvider._setup(on: conn)
+        }
+    }
+
+    public static func _setup(on conn: PostgreSQLConnection) -> Future<Void> {
         struct Setting: Codable {
             var version: String
         }
-        
-        return worker.withPooledConnection(to: .psql) { conn in
-            return conn.select().column(.function("current_setting", [.expression(.literal(.string("server_version")))], as: .identifier("version"))).all(decoding: Setting.self).map { rows in
-                _serverVersion = rows[0].version
-                if let versionString = _serverVersion {
-                    let pointIndex = versionString.index(of: ".") ?? versionString.endIndex
-                    let majorVersion = versionString[..<pointIndex]
-                    if let ver = Int(majorVersion) {
-                        _globalEnableIdentityColumns = ver < 10 ? false: _globalEnableIdentityColumns
-                    }
+        return conn.select().column(.function("current_setting", [.expression(.literal(.string("server_version")))], as: .identifier("version"))).all(decoding: Setting.self).map { rows in
+            _serverVersion = rows[0].version
+            if let versionString = _serverVersion {
+                let pointIndex = versionString.index(of: ".") ?? versionString.endIndex
+                let majorVersion = versionString[..<pointIndex]
+                if let ver = Int(majorVersion) {
+                    _globalEnableIdentityColumns = ver < 10 ? false: _globalEnableIdentityColumns
                 }
             }
         }

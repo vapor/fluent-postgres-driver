@@ -8,11 +8,28 @@ jobs:
       - checkout
       - run: swift build
       - run: swift test
-  linux:
+  linux-10:
     docker:
       - image: codevapor/swift:4.1
       - image: circleci/postgres:latest
-        name: psql-cleartext
+        name: psql
+        environment:
+          POSTGRES_USER: vapor_username
+          POSTGRES_DB: vapor_database
+          POSTGRES_PASSWORD: vapor_password
+    steps:
+      - checkout
+      - run: 
+          name: Compile code
+          command: swift build
+      - run: 
+          name: Run unit tests
+          command: swift test
+  linux-9:
+    docker:
+      - image: codevapor/swift:4.1
+      - image: circleci/postgres:9
+        name: psql
         environment:
           POSTGRES_USER: vapor_username
           POSTGRES_DB: vapor_database
@@ -37,7 +54,8 @@ workflows:
   version: 2
   tests:
     jobs:
-      - linux
+      - linux-10
+      - linux-9
       - linux-release
       # - macos
   nightly:
