@@ -54,24 +54,24 @@ extension PostgreSQLDatabase: SchemaSupporting {
         }
         
         if isIdentifier {
+            let pkDefault: PostgreSQLPrimaryKeyDefault?
+            // create a unique name for the primary key since it will be added
+            // as a separate index.
+            let unique: String
+            if let table = column.table {
+                unique = table.identifier.string + "." + column.identifier.string
+            } else {
+                unique = column.identifier.string
+            }
             if _globalEnableIdentityColumns {
-                let pkDefault: PostgreSQLPrimaryKeyDefault?
-                // create a unique name for the primary key since it will be added
-                // as a separate index.
-                let unique: String
-                if let table = column.table {
-                    unique = table.identifier.string + "." + column.identifier.string
-                } else {
-                    unique = column.identifier.string
-                }
                 switch dataType {
                 case .smallint, .integer, .bigint:
                     pkDefault = .generated(.byDefault)
                 default:
                     pkDefault = nil
                 }
-                constraints.append(.primaryKey(default: pkDefault, identifier: .identifier("pk:\(unique)")))
             } else {
+                pkDefault = nil
                 switch dataType {
                 case .smallint: dataType = .smallserial
                 case .integer: dataType = .serial
@@ -79,6 +79,7 @@ extension PostgreSQLDatabase: SchemaSupporting {
                 default: break
                 }
             }
+            constraints.append(.primaryKey(default: pkDefault, identifier: .identifier("pk:\(unique)")))
         }
         
         if isArray {
