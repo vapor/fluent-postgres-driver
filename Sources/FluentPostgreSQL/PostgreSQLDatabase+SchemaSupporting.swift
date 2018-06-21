@@ -22,7 +22,7 @@ extension PostgreSQLDatabase: SchemaSupporting {
     public typealias SchemaConstraint = PostgreSQLTableConstraint
     
     /// See `SchemaSupporting`.
-    public typealias SchemaReferenceAction = PostgreSQLConflictResolution
+    public typealias SchemaReferenceAction = PostgreSQLForeignKeyAction
     
     /// See `SchemaSupporting`.
     public static func schemaField(for type: Any.Type, isIdentifier: Bool, _ column: PostgreSQLColumnIdentifier) -> PostgreSQLColumnDefinition {
