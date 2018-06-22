@@ -380,11 +380,12 @@ class FluentPostgreSQLTests: XCTestCase {
     }
     
     static let allTests = [
+        ("testBenchmark", testBenchmark),
+        ("testNestedStruct", testNestedStruct),
         ("testMinimumViableModelDeclaration", testMinimumViableModelDeclaration),
         ("testGH24", testGH24),
         ("testGH21", testGH21),
         ("testPersistsDateMillisecondPart", testPersistsDateMillisecondPart),
-        ("testContains", testContains),
         ("testGH30", testGH30),
         ("testURL", testURL),
         ("testDocs_type", testDocs_type),
