@@ -379,6 +379,33 @@ class FluentPostgreSQLTests: XCTestCase {
         XCTAssertEqual(c?.name, "Earth")
     }
     
+    func testEnumArray() throws {
+        enum A: Int16, Codable, CaseIterable, ReflectionDecodable {
+            static var allCases: [A] = [.a, .b, .c]
+            case a, b, c
+        }
+        struct B: PostgreSQLModel, PostgreSQLMigration {
+            var id: Int?
+            var a: [A]
+            
+            static func prepare(on conn: PostgreSQLConnection) -> Future<Void> {
+                return PostgreSQLDatabase.create(B.self, on: conn) { builder in
+                    builder.field(for: \.id, isIdentifier: true)
+                    builder.field(for: \.a, type: .array(.int2), .notNull)
+                }
+            }
+        }
+
+        let conn = try benchmarker.pool.requestConnection().wait()
+        conn.logger = DatabaseLogger(database: .psql, handler: PrintLogHandler())
+        defer { benchmarker.pool.releaseConnection(conn) }
+        defer { try? B.revert(on: conn).wait() }
+        try B.prepare(on: conn).wait()
+
+        let b = try B(id: nil, a: [.a, .b, .c]).save(on: conn).wait()
+        XCTAssertEqual(b.id, 1)
+    }
+    
     static let allTests = [
         ("testBenchmark", testBenchmark),
         ("testNestedStruct", testNestedStruct),
@@ -394,6 +421,7 @@ class FluentPostgreSQLTests: XCTestCase {
         ("testSort", testSort),
         ("testCustomFilter", testCustomFilter),
         ("testCreateOrUpdate", testCreateOrUpdate),
+        ("testEnumArray", testEnumArray),
     ]
 }
 
