@@ -105,7 +105,7 @@ extension PostgreSQLDatabase: QuerySupporting {
     {
         switch event {
         case .willCreate:
-            if M.ID.self == UUID.self {
+            if M.ID.self == UUID.self, model.fluentID == nil {
                 var model = model
                 model.fluentID = UUID() as? M.ID
                 return conn.future(model)
