@@ -115,25 +115,4 @@ extension PostgreSQLDatabase: QuerySupporting {
 
         return conn.future(model)
     }
-    
-    /// See `SchemaSupporting`.
-    public static func schemaExecute(_ fluent: FluentPostgreSQLSchema, on conn: PostgreSQLConnection) -> Future<Void> {
-        let query: PostgreSQLQuery
-        switch fluent.statement {
-        case ._createTable:
-            var createTable: PostgreSQLCreateTable = .createTable(fluent.table)
-            createTable.columns = fluent.columns
-            createTable.tableConstraints = fluent.constraints
-            query = ._createTable(createTable)
-        case ._alterTable:
-            var alterTable: PostgreSQLAlterTable = .alterTable(fluent.table)
-            alterTable.columns = fluent.columns
-            alterTable.constraints = fluent.constraints
-            query = ._alterTable(alterTable)
-        case ._dropTable:
-            let dropTable: PostgreSQLDropTable = .dropTable(fluent.table)
-            query = ._dropTable(dropTable)
-        }
-        return conn.query(query).transform(to: ())
-    }
 }

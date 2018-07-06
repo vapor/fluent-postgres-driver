@@ -406,6 +406,59 @@ class FluentPostgreSQLTests: XCTestCase {
         XCTAssertEqual(b.id, 1)
     }
     
+    func testAlterDrop() throws {
+        struct A: PostgreSQLMigration {
+            static func prepare(on conn: PostgreSQLConnection) -> Future<Void> {
+                return PostgreSQLDatabase.create(Planet.self, on: conn) { builder in
+                    builder.field(for: \.id)
+                }
+            }
+            
+            static func revert(on conn: PostgreSQLConnection) -> Future<Void> {
+                return PostgreSQLDatabase.delete(Planet.self, on: conn)
+            }
+        }
+        struct B: PostgreSQLMigration {
+            static func prepare(on conn: PostgreSQLConnection) -> Future<Void> {
+                return PostgreSQLDatabase.update(Planet.self, on: conn) { builder in
+                    builder.field(for: \.name)
+                    builder.deleteField(for: \.id)
+                }
+            }
+            
+            static func revert(on conn: PostgreSQLConnection) -> Future<Void> {
+                return PostgreSQLDatabase.update(Planet.self, on: conn) { builder in
+                    builder.deleteField(for: \.name)
+                    builder.field(for: \.id)
+                }
+            }
+        }
+        struct C: PostgreSQLMigration {
+            static func prepare(on conn: PostgreSQLConnection) -> Future<Void> {
+                return PostgreSQLDatabase.update(Planet.self, on: conn) { builder in
+                    builder.unique(on: \.name)
+                }
+            }
+            
+            static func revert(on conn: PostgreSQLConnection) -> Future<Void> {
+                return PostgreSQLDatabase.update(Planet.self, on: conn) { builder in
+                    builder.deleteUnique(from: \.name)
+                }
+            }
+        }
+        
+        let conn = try benchmarker.pool.requestConnection().wait()
+        conn.logger = DatabaseLogger(database: .psql, handler: PrintLogHandler())
+        defer { benchmarker.pool.releaseConnection(conn) }
+        
+        try A.prepare(on: conn).wait()
+        defer { try? A.revert(on: conn).wait() }
+        try B.prepare(on: conn).wait()
+        defer { try? B.revert(on: conn).wait() }
+        try C.prepare(on: conn).wait()
+        defer { try? C.revert(on: conn).wait() }
+    }
+    
     static let allTests = [
         ("testBenchmark", testBenchmark),
         ("testNestedStruct", testNestedStruct),

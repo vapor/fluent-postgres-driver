@@ -25,6 +25,34 @@ extension PostgreSQLDatabase: SchemaSupporting {
     public typealias SchemaReferenceAction = PostgreSQLForeignKeyAction
     
     /// See `SchemaSupporting`.
+    public static func schemaExecute(_ fluent: FluentPostgreSQLSchema, on conn: PostgreSQLConnection) -> Future<Void> {
+        let query: PostgreSQLQuery
+        switch fluent.statement {
+        case ._createTable:
+            var createTable: PostgreSQLCreateTable = .createTable(fluent.table)
+            createTable.columns = fluent.columns
+            createTable.tableConstraints = fluent.constraints
+            query = ._createTable(createTable)
+        case ._alterTable:
+            var alterTable: PostgreSQLAlterTable = .alterTable(fluent.table)
+            alterTable.columns = fluent.columns
+            alterTable.constraints = fluent.constraints
+            alterTable.dropActions += fluent.deleteColumns.map { .init(.column, $0.identifier) }
+            alterTable.dropActions += fluent.deleteConstraints.map {
+                guard let id = $0.identifier else {
+                    fatalError("Cannot drop constraint without identifier: \($0).")
+                }
+                return .init(.constraint, id)
+            }
+            query = ._alterTable(alterTable)
+        case ._dropTable:
+            let dropTable: PostgreSQLDropTable = .dropTable(fluent.table)
+            query = ._dropTable(dropTable)
+        }
+        return conn.query(query).transform(to: ())
+    }
+    
+    /// See `SchemaSupporting`.
     public static func schemaField(for type: Any.Type, isIdentifier: Bool, _ column: PostgreSQLColumnIdentifier) -> PostgreSQLColumnDefinition {
         var constraints: [PostgreSQLColumnConstraint] = []
         var dataType: PostgreSQLDataType
