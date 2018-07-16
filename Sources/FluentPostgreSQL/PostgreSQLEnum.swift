@@ -5,7 +5,7 @@ public protocol PostgreSQLEnum: PostgreSQLExpressionRepresentable, CaseIterable,
 extension PostgreSQLEnum {
     /// See `PostgreSQLEnum`.
     public static var postgreSQLEnumTypeName: String {
-        return "\(self)".uppercased()
+        return String(reflecting: self).replacingOccurrences(of: ".", with: "_").uppercased()
     }
     
     /// See `PostgreSQLDataTypeStaticRepresentable`.
