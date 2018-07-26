@@ -508,6 +508,37 @@ class FluentPostgreSQLTests: XCTestCase {
         a = try a.save(on: conn).wait()
     }
     
+    // https://github.com/vapor/fluent-postgresql/issues/54
+    func testGH54() throws {
+        struct User: PostgreSQLModel, Migration {
+            var id: Int?
+            var username: String
+        }
+        
+        struct AddUserIndex: PostgreSQLMigration {
+            static func prepare(on conn: PostgreSQLConnection) -> Future<Void> {
+                return Database.update(User.self, on: conn) { builder in
+                    builder.unique(on: \.username)
+                }
+            }
+            
+            static func revert(on conn: PostgreSQLConnection) -> Future<Void> {
+                return Database.update(User.self, on: conn) { builder in
+                    builder.deleteUnique(from: \.username)
+                }
+            }
+        }
+                
+        let conn = try benchmarker.pool.requestConnection().wait()
+        conn.logger = DatabaseLogger(database: .psql, handler: PrintLogHandler())
+        defer { benchmarker.pool.releaseConnection(conn) }
+        
+        try User.prepare(on: conn).wait()
+        defer { try? User.revert(on: conn).wait() }
+        try AddUserIndex.prepare(on: conn).wait()
+        defer { try? AddUserIndex.revert(on: conn).wait() }
+    }
+    
     static let allTests = [
         ("testBenchmark", testBenchmark),
         ("testNestedStruct", testNestedStruct),
