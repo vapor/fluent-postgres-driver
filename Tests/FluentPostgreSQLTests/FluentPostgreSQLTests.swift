@@ -459,6 +459,38 @@ class FluentPostgreSQLTests: XCTestCase {
         defer { try? C.revert(on: conn).wait() }
     }
     
+    // https://github.com/vapor/fluent-postgresql/issues/85
+    func testGH85() throws {
+        /// The Exact enum from my project
+        enum Availability: UInt8, PostgreSQLRawEnum {
+            static var allCases: [Availability] = [.everyday, .sunday, .monday, .tuesday, .wednesday, .thursday, .friday, .saturday]
+            
+            case everyday
+            case sunday
+            case monday
+            case tuesday
+            case wednesday
+            case thursday
+            case friday
+            case saturday
+        }
+        
+        struct Foo: PostgreSQLModel, Migration {
+            var id: Int?
+            var availability: Availability
+        }
+        
+        let conn = try benchmarker.pool.requestConnection().wait()
+        conn.logger = DatabaseLogger(database: .psql, handler: PrintLogHandler())
+        defer { benchmarker.pool.releaseConnection(conn) }
+        
+        try Foo.prepare(on: conn).wait()
+        defer { try? Foo.revert(on: conn).wait() }
+        
+        let a = Foo(id: nil, availability: .everyday)
+        _ = try a.save(on: conn).wait()
+    }
+    
     static let allTests = [
         ("testBenchmark", testBenchmark),
         ("testNestedStruct", testNestedStruct),
@@ -475,6 +507,7 @@ class FluentPostgreSQLTests: XCTestCase {
         ("testCustomFilter", testCustomFilter),
         ("testCreateOrUpdate", testCreateOrUpdate),
         ("testEnumArray", testEnumArray),
+        ("testGH85", testGH85),
     ]
 }
 
