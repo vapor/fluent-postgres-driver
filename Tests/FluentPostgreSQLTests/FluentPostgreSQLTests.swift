@@ -461,7 +461,6 @@ class FluentPostgreSQLTests: XCTestCase {
     
     // https://github.com/vapor/fluent-postgresql/issues/85
     func testGH85() throws {
-        /// The Exact enum from my project
         enum Availability: UInt8, PostgreSQLRawEnum {
             static var allCases: [Availability] = [.everyday, .sunday, .monday, .tuesday, .wednesday, .thursday, .friday, .saturday]
             
@@ -474,7 +473,7 @@ class FluentPostgreSQLTests: XCTestCase {
             case friday
             case saturday
         }
-        
+
         struct Foo: PostgreSQLModel, Migration {
             var id: Int?
             var availability: Availability
@@ -489,6 +488,24 @@ class FluentPostgreSQLTests: XCTestCase {
         
         let a = Foo(id: nil, availability: .everyday)
         _ = try a.save(on: conn).wait()
+    }
+    
+    // https://github.com/vapor/fluent-postgresql/issues/35
+    func testGH35() throws {
+        struct Game: PostgreSQLModel, Migration {
+            var id: Int?
+            var tags: [Int64]?
+        }
+        
+        let conn = try benchmarker.pool.requestConnection().wait()
+        conn.logger = DatabaseLogger(database: .psql, handler: PrintLogHandler())
+        defer { benchmarker.pool.releaseConnection(conn) }
+        
+        try Game.prepare(on: conn).wait()
+        defer { try? Game.revert(on: conn).wait() }
+        
+        var a = Game(id: nil, tags: [1, 2, 3])
+        a = try a.save(on: conn).wait()
     }
     
     static let allTests = [
@@ -508,6 +525,7 @@ class FluentPostgreSQLTests: XCTestCase {
         ("testCreateOrUpdate", testCreateOrUpdate),
         ("testEnumArray", testEnumArray),
         ("testGH85", testGH85),
+        ("testGH35", testGH35),
     ]
 }
 
