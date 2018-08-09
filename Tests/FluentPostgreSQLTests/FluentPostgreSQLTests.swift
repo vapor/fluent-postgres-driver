@@ -458,6 +458,44 @@ class FluentPostgreSQLTests: XCTestCase {
         try C.prepare(on: conn).wait()
         defer { try? C.revert(on: conn).wait() }
     }
+
+    func testGH89() throws {
+        let conn = try benchmarker.pool.requestConnection().wait()
+        conn.logger = DatabaseLogger(database: .psql, handler: PrintLogHandler())
+        defer { benchmarker.pool.releaseConnection(conn) }
+
+        try Planet.prepare(on: conn).wait()
+        defer { try? Planet.revert(on: conn).wait() }
+
+        enum SomeError: Error {
+            case error
+        }
+
+        func alwaysThrows() throws {
+            throw SomeError.error
+        }
+
+        var a = Planet(name: "Pluto")
+        a = try a.save(on: conn).wait()
+
+        do {
+            _ = try conn.transaction(on: .psql) { transaction -> Future<Planet> in
+                a.name = "No Longer A Planet"
+                let save = a.save(on: transaction)
+                try alwaysThrows()
+                return save
+            }.wait()
+        } catch {
+            // No-op
+        }
+
+        a = try Planet.query(on: conn)
+            .filter(\.id == a.requireID())
+            .first()
+            .wait()!
+
+        XCTAssertEqual(a.name, "Pluto")
+    }
     
     static let allTests = [
         ("testBenchmark", testBenchmark),
