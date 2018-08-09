@@ -513,6 +513,8 @@ class FluentPostgreSQLTests: XCTestCase {
         ("testCustomFilter", testCustomFilter),
         ("testCreateOrUpdate", testCreateOrUpdate),
         ("testEnumArray", testEnumArray),
+        ("testAlterDrop", testAlterDrop),
+        ("testGH89", testGH89)
     ]
 }
 
