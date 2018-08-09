@@ -2,6 +2,15 @@ public protocol PostgreSQLEnum: PostgreSQLExpressionRepresentable, CaseIterable,
     static var postgreSQLEnumTypeName: String { get }
 }
 
+public protocol PostgreSQLRawEnum: RawRepresentable, Codable, CaseIterable, ReflectionDecodable, PostgreSQLDataTypeStaticRepresentable { }
+
+extension PostgreSQLRawEnum where Self.RawValue: PostgreSQLDataTypeStaticRepresentable {
+    /// See `PostgreSQLDataTypeStaticRepresentable`.
+    public static var postgreSQLDataType: PostgreSQLDataType {
+        return RawValue.postgreSQLDataType
+    }
+}
+
 extension PostgreSQLEnum {
     /// See `PostgreSQLEnum`.
     public static var postgreSQLEnumTypeName: String {
