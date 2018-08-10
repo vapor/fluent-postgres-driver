@@ -459,6 +459,7 @@ class FluentPostgreSQLTests: XCTestCase {
         defer { try? C.revert(on: conn).wait() }
     }
 
+    // https://github.com/vapor/fluent-postgresql/issues/89
     func testGH89() throws {
         let conn = try benchmarker.pool.requestConnection().wait()
         conn.logger = DatabaseLogger(database: .psql, handler: PrintLogHandler())
@@ -497,6 +498,86 @@ class FluentPostgreSQLTests: XCTestCase {
         XCTAssertEqual(a.name, "Pluto")
     }
     
+    // https://github.com/vapor/fluent-postgresql/issues/85
+    func testGH85() throws {
+        enum Availability: UInt8, PostgreSQLRawEnum {
+            static var allCases: [Availability] = [.everyday, .sunday, .monday, .tuesday, .wednesday, .thursday, .friday, .saturday]
+            
+            case everyday
+            case sunday
+            case monday
+            case tuesday
+            case wednesday
+            case thursday
+            case friday
+            case saturday
+        }
+
+        struct Foo: PostgreSQLModel, Migration {
+            var id: Int?
+            var availability: Availability
+        }
+        
+        let conn = try benchmarker.pool.requestConnection().wait()
+        conn.logger = DatabaseLogger(database: .psql, handler: PrintLogHandler())
+        defer { benchmarker.pool.releaseConnection(conn) }
+        
+        try Foo.prepare(on: conn).wait()
+        defer { try? Foo.revert(on: conn).wait() }
+        
+        let a = Foo(id: nil, availability: .everyday)
+        _ = try a.save(on: conn).wait()
+    }
+    
+    // https://github.com/vapor/fluent-postgresql/issues/35
+    func testGH35() throws {
+        struct Game: PostgreSQLModel, Migration {
+            var id: Int?
+            var tags: [Int64]?
+        }
+        
+        let conn = try benchmarker.pool.requestConnection().wait()
+        conn.logger = DatabaseLogger(database: .psql, handler: PrintLogHandler())
+        defer { benchmarker.pool.releaseConnection(conn) }
+        
+        try Game.prepare(on: conn).wait()
+        defer { try? Game.revert(on: conn).wait() }
+        
+        var a = Game(id: nil, tags: [1, 2, 3])
+        a = try a.save(on: conn).wait()
+    }
+    
+    // https://github.com/vapor/fluent-postgresql/issues/54
+    func testGH54() throws {
+        struct User: PostgreSQLModel, Migration {
+            var id: Int?
+            var username: String
+        }
+        
+        struct AddUserIndex: PostgreSQLMigration {
+            static func prepare(on conn: PostgreSQLConnection) -> Future<Void> {
+                return Database.update(User.self, on: conn) { builder in
+                    builder.unique(on: \.username)
+                }
+            }
+            
+            static func revert(on conn: PostgreSQLConnection) -> Future<Void> {
+                return Database.update(User.self, on: conn) { builder in
+                    builder.deleteUnique(from: \.username)
+                }
+            }
+        }
+                
+        let conn = try benchmarker.pool.requestConnection().wait()
+        conn.logger = DatabaseLogger(database: .psql, handler: PrintLogHandler())
+        defer { benchmarker.pool.releaseConnection(conn) }
+        
+        try User.prepare(on: conn).wait()
+        defer { try? User.revert(on: conn).wait() }
+        try AddUserIndex.prepare(on: conn).wait()
+        defer { try? AddUserIndex.revert(on: conn).wait() }
+    }
+    
     static let allTests = [
         ("testBenchmark", testBenchmark),
         ("testNestedStruct", testNestedStruct),
@@ -514,7 +595,9 @@ class FluentPostgreSQLTests: XCTestCase {
         ("testCreateOrUpdate", testCreateOrUpdate),
         ("testEnumArray", testEnumArray),
         ("testAlterDrop", testAlterDrop),
-        ("testGH89", testGH89)
+        ("testGH89", testGH89),
+        ("testGH85", testGH85),
+        ("testGH35", testGH35)
     ]
 }
 

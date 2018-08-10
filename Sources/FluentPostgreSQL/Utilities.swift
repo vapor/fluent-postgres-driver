@@ -1,5 +1,3 @@
-
-
 protocol AnyArray {
     static var anyElementType: Any.Type { get }
 }
