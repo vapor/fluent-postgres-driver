@@ -49,22 +49,15 @@ extension PostgreSQLDatabase: QuerySupporting {
         switch fluent.statement {
         case ._insert:
             var insert: PostgreSQLInsert = .insert(fluent.table)
-            var values: [PostgreSQLExpression] = []
-            fluent.values.forEach { row in
-                // filter out all `NULL` values, no need to insert them since
-                // they could override default values that we want to keep
-                switch row.value {
-                case ._literal(let literal):
-                    switch literal {
-                    case ._null: return
-                    default: break
-                    }
-                default: break
+            
+            if let firstRow = fluent.values.first {
+                insert.columns.append(contentsOf: firstRow.columns())
+                fluent.values.forEach { value in
+                    let row = value.postgresExpression()
+                    insert.values.append(row)
                 }
-                insert.columns.append(.column(nil, .identifier(row.key)))
-                values.append(row.value)
             }
-            insert.values.append(values)
+            
             insert.upsert = fluent.upsert
             insert.returning.append(.all)
             query = .insert(insert)
@@ -82,9 +75,11 @@ extension PostgreSQLDatabase: QuerySupporting {
         case ._update:
             var update: PostgreSQLUpdate = .update(fluent.table)
             update.table = fluent.table
-            update.values = fluent.values.map { val in
-                return (.identifier(val.key), val.value)
+            
+            if let row = fluent.values.first {
+                update.values = row.map { val in (.identifier(val.key), val.value) }
             }
+            
             update.predicate = fluent.predicate
             query = .update(update)
         case ._delete:
@@ -114,5 +109,24 @@ extension PostgreSQLDatabase: QuerySupporting {
         }
 
         return conn.future(model)
+    }
+}
+
+extension Dictionary where Key == String, Value == FluentPostgreSQLQuery.Expression {
+    func postgresExpression() -> [PostgreSQLExpression] {
+        return self.map { pair -> PostgreSQLExpression in
+            switch pair.value {
+            case ._literal(let literal):
+                switch literal {
+                case ._null: return .literal(.default)
+                default: return pair.value
+                }
+            default: return pair.value
+            }
+        }
+    }
+    
+    func columns() -> [PostgreSQLColumnIdentifier] {
+        return self.map { .column(nil, .identifier($0.key)) }
     }
 }
