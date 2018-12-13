@@ -19,6 +19,7 @@ public enum FluentPostgreSQLQueryStatement: FluentSQLQueryStatement {
 
 public struct FluentPostgreSQLQuery: FluentSQLQuery {
     public typealias Statement = FluentPostgreSQLQueryStatement
+    public typealias Distinct = PostgreSQLDistinct
     public typealias TableIdentifier = PostgreSQLTableIdentifier
     public typealias Expression = PostgreSQLExpression
     public typealias SelectExpression = PostgreSQLSelectExpression
@@ -28,6 +29,7 @@ public struct FluentPostgreSQLQuery: FluentSQLQuery {
     public typealias Upsert = PostgreSQLUpsert
     
     public var statement: Statement
+    public var distinct: Distinct?
     public var table: TableIdentifier
     public var keys: [SelectExpression]
     public var values: [String : Expression]
@@ -43,6 +45,7 @@ public struct FluentPostgreSQLQuery: FluentSQLQuery {
     public static func query(_ statement: Statement, _ table: TableIdentifier) -> FluentPostgreSQLQuery {
         return .init(
             statement: statement,
+            distinct: nil,
             table: table,
             keys: [],
             values: [:],
