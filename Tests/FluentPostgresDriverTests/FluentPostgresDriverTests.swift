@@ -2,7 +2,7 @@ import FluentBenchmark
 import FluentPostgresDriver
 import XCTest
 
-final class FluentPostgresTests: XCTestCase {
+final class FluentPostgresDriverTests: XCTestCase {
     var benchmarker: FluentBenchmarker!
     
     func testAll() throws {

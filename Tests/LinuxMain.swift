@@ -1,6 +1,6 @@
 import XCTest
-@testable import FluentPostgreSQLTests
+@testable import FluentPostgresDriverTests
 
 XCTMain([
-    testCase(FluentPostgreSQLTests.allTests),
+    testCase(FluentPostgresDriverTests.allTests),
 ])
