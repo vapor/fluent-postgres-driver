@@ -1,1 +1,0 @@
-extension PostgreSQLDatabase: MigrationSupporting { }
