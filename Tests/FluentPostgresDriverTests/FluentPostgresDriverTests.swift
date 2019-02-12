@@ -75,8 +75,14 @@ final class FluentPostgresDriverTests: XCTestCase {
     
     override func setUp() {
         let eventLoop = MultiThreadedEventLoopGroup(numberOfThreads: 1).next()
+        let hostname: String
+        #if os(Linux)
+        hostname = "psql"
+        #else
+        hostname = "localhost"
+        #endif
         let config = PostgresDatabase.Config(
-            hostname: "localhost",
+            hostname: hostname,
             port: 5432,
             username: "vapor_username",
             password: "vapor_password",
