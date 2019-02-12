@@ -1,17 +1,10 @@
 version: 2
 
 jobs:
-  macos:
-    macos:
-      xcode: "9.2"
-    steps:
-      - checkout
-      - run: swift build
-      - run: swift test
-  linux-10:
+  11-linux:
     docker:
-      - image: codevapor/swift:4.1
-      - image: circleci/postgres:latest
+      - image: codevapor/swift:5.0
+      - image: circleci/postgres:11
         name: psql
         environment:
           POSTGRES_USER: vapor_username
@@ -19,15 +12,24 @@ jobs:
           POSTGRES_PASSWORD: vapor_password
     steps:
       - checkout
-      - run: 
-          name: Compile code
-          command: swift build
-      - run: 
-          name: Run unit tests
-          command: swift test
-  linux-9:
+      - run: swift build
+      - run: swift test
+  10-linux:
     docker:
-      - image: codevapor/swift:4.1
+      - image: codevapor/swift:5.0
+      - image: circleci/postgres:10
+        name: psql
+        environment:
+          POSTGRES_USER: vapor_username
+          POSTGRES_DB: vapor_database
+          POSTGRES_PASSWORD: vapor_password
+    steps:
+      - checkout
+      - run: swift build
+      - run: swift test
+  9-linux:
+    docker:
+      - image: codevapor/swift:5.0
       - image: circleci/postgres:9
         name: psql
         environment:
@@ -36,37 +38,20 @@ jobs:
           POSTGRES_PASSWORD: vapor_password
     steps:
       - checkout
-      - run: 
-          name: Compile code
-          command: swift build
-      - run: 
-          name: Run unit tests
-          command: swift test
+      - run: swift build
+      - run: swift test
   linux-release:
     docker:
-      - image: codevapor/swift:4.1
+      - image: codevapor/swift:5.0
     steps:
       - checkout
-      - run: 
-          name: Compile code with optimizations
-          command: swift build -c release
+      - run: swift build -c release
 workflows:
   version: 2
   tests:
     jobs:
-      - linux-10
-      - linux-9
+      - 11-linux
+      - 10-linux
+      - 9-linux
       - linux-release
-      # - macos
-  nightly:
-    triggers:
-      - schedule:
-          cron: "0 0 * * *"
-          filters:
-            branches:
-              only:
-                - master       
-    jobs:
-      - linux
-      # - macos
-      
+
