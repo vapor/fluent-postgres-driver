@@ -1,19 +1,23 @@
 import FluentSQL
 
-#warning("TODO: fix to allow conformance")
-struct SQLOutput: FluentOutput {
-    let row: SQLRow
-    
-    var description: String {
-        return "\(self.row)"
+extension FluentDatabaseID {
+    public static var psql: FluentDatabaseID {
+        return .init(string: "psql")
     }
-    
-    public init(row: SQLRow) {
-        self.row = row
-    }
-    
-    func decode<T>(field: String, as type: T.Type) throws -> T where T : Decodable {
-        return try self.row.decode(column: field, as: T.self)
+}
+
+extension FluentDatabases {
+    public mutating func postgres(
+        config: PostgresDatabase.Config,
+        poolConfig: ConnectionPoolConfig = .init(),
+        as id: FluentDatabaseID = .psql,
+        isDefault: Bool = true
+    ) {
+        let driver = PostgresDriver(connectionPool: .init(
+            config: poolConfig,
+            source: .init(config: config, on: self.eventLoop)
+        ))
+        self.add(driver, as: id, isDefault: isDefault)
     }
 }
 
@@ -37,8 +41,7 @@ public struct PostgresDriver: FluentDatabase {
             default: break
             }
             return connection.sqlQuery(sql) { row in
-                let output = SQLOutput(row: row)
-                try onOutput(output)
+                try onOutput(row.fluentOutput)
             }
         }
     }
