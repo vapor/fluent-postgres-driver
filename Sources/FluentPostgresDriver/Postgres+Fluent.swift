@@ -1,58 +1,59 @@
 import FluentSQL
 
-extension PostgresConnection: FluentDatabase {
-    public func execute(_ query: FluentQuery, _ onOutput: @escaping (FluentOutput) throws -> ()) -> EventLoopFuture<Void> {
-        return FluentSQLDatabase(delegate: PostgresConnectionSQLDelegate(self))
-            .execute(query, onOutput)
+#warning("TODO: fix to allow conformance")
+struct SQLOutput: FluentOutput {
+    let row: SQLRow
+    
+    var description: String {
+        return "\(self.row)"
     }
     
-    public func execute(_ schema: FluentSchema) -> EventLoopFuture<Void> {
-        return FluentSQLDatabase(delegate: PostgresConnectionSQLDelegate(self))
-            .execute(schema)
+    public init(row: SQLRow) {
+        self.row = row
+    }
+    
+    func decode<T>(field: String, as type: T.Type) throws -> T where T : Decodable {
+        return try self.row.decode(column: field, as: T.self)
     }
 }
 
-extension ConnectionPool: FluentDatabase where Source.Connection: FluentDatabase {
+public struct PostgresDriver: FluentDatabase {
     public var eventLoop: EventLoop {
-        return self.source.eventLoop
+        return self.connectionPool.source.eventLoop
+    }
+    
+    public let connectionPool: ConnectionPool<PostgresDatabase>
+    
+    public init(connectionPool: ConnectionPool<PostgresDatabase>) {
+        self.connectionPool = connectionPool
     }
     
     public func execute(_ query: FluentQuery, _ onOutput: @escaping (FluentOutput) throws -> ()) -> EventLoopFuture<Void> {
-        return self.withConnection { conn in
-            return conn.execute(query, onOutput)
+        return connectionPool.withConnection { connection in
+            var sql = SQLQueryConverter().convert(query)
+            switch query.action {
+            case .create:
+                sql = PostgresReturning(sql)
+            default: break
+            }
+            return connection.sqlQuery(sql) { row in
+                let output = SQLOutput(row: row)
+                try onOutput(output)
+            }
         }
     }
     
     public func execute(_ schema: FluentSchema) -> EventLoopFuture<Void> {
-        return self.withConnection { conn in
-            return conn.execute(schema)
+        return self.connectionPool.withConnection { connection in
+            return connection.sqlQuery(SQLSchemaConverter().convert(schema)) { row in
+                fatalError("unexpected output")
+            }
         }
     }
-}
-
-
-private struct PostgresConnectionSQLDelegate: FluentSQLDatabaseDelegate {
-    var eventLoop: EventLoop {
-        return self.connection.eventLoop
-    }
     
-    let connection: PostgresConnection
-    
-    var database: SQLDatabase {
-        return self.connection
-    }
-    
-    init(_ connection: PostgresConnection) {
-        self.connection = connection
-    }
-    
-    func convert(_ fluent: FluentQuery, _ sql: SQLExpression) -> SQLExpression {
-        switch fluent.action {
-        case .create:
-            return PostgresReturning(sql)
-        default:
-            return sql
-        }
+    public func close() -> EventLoopFuture<Void> {
+        #warning("TODO: implement connectionPool.close()")
+        fatalError("")
     }
 }
 

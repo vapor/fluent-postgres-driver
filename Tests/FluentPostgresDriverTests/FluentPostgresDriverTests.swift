@@ -38,10 +38,12 @@ final class FluentPostgresDriverTests: XCTestCase {
     }
     
     func testEagerLoadSubqueryJSONEncode() throws {
+        #warning("TODO: fix connection pool alg")
         try self.benchmarker.testEagerLoadSubqueryJSONEncode()
     }
     
     func testEagerLoadJoinJSONEncode() throws {
+        #warning("TODO: fix connection pool alg")
         try self.benchmarker.testEagerLoadJoinJSONEncode()
     }
     
@@ -89,8 +91,9 @@ final class FluentPostgresDriverTests: XCTestCase {
             database: "vapor_database",
             tlsConfig: nil
         )
-        let conn = try! PostgresDatabase(config: config, on: eventLoop).makeConnection().wait()
-        self.benchmarker = FluentBenchmarker(database: conn)
+        let pool = PostgresDatabase(config: config, on: eventLoop).makeConnectionPool(config: .init(maxConnections: 1))
+        let driver = PostgresDriver(connectionPool: pool)
+        self.benchmarker = FluentBenchmarker(database: driver)
     }
     
     static let allTests = [
