@@ -70,6 +70,10 @@ final class FluentPostgresDriverTests: XCTestCase {
     func testNestedModel() throws {
         try self.benchmarker.testNestedModel()
     }
+    
+    func testAggregateCount() throws {
+        try self.benchmarker.testAggregateCount()
+    }
 //    
 //    func testWorkUnit() throws {
 //        try self.benchmarker.testWorkUnit()
@@ -83,7 +87,7 @@ final class FluentPostgresDriverTests: XCTestCase {
         #else
         hostname = "localhost"
         #endif
-        let config = PostgresDatabase.Config(
+        let config = PostgresConfig(
             hostname: hostname,
             port: 5432,
             username: "vapor_username",
@@ -91,9 +95,9 @@ final class FluentPostgresDriverTests: XCTestCase {
             database: "vapor_database",
             tlsConfig: nil
         )
-        let pool = PostgresDatabase(config: config, on: eventLoop).makeConnectionPool(config: .init(maxConnections: 1))
-        let driver = PostgresDriver(connectionPool: pool)
-        self.benchmarker = FluentBenchmarker(database: driver)
+        let db = PostgresConnectionSource(config: config, on: eventLoop)
+        let pool = ConnectionPool(config: .init(maxConnections: 1), source: db)
+        self.benchmarker = FluentBenchmarker(database: pool)
     }
     
     static let allTests = [

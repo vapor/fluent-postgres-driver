@@ -1,56 +1,50 @@
 import FluentSQL
 
-extension FluentDatabaseID {
-    public static var psql: FluentDatabaseID {
+extension DatabaseID {
+    public static var psql: DatabaseID {
         return .init(string: "psql")
     }
 }
 
-extension FluentDatabases {
+extension Databases {
     public mutating func postgres(
-        config: PostgresDatabase.Config,
+        config: PostgresConfig,
         poolConfig: ConnectionPoolConfig = .init(),
-        as id: FluentDatabaseID = .psql,
+        as id: DatabaseID = .psql,
         isDefault: Bool = true
     ) {
-        let driver = PostgresDriver(connectionPool: .init(
-            config: poolConfig,
-            source: .init(config: config, on: self.eventLoop)
-        ))
-        self.add(driver, as: id, isDefault: isDefault)
+        let db = PostgresConnectionSource(
+            config: config,
+            on: self.eventLoop
+        )
+        let pool = ConnectionPool(config: poolConfig, source: db)
+        self.add(pool, as: id, isDefault: isDefault)
     }
 }
 
-public struct PostgresDriver: FluentDatabase {
+extension ConnectionPool: Database where Source.Connection: SQLDatabase {
     public var eventLoop: EventLoop {
-        return self.connectionPool.source.eventLoop
+        return self.source.eventLoop
     }
-    
-    public let connectionPool: ConnectionPool<PostgresDatabase>
-    
-    public init(connectionPool: ConnectionPool<PostgresDatabase>) {
-        self.connectionPool = connectionPool
-    }
-    
-    public func execute(_ query: FluentQuery, _ onOutput: @escaping (FluentOutput) throws -> ()) -> EventLoopFuture<Void> {
-        return connectionPool.withConnection { connection in
-            var sql = SQLQueryConverter().convert(query)
-            switch query.action {
-            case .create:
-                sql = PostgresReturning(sql)
-            default: break
-            }
-            return connection.sqlQuery(sql) { row in
-                try onOutput(row.fluentOutput)
-            }
+}
+extension PostgresConnection: Database { }
+
+extension Database where Self: SQLDatabase {
+    public func execute(_ query: DatabaseQuery, _ onOutput: @escaping (DatabaseOutput) throws -> ()) -> EventLoopFuture<Void> {
+        var sql = SQLQueryConverter().convert(query)
+        switch query.action {
+        case .create:
+            sql = PostgresReturning(sql)
+        default: break
+        }
+        return self.sqlQuery(sql) { row in
+            try onOutput(row.fluentOutput)
         }
     }
     
-    public func execute(_ schema: FluentSchema) -> EventLoopFuture<Void> {
-        return self.connectionPool.withConnection { connection in
-            return connection.sqlQuery(SQLSchemaConverter().convert(schema)) { row in
-                fatalError("unexpected output")
-            }
+    public func execute(_ schema: DatabaseSchema) -> EventLoopFuture<Void> {
+        return self.sqlQuery(SQLSchemaConverter().convert(schema)) { row in
+            fatalError("unexpected output")
         }
     }
     
