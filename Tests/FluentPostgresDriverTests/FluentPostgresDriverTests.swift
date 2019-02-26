@@ -71,8 +71,8 @@ final class FluentPostgresDriverTests: XCTestCase {
         try self.benchmarker.testNestedModel()
     }
     
-    func testAggregateCount() throws {
-        try self.benchmarker.testAggregateCount()
+    func testAggregates() throws {
+        try self.benchmarker.testAggregates()
     }
 //    
 //    func testWorkUnit() throws {
