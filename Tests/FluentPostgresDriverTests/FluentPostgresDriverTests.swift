@@ -38,12 +38,10 @@ final class FluentPostgresDriverTests: XCTestCase {
     }
     
     func testEagerLoadSubqueryJSONEncode() throws {
-        #warning("TODO: fix connection pool alg")
         try self.benchmarker.testEagerLoadSubqueryJSONEncode()
     }
     
     func testEagerLoadJoinJSONEncode() throws {
-        #warning("TODO: fix connection pool alg")
         try self.benchmarker.testEagerLoadJoinJSONEncode()
     }
     
@@ -74,10 +72,22 @@ final class FluentPostgresDriverTests: XCTestCase {
     func testAggregates() throws {
         try self.benchmarker.testAggregates()
     }
-//    
-//    func testWorkUnit() throws {
-//        try self.benchmarker.testWorkUnit()
-//    }
+    
+    func testIdentifierGeneration() throws {
+        try self.benchmarker.testIdentifierGeneration()
+    }
+    
+    func testNullifyField() throws {
+        try self.benchmarker.testNullifyField()
+    }
+    
+    func testChunkedFetch() throws {
+        try self.benchmarker.testChunkedFetch()
+    }
+    
+    func testUniqueFields() throws {
+        try self.benchmarker.testUniqueFields()
+    }
     
     override func setUp() {
         let eventLoop = MultiThreadedEventLoopGroup(numberOfThreads: 1).next()
@@ -99,8 +109,4 @@ final class FluentPostgresDriverTests: XCTestCase {
         let pool = ConnectionPool(config: .init(maxConnections: 1), source: db)
         self.benchmarker = FluentBenchmarker(database: pool)
     }
-    
-    static let allTests = [
-        ("testAll", testAll),
-    ]
 }
