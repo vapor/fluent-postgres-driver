@@ -1,6 +1,8 @@
 import XCTest
-@testable import FluentPostgresDriverTests
 
-XCTMain([
-    testCase(FluentPostgresDriverTests.allTests),
-])
+import FluentPostgresDriverTests
+
+var tests = [XCTestCaseEntry]()
+tests += FluentPostgresDriverTests.__allTests()
+
+XCTMain(tests)
