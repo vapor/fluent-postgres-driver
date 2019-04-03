@@ -49,13 +49,26 @@ extension ConnectionPool: Database where Source.Connection: Database {
 
 extension PostgresError: DatabaseError { }
 
+struct PostgresConverterDelegate: SQLConverterDelegate {
+    func customDataType(_ dataType: DatabaseSchema.DataType) -> SQLExpression? {
+        switch dataType {
+        case .uuid: return SQLRaw("UUID")
+        default: return nil
+        }
+    }
+    
+    func nestedFieldExpression(_ column: String, _ path: [String]) -> SQLExpression {
+        return SQLRaw("\(column)->>'\(path[0])'")
+    }
+}
+
 extension PostgresConnection: Database {
     public func transaction<T>(_ closure: @escaping (Database) -> EventLoopFuture<T>) -> EventLoopFuture<T> {
         return closure(self)
     }
     
     public func execute(_ query: DatabaseQuery, _ onOutput: @escaping (DatabaseOutput) throws -> ()) -> EventLoopFuture<Void> {
-        var sql = SQLQueryConverter().convert(query)
+        var sql = SQLQueryConverter(delegate: PostgresConverterDelegate()).convert(query)
         switch query.action {
         case .create:
             sql = PostgresReturning(sql)
@@ -67,7 +80,7 @@ extension PostgresConnection: Database {
     }
     
     public func execute(_ schema: DatabaseSchema) -> EventLoopFuture<Void> {
-        return self.sqlQuery(SQLSchemaConverter().convert(schema)) { row in
+        return self.sqlQuery(SQLSchemaConverter(delegate: PostgresConverterDelegate()).convert(schema)) { row in
             fatalError("unexpected output")
         }
     }
@@ -86,6 +99,6 @@ private struct PostgresReturning: SQLExpression {
     
     func serialize(to serializer: inout SQLSerializer) {
         self.base.serialize(to: &serializer)
-        serializer.write(" RETURNING *")
+        serializer.write(#" RETURNING id as "fluentID""#)
     }
 }
