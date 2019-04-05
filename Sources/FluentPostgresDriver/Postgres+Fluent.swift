@@ -35,11 +35,6 @@ extension ConnectionPool: Database where Source.Connection: Database {
         return self.withConnection { $0.execute(query, onOutput) }
     }
     
-    public func close() -> EventLoopFuture<Void> {
-        #warning("TODO: implement connectionPool.close()")
-        fatalError("")
-    }
-    
     public func transaction<T>(_ closure: @escaping (Database) -> EventLoopFuture<T>) -> EventLoopFuture<T> {
         return self.withConnection { conn in
             return closure(conn)
@@ -83,11 +78,6 @@ extension PostgresConnection: Database {
         return self.sqlQuery(SQLSchemaConverter(delegate: PostgresConverterDelegate()).convert(schema)) { row in
             fatalError("unexpected output")
         }
-    }
-    
-    public func close() -> EventLoopFuture<Void> {
-        #warning("TODO: implement connectionPool.close()")
-        fatalError("")
     }
 }
 
