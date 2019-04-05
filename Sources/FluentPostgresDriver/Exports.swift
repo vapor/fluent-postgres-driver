@@ -1,2 +1,4 @@
 @_exported import FluentKit
-@_exported import PostgresKit
+@_exported import SQLKit
+@_exported import NIOKit
+@_exported import NIOPostgres
