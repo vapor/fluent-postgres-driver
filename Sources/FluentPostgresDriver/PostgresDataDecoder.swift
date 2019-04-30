@@ -1,4 +1,5 @@
 import Foundation
+import NIOPostgres
 
 #warning("TODO: move to codable kit")
 struct DecoderUnwrapper: Decodable {
@@ -14,7 +15,11 @@ public struct PostgresDataDecoder {
     public func decode<T>(_ type: T.Type, from data: PostgresData) throws -> T
         where T: Decodable
     {
-        return try T.init(from: _Decoder(data: data))
+        if let convertible = T.self as? PostgresDataCustomConvertible.Type {
+            return convertible.init(postgresData: data)! as! T
+        } else {
+            return try T.init(from: _Decoder(data: data))
+        }
     }
     
     #warning("TODO: finish implementing")
