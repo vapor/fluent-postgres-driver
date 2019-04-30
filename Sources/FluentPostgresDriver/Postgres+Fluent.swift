@@ -69,8 +69,12 @@ extension PostgresConnection: Database {
             sql = PostgresReturning(sql)
         default: break
         }
-        return self.sqlQuery(sql) { row in
-            try onOutput(row.fluentOutput)
+        var serializer = SQLSerializer(dialect: PostgresDialect())
+        sql.serialize(to: &serializer)
+        return try! self.query(serializer.sql, serializer.binds.map { encodable in
+            return try PostgresDataEncoder().encode(encodable)
+        }) { row in
+            try onOutput(row)
         }
     }
     
@@ -78,6 +82,16 @@ extension PostgresConnection: Database {
         return self.sqlQuery(SQLSchemaConverter(delegate: PostgresConverterDelegate()).convert(schema)) { row in
             fatalError("unexpected output")
         }
+    }
+}
+
+extension PostgresRow: DatabaseOutput {
+    public func contains(field: String) -> Bool {
+        return self.column(field) != nil
+    }
+
+    public func decode<T>(field: String, as type: T.Type) throws -> T where T : Decodable {
+        return try self.decode(column: field, as: T.self)
     }
 }
 
