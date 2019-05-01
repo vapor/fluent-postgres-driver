@@ -125,8 +125,11 @@ public struct PostgresDataDecoder {
         }
         
         func decode<T>(_ type: T.Type) throws -> T where T : Decodable {
-            return try T.init(from: self.decoder)
+            if let convertible = T.self as? PostgresDataCustomConvertible.Type {
+                return convertible.init(postgresData: self.decoder.data)! as! T
+            } else {
+                return try T.init(from: self.decoder)
+            }
         }
-        
     }
 }

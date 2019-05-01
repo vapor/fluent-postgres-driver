@@ -88,6 +88,10 @@ final class FluentPostgresDriverTests: XCTestCase {
     func testAsyncCreate() throws {
         try self.benchmarker.testAsyncCreate()
     }
+
+    func testSoftDelete() throws {
+        try self.benchmarker.testSoftDelete()
+    }
     
     override func setUp() {
         let eventLoop = MultiThreadedEventLoopGroup(numberOfThreads: 1).next()
