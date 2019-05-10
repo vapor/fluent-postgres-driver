@@ -78,24 +78,12 @@ public struct PostgresConnectionSource: ConnectionPoolSource {
         } catch {
             return self.eventLoop.makeFailedFuture(error)
         }
-        return PostgresConnection.connect(to: address, on: self.eventLoop).flatMap { conn in
+        return PostgresConnection.connect(to: address, tlsConfiguration: self.config.tlsConfig, on: self.eventLoop).flatMap { conn in
             return conn.authenticate(
                 username: self.config.username,
                 database: self.config.database,
                 password: self.config.password
             ).map { conn }
-        }.flatMap { conn in
-            if let tlsConfig = self.config.tlsConfig {
-                return conn.requestTLS(using: tlsConfig, serverHostname: self.config._hostname).map { upgraded in
-                    if !upgraded {
-                        #warning("throw an error here?")
-                        print("[Postgres] Server does not support TLS")
-                    }
-                    return conn
-                }
-            } else {
-                return self.eventLoop.makeSucceededFuture(conn)
-            }
         }
     }
 }
@@ -181,7 +169,7 @@ extension ConnectionPool: PostgresClient where Source.Connection: PostgresClient
         return self.source.eventLoop
     }
     
-    public func send(_ request: PostgresRequestHandler) -> EventLoopFuture<Void> {
+    public func send(_ request: PostgresRequest) -> EventLoopFuture<Void> {
         return self.withConnection { $0.send(request) }
     }
 }

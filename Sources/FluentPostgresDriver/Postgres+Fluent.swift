@@ -80,6 +80,7 @@ extension PostgresConnection: Database {
     
     public func execute(_ schema: DatabaseSchema) -> EventLoopFuture<Void> {
         return self.sqlQuery(SQLSchemaConverter(delegate: PostgresConverterDelegate()).convert(schema)) { row in
+            print(row)
             fatalError("unexpected output")
         }
     }
