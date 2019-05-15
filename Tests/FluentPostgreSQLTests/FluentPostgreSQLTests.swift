@@ -538,7 +538,52 @@ class FluentPostgreSQLTests: XCTestCase {
         try AddUserIndex.prepare(on: conn).wait()
         defer { try? AddUserIndex.revert(on: conn).wait() }
     }
-    
+
+    func testJoinIdOverwriting() throws {
+        struct Cat: PostgreSQLModel, PostgreSQLMigration {
+            var id: Int?
+            var name: String
+            var ownerID: Person.ID
+        }
+
+        struct Person: PostgreSQLModel, PostgreSQLMigration, Equatable {
+            var id: Int?
+            var name: String
+        }
+
+        let conn = try benchmarker.pool.requestConnection().wait()
+        conn.logger = DatabaseLogger(database: .psql, handler: PrintLogHandler())
+        defer { benchmarker.pool.releaseConnection(conn) }
+
+        try Person.prepare(on: conn).wait()
+        defer { try? Person.revert(on: conn).wait() }
+        try Cat.prepare(on: conn).wait()
+        defer { try? Cat.revert(on: conn).wait() }
+
+        let testPeople = [
+            Person(id: 1, name: "Jon"),
+            Person(id: 2, name: "Lyman"),
+            Person(id: 3, name: "Liz")
+        ]
+
+        let testCats = [
+            Cat(id: 10, name: "Garfield", ownerID: 1),
+            Cat(id: 11, name: "Nermal", ownerID: 2),
+        ]
+
+        try testPeople.forEach { try $0.create(on: conn).wait() }
+        try testCats.forEach { try $0.create(on: conn).wait() }
+
+        let result = try Person.query(on: conn)
+            .join(\Cat.ownerID, to: \Person.id)
+            .filter(\Cat.name == "Garfield")
+            .all()
+            .wait()
+
+        XCTAssertEqual(1, result.count)
+        XCTAssertEqual(testPeople[0], result[0])
+    }
+
     static let allTests = [
         ("testBenchmark", testBenchmark),
         ("testNestedStruct", testNestedStruct),
@@ -557,6 +602,7 @@ class FluentPostgreSQLTests: XCTestCase {
         ("testEnumArray", testEnumArray),
         ("testGH85", testGH85),
         ("testGH35", testGH35),
+        ("testJoinIdOverwriting", testJoinIdOverwriting),
     ]
 }
 
