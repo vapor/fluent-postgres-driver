@@ -560,6 +560,8 @@ class FluentPostgreSQLTests: XCTestCase {
         try Cat.prepare(on: conn).wait()
         defer { try? Cat.revert(on: conn).wait() }
 
+        _ = try conn.tableNames(refresh: true).wait()
+
         let testPeople = [
             Person(id: 1, name: "Jon"),
             Person(id: 2, name: "Lyman"),
