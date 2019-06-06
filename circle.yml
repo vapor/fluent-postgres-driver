@@ -40,7 +40,7 @@ jobs:
       - checkout
       - run: swift build
       - run: swift test
-  linux-release:
+  bionic-release:
     docker:
       - image: vapor/swift:5.1-bionic
     steps:
@@ -65,5 +65,4 @@ workflows:
       - 11-bionic
       - 10-bionic
       # - 9-bionic
-      - linux-release
-      - linux-performance
+      - bionic-release
