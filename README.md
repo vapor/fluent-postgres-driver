@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="https://user-images.githubusercontent.com/1342803/59063319-d190f500-8875-11e9-8fe6-16197dd56d0f.png" alt="FluentPostgresDriver">
+    <img src="https://user-images.githubusercontent.com/1342803/59065097-ec656880-8879-11e9-9e80-2e393dc313c1.png" alt="FluentPostgresDriver">
     <br>
     <br>
     <a href="https://api.vapor.codes/fluent-postgres-driver/master/FluentPostgresDriver/index.html">
