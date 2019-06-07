@@ -1,3 +1,4 @@
+import Logging
 import FluentBenchmark
 import FluentPostgresDriver
 import XCTest
@@ -107,11 +108,16 @@ final class FluentPostgresDriverTests: XCTestCase {
         try self.benchmarker.testSort()
     }
 
+    func testUUIDModel() throws {
+        try self.benchmarker.testUUIDModel()
+    }
+
     var benchmarker: FluentBenchmarker!
     var connectionPool: ConnectionPool<PostgresConnectionSource>!
     var eventLoopGroup: EventLoopGroup!
     
     override func setUp() {
+        XCTAssert(isLoggingConfigured)
         let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         let eventLoop = eventLoopGroup.next()
         let hostname: String
@@ -140,3 +146,12 @@ final class FluentPostgresDriverTests: XCTestCase {
         try! self.eventLoopGroup.syncShutdownGracefully()
     }
 }
+
+let isLoggingConfigured: Bool = {
+    LoggingSystem.bootstrap { label in
+        var handler = StreamLogHandler.standardOutput(label: label)
+        handler.logLevel = .debug
+        return handler
+    }
+    return true
+}()
