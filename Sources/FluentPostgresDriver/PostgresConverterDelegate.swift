@@ -5,6 +5,8 @@ struct PostgresConverterDelegate: SQLConverterDelegate {
         switch dataType {
         case .uuid:
             return SQLRaw("UUID")
+        case .bool:
+            return SQLRaw("BOOL")
         default:
             return nil
         }

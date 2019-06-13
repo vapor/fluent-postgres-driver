@@ -27,11 +27,13 @@ extension FluentPostgresDriverTests {
         ("testNestedModel", testNestedModel),
         ("testNullifyField", testNullifyField),
         ("testRead", testRead),
+        ("testSaveModelWithBool", testSaveModelWithBool),
         ("testSoftDelete", testSoftDelete),
         ("testSort", testSort),
         ("testTimestampable", testTimestampable),
         ("testUniqueFields", testUniqueFields),
         ("testUpdate", testUpdate),
+        ("testUUIDModel", testUUIDModel),
     ]
 }
 
