@@ -112,6 +112,24 @@ final class FluentPostgresDriverTests: XCTestCase {
         try self.benchmarker.testUUIDModel()
     }
 
+    func testSaveModelWithBool() throws {
+        struct Organization: Model {
+            static let shared = Organization()
+            static let entity = "organizations"
+            let id = Field<Int?>("id")
+            let disabled = Field<Bool>("disabled")
+        }
+
+        try Organization.autoMigration().prepare(on: self.connectionPool).wait()
+        defer {
+            try! Organization.autoMigration().revert(on: self.connectionPool).wait()
+        }
+
+        let new = Organization.row()
+        new.disabled = false
+        try new.save(on: self.connectionPool).wait()
+    }
+
     var benchmarker: FluentBenchmarker!
     var connectionPool: ConnectionPool<PostgresConnectionSource>!
     var eventLoopGroup: EventLoopGroup!
