@@ -112,6 +112,30 @@ final class FluentPostgresDriverTests: XCTestCase {
         try self.benchmarker.testUUIDModel()
     }
 
+    func testBlob() throws {
+        struct Foo: Model {
+            static let shared = Foo()
+            var id = Field<Int?>("id")
+            var data = Field<[UInt8]>("data")
+        }
+
+        struct CreateFoo: Migration {
+            func prepare(on database: Database) -> EventLoopFuture<Void> {
+                return database.schema(Foo.self)
+                    .field(\.id, .int, .identifier(auto: true))
+                    .field(\.data, .data, .required)
+                    .create()
+            }
+
+            func revert(on database: Database) -> EventLoopFuture<Void> {
+                return database.schema(Foo.self).delete()
+            }
+        }
+
+        try CreateFoo().prepare(on: self.connectionPool).wait()
+        try CreateFoo().revert(on: self.connectionPool).wait()
+    }
+
     func testSaveModelWithBool() throws {
         struct Organization: Model {
             static let shared = Organization()
