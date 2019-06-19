@@ -11,6 +11,7 @@ extension FluentPostgresDriverTests {
         ("testAsyncCreate", testAsyncCreate),
         ("testBatchCreate", testBatchCreate),
         ("testBatchUpdate", testBatchUpdate),
+        ("testBlob", testBlob),
         ("testChunkedFetch", testChunkedFetch),
         ("testCreate", testCreate),
         ("testDelete", testDelete),
