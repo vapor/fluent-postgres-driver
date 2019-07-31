@@ -9,6 +9,8 @@ struct PostgresConverterDelegate: SQLConverterDelegate {
             return SQLRaw("BOOL")
         case .data:
             return SQLRaw("BYTEA")
+        case .datetime:
+            return SQLRaw("TIMESTAMPTZ")
         default:
             return nil
         }
