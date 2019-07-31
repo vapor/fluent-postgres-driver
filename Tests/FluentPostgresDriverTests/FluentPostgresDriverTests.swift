@@ -113,22 +113,22 @@ final class FluentPostgresDriverTests: XCTestCase {
     }
 
     func testBlob() throws {
-        struct Foo: Model {
-            static let shared = Foo()
-            var id = Field<Int?>("id")
-            var data = Field<[UInt8]>("data")
+        final class Foo: Model {
+            @Field var id: Int?
+            @Field var data: [UInt8]
+            init() { }
         }
 
         struct CreateFoo: Migration {
             func prepare(on database: Database) -> EventLoopFuture<Void> {
-                return database.schema(Foo.self)
-                    .field(\.id, .int, .identifier(auto: true))
-                    .field(\.data, .data, .required)
+                return Foo.schema(on: database)
+                    .field(\.$id, .int, .identifier(auto: true))
+                    .field(\.$data, .data, .required)
                     .create()
             }
 
             func revert(on database: Database) -> EventLoopFuture<Void> {
-                return database.schema(Foo.self).delete()
+                return Foo.schema(on: database).delete()
             }
         }
 
@@ -137,19 +137,31 @@ final class FluentPostgresDriverTests: XCTestCase {
     }
 
     func testSaveModelWithBool() throws {
-        struct Organization: Model {
-            static let shared = Organization()
-            static let entity = "organizations"
-            let id = Field<Int?>("id")
-            let disabled = Field<Bool>("disabled")
+        final class Organization: Model {
+            @Field var id: Int?
+            @Field var disabled: Bool
+            init() { }
         }
 
-        try Organization.autoMigration().prepare(on: self.connectionPool).wait()
+        struct CreateOrganization: Migration {
+            func prepare(on database: Database) -> EventLoopFuture<Void> {
+                return Organization.schema(on: database)
+                    .field(\.$id, .int, .identifier(auto: true))
+                    .field(\.$disabled, .bool, .required)
+                    .create()
+            }
+
+            func revert(on database: Database) -> EventLoopFuture<Void> {
+                return Organization.schema(on: database).delete()
+            }
+        }
+
+        try CreateOrganization().prepare(on: self.connectionPool).wait()
         defer {
-            try! Organization.autoMigration().revert(on: self.connectionPool).wait()
+            try! CreateOrganization().revert(on: self.connectionPool).wait()
         }
 
-        let new = Organization.row()
+        let new = Organization()
         new.disabled = false
         try new.save(on: self.connectionPool).wait()
     }
