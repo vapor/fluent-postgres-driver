@@ -112,23 +112,41 @@ final class FluentPostgresDriverTests: XCTestCase {
         try self.benchmarker.testUUIDModel()
     }
 
+    func testNewModelDecode() throws {
+        try self.benchmarker.testNewModelDecode()
+    }
+
+    func testSiblingsAttach() throws {
+        try self.benchmarker.testSiblingsAttach()
+    }
+
+    func testSiblingsEagerLoad() throws {
+        try self.benchmarker.testSiblingsEagerLoad()
+    }
+
     func testBlob() throws {
         final class Foo: Model {
-            @Field var id: Int?
-            @Field var data: [UInt8]
+            static let schema = "foos"
+
+            @ID(key: "id")
+            var id: Int?
+
+            @Field(key: "data")
+            var data: [UInt8]
+
             init() { }
         }
 
         struct CreateFoo: Migration {
             func prepare(on database: Database) -> EventLoopFuture<Void> {
-                return Foo.schema(on: database)
-                    .field(\.$id, .int, .identifier(auto: true))
-                    .field(\.$data, .data, .required)
+                return database.schema("foos")
+                    .field("id", .int, .identifier(auto: true))
+                    .field("data", .data, .required)
                     .create()
             }
 
             func revert(on database: Database) -> EventLoopFuture<Void> {
-                return Foo.schema(on: database).delete()
+                return database.schema("foos").delete()
             }
         }
 
@@ -138,21 +156,27 @@ final class FluentPostgresDriverTests: XCTestCase {
 
     func testSaveModelWithBool() throws {
         final class Organization: Model {
-            @Field var id: Int?
-            @Field var disabled: Bool
+            static let schema = "orgs"
+
+            @ID(key: "id")
+            var id: Int?
+
+            @Field(key: "disabled")
+            var disabled: Bool
+
             init() { }
         }
 
         struct CreateOrganization: Migration {
             func prepare(on database: Database) -> EventLoopFuture<Void> {
-                return Organization.schema(on: database)
-                    .field(\.$id, .int, .identifier(auto: true))
-                    .field(\.$disabled, .bool, .required)
+                return database.schema("orgs")
+                    .field("id", .int, .identifier(auto: true))
+                    .field("disabled", .bool, .required)
                     .create()
             }
 
             func revert(on database: Database) -> EventLoopFuture<Void> {
-                return Organization.schema(on: database).delete()
+                return database.schema("orgs").delete()
             }
         }
 
