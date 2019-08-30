@@ -40,6 +40,18 @@ final class FluentPostgresDriverTests: XCTestCase {
         try self.benchmarker.testEagerLoadParentJSON()
     }
 
+    func testEagerLoadOptionalParent() throws {
+        try self.benchmarker.testEagerLoadOptionalParent()
+    }
+
+    func testEagerLoadOptionalJoinParent() throws {
+        try self.benchmarker.testEagerLoadOptionalJoinParent()
+    }
+
+    func testEagerLoadOptionalChildren() throws {
+        try self.benchmarker.testEagerLoadOptionalChildren()
+    }
+    
     func testEagerLoadChildrenJSON() throws {
         try self.benchmarker.testEagerLoadChildrenJSON()
     }
