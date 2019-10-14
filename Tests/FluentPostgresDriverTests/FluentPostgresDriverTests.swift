@@ -124,6 +124,18 @@ final class FluentPostgresDriverTests: XCTestCase {
         try self.benchmarker.testSiblingsEagerLoad()
     }
 
+    func testParentGet() throws {
+        try self.benchmarker.testParentGet()
+    }
+
+    func testParentSerialization() throws {
+        try self.benchmarker.testParentSerialization()
+    }
+
+    func testMultipleJoinSameTable() throws {
+        try self.benchmarker.testMultipleJoinSameTable()
+    }
+
     func testBlob() throws {
         final class Foo: Model {
             static let schema = "foos"
