@@ -1,11 +1,17 @@
 import FluentSQL
 
-extension PostgresConnection: Database {
-    public func withConnection<T>(_ closure: @escaping (Database) -> EventLoopFuture<T>) -> EventLoopFuture<T> {
-        return closure(self)
+final class PostgresDatabaseDriver: DatabaseDriver {
+    let pool: ConnectionPool<PostgresConnectionSource>
+    
+    var eventLoopGroup: EventLoopGroup {
+        return self.pool.eventLoopGroup
     }
-
-    public func execute(_ query: DatabaseQuery, _ onOutput: @escaping (DatabaseOutput) throws -> ()) -> EventLoopFuture<Void> {
+    
+    init(pool: ConnectionPool<PostgresConnectionSource>) {
+        self.pool = pool
+    }
+    
+    func execute(query: DatabaseQuery, database: Database, onRow: @escaping (DatabaseRow) -> ()) -> EventLoopFuture<Void> {
         var sql = SQLQueryConverter(delegate: PostgresConverterDelegate())
             .convert(query)
         switch query.action {
@@ -13,17 +19,31 @@ extension PostgresConnection: Database {
             sql = PostgresReturning(sql)
         default: break
         }
-        return self.execute(sql: sql) { row in
-            try onOutput(row as! PostgresRow)
+        return self.pool.execute(sql: sql) { row in
+            onRow(row as! PostgresRow)
         }
     }
 
-    public func execute(_ schema: DatabaseSchema) -> EventLoopFuture<Void> {
+    func execute(schema: DatabaseSchema, database: Database) -> EventLoopFuture<Void> {
         let sql = SQLSchemaConverter(delegate: PostgresConverterDelegate())
             .convert(schema)
-        return self.execute(sql: sql) { row in
+        return self.pool.execute(sql: sql) { row in
             fatalError("unexpected output")
         }
+    }
+    
+    func shutdown() {
+        self.pool.shutdown()
+    }
+}
+
+extension PostgresDatabaseDriver: PostgresClient {
+    var eventLoop: EventLoop {
+        return self.eventLoopGroup.next()
+    }
+    
+    func send(_ request: PostgresRequest) -> EventLoopFuture<Void> {
+        return self.pool.withConnection { $0.send(request) }
     }
 }
 

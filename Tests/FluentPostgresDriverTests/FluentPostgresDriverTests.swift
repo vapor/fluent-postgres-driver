@@ -162,8 +162,8 @@ final class FluentPostgresDriverTests: XCTestCase {
             }
         }
 
-        try CreateFoo().prepare(on: self.connectionPool).wait()
-        try CreateFoo().revert(on: self.connectionPool).wait()
+        try CreateFoo().prepare(on: self.db).wait()
+        try CreateFoo().revert(on: self.db).wait()
     }
 
     func testSaveModelWithBool() throws {
@@ -192,24 +192,29 @@ final class FluentPostgresDriverTests: XCTestCase {
             }
         }
 
-        try CreateOrganization().prepare(on: self.connectionPool).wait()
+        try CreateOrganization().prepare(on: self.db).wait()
         defer {
-            try! CreateOrganization().revert(on: self.connectionPool).wait()
+            try! CreateOrganization().revert(on: self.db).wait()
         }
 
         let new = Organization()
         new.disabled = false
-        try new.save(on: self.connectionPool).wait()
+        try new.save(on: self.db).wait()
     }
 
-    var benchmarker: FluentBenchmarker!
-    var connectionPool: ConnectionPool<PostgresConnectionSource>!
+    
+    var benchmarker: FluentBenchmarker {
+        return .init(database: self.db)
+    }
     var eventLoopGroup: EventLoopGroup!
+    var dbs: Databases!
+    var db: Database {
+        return self.dbs.default()
+    }
     
     override func setUp() {
         XCTAssert(isLoggingConfigured)
-        let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
-        let eventLoop = eventLoopGroup.next()
+        self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         let hostname: String
         #if os(Linux)
         hostname = "psql"
@@ -224,15 +229,12 @@ final class FluentPostgresDriverTests: XCTestCase {
             database: "vapor_database",
             tlsConfiguration: nil
         )
-        let db = PostgresConnectionSource(configuration: configuration, on: eventLoop)
-        let pool = ConnectionPool(config: .init(maxConnections: 1), source: db)
-        self.benchmarker = FluentBenchmarker(database: pool)
-        self.connectionPool = pool
-        self.eventLoopGroup = eventLoopGroup
+        self.dbs = Databases()
+        self.dbs.postgres(configuration: configuration, poolConfiguration: .init(maxConnections: 1), on: self.eventLoopGroup)
     }
 
     override func tearDown() {
-        try! self.connectionPool.close().wait()
+        self.dbs.shutdown()
         try! self.eventLoopGroup.syncShutdownGracefully()
     }
 }

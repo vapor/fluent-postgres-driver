@@ -1,16 +1,20 @@
 extension Databases {
-    public mutating func postgres(
-        config: PostgresConfiguration,
-        poolConfig: ConnectionPoolConfig = .init(),
+    public func postgres(
+        configuration: PostgresConfiguration,
+        poolConfiguration: ConnectionPoolConfiguration = .init(),
         as id: DatabaseID = .psql,
-        isDefault: Bool = true
+        isDefault: Bool = true,
+        on eventLoopGroup: EventLoopGroup
     ) {
         let db = PostgresConnectionSource(
-            configuration: config,
-            on: self.eventLoop
+            configuration: configuration
         )
-        let pool = ConnectionPool(config: poolConfig, source: db)
-        self.add(pool, as: id, isDefault: isDefault)
+        let pool = ConnectionPool(
+            configuration: poolConfiguration,
+            source: db,
+            on: eventLoopGroup
+        )
+        self.add(PostgresDatabaseDriver(pool: pool), as: id, isDefault: isDefault)
     }
 }
 
