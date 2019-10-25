@@ -19,16 +19,20 @@ final class PostgresDatabaseDriver: DatabaseDriver {
             sql = PostgresReturning(sql)
         default: break
         }
-        return self.pool.execute(sql: sql) { row in
-            onRow(row as! PostgresRow)
+        return self.pool.withConnection(eventLoop: database.eventLoopPreference.pool) { conn in
+            conn.execute(sql: sql) { row in
+                onRow(row as! PostgresRow)
+            }
         }
     }
 
     func execute(schema: DatabaseSchema, database: Database) -> EventLoopFuture<Void> {
         let sql = SQLSchemaConverter(delegate: PostgresConverterDelegate())
             .convert(schema)
-        return self.pool.execute(sql: sql) { row in
-            fatalError("unexpected output")
+        return self.pool.withConnection(eventLoop: database.eventLoopPreference.pool) { conn in
+            conn.execute(sql: sql) { row in
+                fatalError("unexpected output")
+            }
         }
     }
     
@@ -43,7 +47,7 @@ extension PostgresDatabaseDriver: PostgresClient {
     }
     
     func send(_ request: PostgresRequest) -> EventLoopFuture<Void> {
-        return self.pool.withConnection { $0.send(request) }
+        return self.pool.withConnection(eventLoop: .indifferent) { $0.send(request) }
     }
 }
 
@@ -56,5 +60,17 @@ private struct PostgresReturning: SQLExpression {
     func serialize(to serializer: inout SQLSerializer) {
         self.base.serialize(to: &serializer)
         serializer.write(#" RETURNING id as "fluentID""#)
+    }
+}
+
+
+extension EventLoopPreference {
+    var pool: ConnectionPoolEventLoopPreference {
+        switch self {
+        case .delegate(on: let eventLoop):
+            return .delegate(on: eventLoop)
+        case .indifferent:
+            return .indifferent
+        }
     }
 }
