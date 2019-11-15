@@ -65,7 +65,7 @@ struct _FluentPostgresDriver: DatabaseDriver {
     
     func makeDatabase(with context: DatabaseContext) -> Database {
         _FluentPostgresDatabase(
-            pool: self.pool.pool(for: context.eventLoop),
+            database: self.pool.pool(for: context.eventLoop).psql(logger: context.logger),
             context: context
         )
     }

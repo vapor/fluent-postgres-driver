@@ -1,7 +1,7 @@
 import FluentSQL
 
 struct _FluentPostgresDatabase {
-    let pool: EventLoopConnectionPool<PostgresConnectionSource>
+    let database: PostgresDatabase
     let context: DatabaseContext
 }
 
@@ -20,10 +20,7 @@ extension _FluentPostgresDatabase: Database {
         } catch {
             return self.eventLoop.makeFailedFuture(error)
         }
-        return self.pool.withConnection(logger: self.logger) {
-            $0.logging(to: self.logger)
-                .query(serialized.sql, serialized.binds, onRow)
-        }
+        return self.query(serialized.sql, serialized.binds, onRow)
     }
 
     func execute(schema: DatabaseSchema) -> EventLoopFuture<Void> {
@@ -35,11 +32,14 @@ extension _FluentPostgresDatabase: Database {
         } catch {
             return self.eventLoop.makeFailedFuture(error)
         }
-        return self.pool.withConnection(logger: self.logger) {
-            $0.logging(to: self.logger)
-                .query(serialized.sql, serialized.binds) {
-                    fatalError("unexpected row: \($0)")
-                }
+        return self.query(serialized.sql, serialized.binds) {
+            fatalError("unexpected row: \($0)")
+        }
+    }
+    
+    func withConnection<T>(_ closure: @escaping (Database) -> EventLoopFuture<T>) -> EventLoopFuture<T> {
+        self.database.withConnection {
+            closure(_FluentPostgresDatabase(database: $0, context: self.context))
         }
     }
 }
@@ -49,19 +49,17 @@ extension _FluentPostgresDatabase: SQLDatabase {
         sql query: SQLExpression,
         _ onRow: @escaping (SQLRow) -> ()
     ) -> EventLoopFuture<Void> {
-        self.pool.withConnection(logger: self.logger) {
-            $0.logging(to: self.logger)
-                .sql()
-                .execute(sql: query, onRow)
-        }
+        self.sql().execute(sql: query, onRow)
     }
 }
 
 extension _FluentPostgresDatabase: PostgresDatabase {
     func send(_ request: PostgresRequest, logger: Logger) -> EventLoopFuture<Void> {
-        self.pool.withConnection(logger: logger) {
-            $0.send(request, logger: logger)
-        }
+        self.database.send(request, logger: logger)
+    }
+    
+    func withConnection<T>(_ closure: @escaping (PostgresConnection) -> EventLoopFuture<T>) -> EventLoopFuture<T> {
+        self.database.withConnection(closure)
     }
 }
 
