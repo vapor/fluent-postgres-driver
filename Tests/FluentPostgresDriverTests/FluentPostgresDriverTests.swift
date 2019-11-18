@@ -100,8 +100,8 @@ final class FluentPostgresDriverTests: XCTestCase {
         try self.benchmarker.testTimestampable()
     }
 
-    func testLifecycleHooks() throws {
-        try self.benchmarker.testLifecycleHooks()
+    func testModelMiddleware() throws {
+        try self.benchmarker.testModelMiddleware()
     }
 
     func testSort() throws {
@@ -207,9 +207,10 @@ final class FluentPostgresDriverTests: XCTestCase {
         return .init(database: self.db)
     }
     var eventLoopGroup: EventLoopGroup!
+    var threadPool: NIOThreadPool!
     var dbs: Databases!
     var db: Database {
-        return self.dbs.default()
+        self.dbs.database(logger: .init(label: "codes.vapor.test"), on: self.eventLoopGroup.next())!
     }
     
     override func setUp() {
@@ -221,20 +222,14 @@ final class FluentPostgresDriverTests: XCTestCase {
         #else
         hostname = "localhost"
         #endif
-        let configuration = PostgresConfiguration(
-            hostname: hostname,
-            port: 5432,
-            username: "vapor_username",
-            password: "vapor_password",
-            database: "vapor_database",
-            tlsConfiguration: nil
-        )
-        self.dbs = Databases()
-        self.dbs.postgres(configuration: configuration, poolConfiguration: .init(maxConnections: 1), on: self.eventLoopGroup)
+        self.threadPool = NIOThreadPool(numberOfThreads: 1)
+        self.dbs = Databases(threadPool: threadPool, on: self.eventLoopGroup)
+        self.dbs.use(.postgres(hostname: hostname, username: "vapor_username", password: "vapor_password", database: "vapor_database"))
     }
 
     override func tearDown() {
         self.dbs.shutdown()
+        try! self.threadPool.syncShutdownGracefully()
         try! self.eventLoopGroup.syncShutdownGracefully()
     }
 }
