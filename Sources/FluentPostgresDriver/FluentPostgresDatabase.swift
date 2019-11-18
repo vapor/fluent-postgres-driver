@@ -7,33 +7,33 @@ struct _FluentPostgresDatabase {
 
 extension _FluentPostgresDatabase: Database {
     func execute(query: DatabaseQuery, onRow: @escaping (DatabaseRow) -> ()) -> EventLoopFuture<Void> {
-        var sql = SQLQueryConverter(delegate: PostgresConverterDelegate())
+        var expression = SQLQueryConverter(delegate: PostgresConverterDelegate())
             .convert(query)
         switch query.action {
         case .create:
-            sql = PostgresReturning(sql)
+            expression = PostgresReturning(expression)
         default: break
         }
-        let serialized: (sql: String, binds: [PostgresData])
+        let (sql, binds) = self.serialize(expression)
         do {
-            serialized = try postgresSerialize(sql)
+            return try self.query(sql, binds.map { try PostgresDataEncoder().encode($0) }) {
+                fatalError("unexpected row: \($0)")
+            }
         } catch {
             return self.eventLoop.makeFailedFuture(error)
         }
-        return self.query(serialized.sql, serialized.binds, onRow)
     }
 
     func execute(schema: DatabaseSchema) -> EventLoopFuture<Void> {
-        let sql = SQLSchemaConverter(delegate: PostgresConverterDelegate())
+        let expression = SQLSchemaConverter(delegate: PostgresConverterDelegate())
             .convert(schema)
-        let serialized: (sql: String, binds: [PostgresData])
+        let (sql, binds) = self.serialize(expression)
         do {
-            serialized = try postgresSerialize(sql)
+            return try self.query(sql, binds.map { try PostgresDataEncoder().encode($0) }) {
+                fatalError("unexpected row: \($0)")
+            }
         } catch {
             return self.eventLoop.makeFailedFuture(error)
-        }
-        return self.query(serialized.sql, serialized.binds) {
-            fatalError("unexpected row: \($0)")
         }
     }
     
@@ -45,6 +45,10 @@ extension _FluentPostgresDatabase: Database {
 }
 
 extension _FluentPostgresDatabase: SQLDatabase {
+    var dialect: SQLDialect {
+        PostgresDialect()
+    }
+    
     public func execute(
         sql query: SQLExpression,
         _ onRow: @escaping (SQLRow) -> ()
@@ -73,14 +77,4 @@ private struct PostgresReturning: SQLExpression {
         self.base.serialize(to: &serializer)
         serializer.write(#" RETURNING id as "fluentID""#)
     }
-}
-
-private func postgresSerialize(_ sql: SQLExpression) throws -> (String, [PostgresData]) {
-    var serializer = SQLSerializer(dialect: PostgresDialect())
-    sql.serialize(to: &serializer)
-    let binds: [PostgresData]
-    binds = try serializer.binds.map { encodable in
-        return try PostgresDataEncoder().encode(encodable)
-    }
-    return (serializer.sql, binds)
 }
