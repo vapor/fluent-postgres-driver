@@ -42,6 +42,20 @@ extension _FluentPostgresDatabase: Database {
             closure(_FluentPostgresDatabase(database: $0, context: self.context))
         }
     }
+
+    func transaction<T>(_ transaction: @escaping (Database) throws -> EventLoopFuture<T>) -> EventLoopFuture<T> {
+        return self.simpleQuery("BEGIN TRANSACTION").flatMap { results in
+            do {
+                return try transaction(self).flatMap { res in
+                    return self.simpleQuery("END TRANSACTION").transform(to: res)
+                }
+            } catch {
+                return self.database.simpleQuery("ROLLBACK").flatMap { results in
+                    return self.eventLoop.makeFailedFuture(error)
+                }
+            }
+        }
+    }
 }
 
 extension _FluentPostgresDatabase: SQLDatabase {
