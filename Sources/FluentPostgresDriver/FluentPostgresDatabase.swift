@@ -16,7 +16,7 @@ extension _FluentPostgresDatabase: Database {
         }
         let (sql, binds) = self.serialize(expression)
         do {
-            return try self.query(sql, binds.map { try PostgresDataEncoder().encode($0) }) {
+            return try self.query(sql, binds.map { try self.encoder.encode($0) }) {
                 onRow($0)
             }
         } catch {
@@ -29,7 +29,7 @@ extension _FluentPostgresDatabase: Database {
             .convert(schema)
         let (sql, binds) = self.serialize(expression)
         do {
-            return try self.query(sql, binds.map { try PostgresDataEncoder().encode($0) }) {
+            return try self.query(sql, binds.map { try self.encoder.encode($0) }) {
                 fatalError("unexpected row: \($0)")
             }
         } catch {
@@ -58,6 +58,9 @@ extension _FluentPostgresDatabase: SQLDatabase {
 }
 
 extension _FluentPostgresDatabase: PostgresDatabase {
+    var encoder: PostgresEncoder { self.database.encoder }
+    var decoder: PostgresDecoder { self.database.decoder }
+
     func send(_ request: PostgresRequest, logger: Logger) -> EventLoopFuture<Void> {
         self.database.send(request, logger: logger)
     }
