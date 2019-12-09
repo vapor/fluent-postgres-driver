@@ -11,6 +11,8 @@ struct PostgresConverterDelegate: SQLConverterDelegate {
             return SQLRaw("BYTEA")
         case .datetime:
             return SQLRaw("TIMESTAMPTZ")
+        case .double:
+            return SQLRaw("DOUBLE PRECISION")
         default:
             return nil
         }

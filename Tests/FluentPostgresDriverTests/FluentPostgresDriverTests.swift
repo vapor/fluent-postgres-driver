@@ -224,7 +224,7 @@ final class FluentPostgresDriverTests: XCTestCase {
         #endif
         self.threadPool = NIOThreadPool(numberOfThreads: 1)
         self.dbs = Databases(threadPool: threadPool, on: self.eventLoopGroup)
-        self.dbs.use(.postgres(hostname: hostname, username: "vapor_username", password: "vapor_password", database: "vapor_database"))
+        self.dbs.use(.postgres(hostname: hostname, username: "vapor_username", password: "vapor_password", database: "vapor_database"), as: .psql)
     }
 
     override func tearDown() {
