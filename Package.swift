@@ -3,6 +3,9 @@ import PackageDescription
 
 let package = Package(
     name: "fluent-postgres-driver",
+    platforms: [
+       .macOS(.v10_14)
+    ],
     products: [
         .library(name: "FluentPostgresDriver", targets: ["FluentPostgresDriver"]),
     ],
