@@ -1,7 +1,7 @@
 import class Foundation.JSONDecoder
 
 extension PostgresRow {
-    public func databaseRow(using decoder: PostgresDecoder) -> DatabaseRow {
+    public func databaseRow(using decoder: PostgresDataDecoder) -> DatabaseRow {
         return _PostgresDatabaseRow(row: self, decoder: decoder)
     }
 
@@ -12,7 +12,7 @@ extension PostgresRow {
 
 private struct _PostgresDatabaseRow: DatabaseRow {
     let row: PostgresRow
-    let decoder: PostgresDecoder
+    let decoder: PostgresDataDecoder
 
     var description: String { self.row.description }
 

@@ -3,6 +3,9 @@ import FluentSQL
 struct _FluentPostgresDatabase {
     let database: PostgresDatabase
     let context: DatabaseContext
+
+    let encoder: PostgresDataEncoder
+    let decoder: PostgresDataDecoder
 }
 
 extension _FluentPostgresDatabase: Database {
@@ -39,7 +42,7 @@ extension _FluentPostgresDatabase: Database {
     
     func withConnection<T>(_ closure: @escaping (Database) -> EventLoopFuture<T>) -> EventLoopFuture<T> {
         self.database.withConnection {
-            closure(_FluentPostgresDatabase(database: $0, context: self.context))
+            closure(_FluentPostgresDatabase(database: $0, context: self.context, encoder: self.encoder, decoder: self.decoder))
         }
     }
 }
@@ -53,14 +56,11 @@ extension _FluentPostgresDatabase: SQLDatabase {
         sql query: SQLExpression,
         _ onRow: @escaping (SQLRow) -> ()
     ) -> EventLoopFuture<Void> {
-        self.sql().execute(sql: query, onRow)
+        self.sql(encoder: encoder, decoder: decoder).execute(sql: query, onRow)
     }
 }
 
 extension _FluentPostgresDatabase: PostgresDatabase {
-    var encoder: PostgresEncoder { self.database.encoder }
-    var decoder: PostgresDecoder { self.database.decoder }
-
     func send(_ request: PostgresRequest, logger: Logger) -> EventLoopFuture<Void> {
         self.database.send(request, logger: logger)
     }
