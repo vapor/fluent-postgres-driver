@@ -1,13 +1,30 @@
-extension PostgresRow: DatabaseRow {
-    public func contains(field: String) -> Bool {
-        return self.column(field) != nil
+import class Foundation.JSONDecoder
+
+extension PostgresRow {
+    public func databaseRow(using decoder: PostgresDecoder) -> DatabaseRow {
+        return _PostgresDatabaseRow(row: self, decoder: decoder)
     }
 
-    public func decode<T>(
+    public func databaseRow(using decoder: JSONDecoder = JSONDecoder()) -> DatabaseRow {
+        return _PostgresDatabaseRow(row: self, decoder: PostgresDataDecoder(jsonDecoder: decoder))
+    }
+}
+
+private struct _PostgresDatabaseRow: DatabaseRow {
+    let row: PostgresRow
+    let decoder: PostgresDecoder
+
+    var description: String { self.row.description }
+
+    func contains(field: String) -> Bool {
+        return self.row.column(field) != nil
+    }
+
+    func decode<T>(
         field: String,
         as type: T.Type,
         for database: Database
     ) throws -> T where T : Decodable {
-        return try self.decode(column: field, as: T.self)
+        return try self.row.sqlRow(using: self.decoder).decode(column: field, as: T.self)
     }
 }

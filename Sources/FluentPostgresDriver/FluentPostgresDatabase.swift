@@ -17,7 +17,7 @@ extension _FluentPostgresDatabase: Database {
         let (sql, binds) = self.serialize(expression)
         do {
             return try self.query(sql, binds.map { try self.encoder.encode($0) }) {
-                onRow($0)
+                onRow($0.databaseRow(using: self.decoder))
             }
         } catch {
             return self.eventLoop.makeFailedFuture(error)
