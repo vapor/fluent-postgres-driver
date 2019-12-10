@@ -1,12 +1,8 @@
 import class Foundation.JSONDecoder
 
 extension PostgresRow {
-    public func databaseRow(using decoder: PostgresDataDecoder) -> DatabaseRow {
+    internal func databaseRow(using decoder: PostgresDataDecoder) -> DatabaseRow {
         return _PostgresDatabaseRow(row: self, decoder: decoder)
-    }
-
-    public func databaseRow(using decoder: JSONDecoder = JSONDecoder()) -> DatabaseRow {
-        return _PostgresDatabaseRow(row: self, decoder: PostgresDataDecoder(jsonDecoder: decoder))
     }
 }
 
