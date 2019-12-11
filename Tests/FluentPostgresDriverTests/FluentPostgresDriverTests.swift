@@ -278,8 +278,8 @@ final class FluentPostgresDriverTests: XCTestCase {
             username: "vapor_username",
             password: "vapor_password",
             database: "vapor_database",
-            encoder: PostgresDataEncoder(jsonEncoder: jsonEncoder),
-            decoder: PostgresDataDecoder(jsonDecoder: jsonDecoder)
+            encoder: PostgresDataEncoder(json: jsonEncoder),
+            decoder: PostgresDataDecoder(json: jsonDecoder)
         )
 
         XCTAssert(isLoggingConfigured)
