@@ -21,6 +21,6 @@ private struct _PostgresDatabaseRow: DatabaseRow {
         as type: T.Type,
         for database: Database
     ) throws -> T where T : Decodable {
-        return try self.row.sql(using: self.decoder).decode(column: field, as: T.self)
+        return try self.row.sql(decoder: self.decoder).decode(column: field, as: T.self)
     }
 }
