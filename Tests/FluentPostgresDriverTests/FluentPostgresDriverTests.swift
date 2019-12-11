@@ -230,6 +230,52 @@ final class FluentPostgresDriverTests: XCTestCase {
         try new.save(on: self.db).wait()
     }
 
+    func testCustomJSON() throws {
+        struct Metadata: Codable {
+            let createdAt: Date
+        }
+
+        final class Event: Model {
+            static let schema = "events"
+
+            @ID(key: "id") var id: Int?
+            @Field(key: "metadata") var metadata: Metadata
+        }
+
+        struct EventMigration: Migration {
+            func prepare(on database: Database) -> EventLoopFuture<Void> {
+                return database.schema(Event.schema)
+                    .field("id", .int, .identifier(auto: true))
+                    .field("metadata", .json, .required)
+                    .create()
+            }
+
+            func revert(on database: Database) -> EventLoopFuture<Void> {
+                return database.schema(Event.schema).delete()
+            }
+        }
+
+        try EventMigration().prepare(on: self.db).wait()
+        defer { try! EventMigration().revert(on: self.db).wait() }
+
+        let date = Date()
+        let event = Event()
+        event.id = 1
+        event.metadata = Metadata(createdAt: date)
+        try event.save(on: self.db).wait()
+
+        let orm = Event.query(on: self.db).filter(\.$id == 1)
+        try self.db.execute(query: orm.query, onRow: { row in
+            do {
+                let metadata = try row.decode(field: "metadata", as: [String: String].self, for: self.db)
+                let expected = ISO8601DateFormatter().string(from: date)
+                XCTAssertEqual(metadata["createdAt"], expected)
+            } catch let error {
+                XCTFail(error.localizedDescription)
+            }
+        }).wait()
+    }
+
     
     var benchmarker: FluentBenchmarker {
         return .init(database: self.db)
@@ -242,17 +288,33 @@ final class FluentPostgresDriverTests: XCTestCase {
     }
     
     override func setUp() {
-        XCTAssert(isLoggingConfigured)
-        self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+        let jsonEncoder = JSONEncoder()
+        jsonEncoder.dateEncodingStrategy = .iso8601
+
+        let jsonDecoder = JSONDecoder()
+        jsonDecoder.dateDecodingStrategy = .iso8601
+
         let hostname: String
         #if os(Linux)
         hostname = "psql"
         #else
         hostname = "localhost"
         #endif
+
+        let configuration = PostgresConfiguration(
+            hostname: hostname,
+            username: "vapor_username",
+            password: "vapor_password",
+            database: "vapor_database",
+            encoder: PostgresDataEncoder(json: jsonEncoder),
+            decoder: PostgresDataDecoder(json: jsonDecoder)
+        )
+
+        XCTAssert(isLoggingConfigured)
+        self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         self.threadPool = NIOThreadPool(numberOfThreads: 1)
         self.dbs = Databases(threadPool: threadPool, on: self.eventLoopGroup)
-        self.dbs.use(.postgres(hostname: hostname, username: "vapor_username", password: "vapor_password", database: "vapor_database"), as: .psql)
+        self.dbs.use(.postgres(configuration: configuration), as: .psql)
     }
 
     override func tearDown() {

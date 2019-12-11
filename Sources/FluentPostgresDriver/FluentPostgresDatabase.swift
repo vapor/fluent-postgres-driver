@@ -3,6 +3,9 @@ import FluentSQL
 struct _FluentPostgresDatabase {
     let database: PostgresDatabase
     let context: DatabaseContext
+
+    let encoder: PostgresDataEncoder
+    let decoder: PostgresDataDecoder
 }
 
 extension _FluentPostgresDatabase: Database {
@@ -16,8 +19,8 @@ extension _FluentPostgresDatabase: Database {
         }
         let (sql, binds) = self.serialize(expression)
         do {
-            return try self.query(sql, binds.map { try PostgresDataEncoder().encode($0) }) {
-                onRow($0)
+            return try self.query(sql, binds.map { try self.encoder.encode($0) }) {
+                onRow($0.databaseRow(using: self.decoder))
             }
         } catch {
             return self.eventLoop.makeFailedFuture(error)
@@ -29,7 +32,7 @@ extension _FluentPostgresDatabase: Database {
             .convert(schema)
         let (sql, binds) = self.serialize(expression)
         do {
-            return try self.query(sql, binds.map { try PostgresDataEncoder().encode($0) }) {
+            return try self.query(sql, binds.map { try self.encoder.encode($0) }) {
                 fatalError("unexpected row: \($0)")
             }
         } catch {
@@ -39,7 +42,7 @@ extension _FluentPostgresDatabase: Database {
     
     func withConnection<T>(_ closure: @escaping (Database) -> EventLoopFuture<T>) -> EventLoopFuture<T> {
         self.database.withConnection {
-            closure(_FluentPostgresDatabase(database: $0, context: self.context))
+            closure(_FluentPostgresDatabase(database: $0, context: self.context, encoder: self.encoder, decoder: self.decoder))
         }
     }
 }
@@ -53,7 +56,7 @@ extension _FluentPostgresDatabase: SQLDatabase {
         sql query: SQLExpression,
         _ onRow: @escaping (SQLRow) -> ()
     ) -> EventLoopFuture<Void> {
-        self.sql().execute(sql: query, onRow)
+        self.sql(encoder: encoder, decoder: decoder).execute(sql: query, onRow)
     }
 }
 
