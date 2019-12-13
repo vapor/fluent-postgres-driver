@@ -255,6 +255,7 @@ final class FluentPostgresDriverTests: XCTestCase {
             }
         }
 
+        try? EventMigration().revert(on: self.db).wait()
         try EventMigration().prepare(on: self.db).wait()
         defer { try! EventMigration().revert(on: self.db).wait() }
 
