@@ -13,6 +13,8 @@ struct PostgresConverterDelegate: SQLConverterDelegate {
             return SQLRaw("TIMESTAMPTZ")
         case .double:
             return SQLRaw("DOUBLE PRECISION")
+        case .json:
+            return SQLRaw("JSONB")
         default:
             return nil
         }
