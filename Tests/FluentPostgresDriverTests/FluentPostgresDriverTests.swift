@@ -164,6 +164,10 @@ final class FluentPostgresDriverTests: XCTestCase {
         try self.benchmarker.testSoftDeleteWithQuery()
     }
 
+    func testDuplicatedUniquePropertyName() throws {
+        try self.benchmarker.testDuplicatedUniquePropertyName()
+    }
+
     func testBlob() throws {
         final class Foo: Model {
             static let schema = "foos"
