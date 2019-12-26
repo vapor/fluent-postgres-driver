@@ -3,6 +3,8 @@ import FluentSQL
 struct PostgresConverterDelegate: SQLConverterDelegate {
     func customDataType(_ dataType: DatabaseSchema.DataType) -> SQLExpression? {
         switch dataType {
+        case .uint8:
+            return SQLRaw(#""char""#)
         case .uuid:
             return SQLRaw("UUID")
         case .bool:

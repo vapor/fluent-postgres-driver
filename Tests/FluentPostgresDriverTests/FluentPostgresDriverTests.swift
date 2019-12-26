@@ -167,6 +167,14 @@ final class FluentPostgresDriverTests: XCTestCase {
     func testDuplicatedUniquePropertyName() throws {
         try self.benchmarker.testDuplicatedUniquePropertyName()
     }
+    
+    func testEmptyEagerLoadChildren() throws {
+        try self.benchmarker.testEmptyEagerLoadChildren()
+    }
+    
+    func testUInt8BackedEnum() throws {
+        try self.benchmarker.testUInt8BackedEnum()
+    }
 
     func testBlob() throws {
         final class Foo: Model {
