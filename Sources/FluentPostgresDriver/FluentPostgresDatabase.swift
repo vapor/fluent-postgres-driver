@@ -10,8 +10,10 @@ struct _FluentPostgresDatabase {
 
 extension _FluentPostgresDatabase: Database {
     func execute(query: DatabaseQuery, onRow: @escaping (DatabaseRow) -> ()) -> EventLoopFuture<Void> {
-        var expression = SQLQueryConverter(delegate: PostgresConverterDelegate())
-            .convert(query)
+        guard var expression = SQLQueryConverter(delegate: PostgresConverterDelegate()).convert(query) else {
+            return self.eventLoop.future()
+        }
+
         switch query.action {
         case .create:
             expression = PostgresReturning(expression)
