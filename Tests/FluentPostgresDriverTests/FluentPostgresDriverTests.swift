@@ -176,6 +176,10 @@ final class FluentPostgresDriverTests: XCTestCase {
         try self.benchmarker.testUInt8BackedEnum()
     }
 
+    func testMultipleSet() throws {
+        try self.benchmarker.testMultipleSet()
+    }
+
     func testBlob() throws {
         final class Foo: Model {
             static let schema = "foos"
@@ -254,6 +258,13 @@ final class FluentPostgresDriverTests: XCTestCase {
             @Field(key: "metadata") var metadata: Metadata
         }
 
+        final class EventStringlyTyped: Model {
+            static let schema = "events"
+
+            @ID(key: "id") var id: Int?
+            @Field(key: "metadata") var metadata: [String: String]
+        }
+
         struct EventMigration: Migration {
             func prepare(on database: Database) -> EventLoopFuture<Void> {
                 return database.schema(Event.schema)
@@ -277,16 +288,9 @@ final class FluentPostgresDriverTests: XCTestCase {
         event.metadata = Metadata(createdAt: date)
         try event.save(on: self.db).wait()
 
-        let orm = Event.query(on: self.db).filter(\.$id == 1)
-        try self.db.execute(query: orm.query, onRow: { row in
-            do {
-                let metadata = try row.decode(field: "metadata", as: [String: String].self, for: self.db)
-                let expected = ISO8601DateFormatter().string(from: date)
-                XCTAssertEqual(metadata["createdAt"], expected)
-            } catch let error {
-                XCTFail(error.localizedDescription)
-            }
-        }).wait()
+        let rows = try EventStringlyTyped.query(on: self.db).filter(\.$id == 1).all().wait()
+        let expected = ISO8601DateFormatter().string(from: date)
+        XCTAssertEqual(rows[0].metadata["createdAt"], expected)
     }
 
     
