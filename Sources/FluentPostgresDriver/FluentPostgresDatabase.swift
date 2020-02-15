@@ -39,6 +39,28 @@ extension _FluentPostgresDatabase: Database {
             return self.eventLoop.makeFailedFuture(error)
         }
     }
+
+    func transaction<T>(_ closure: @escaping (Database) -> EventLoopFuture<T>) -> EventLoopFuture<T> {
+        self.database.withConnection { conn in
+            conn.simpleQuery("BEGIN").flatMap { _ in
+                let db = _FluentPostgresDatabase(
+                    database: conn,
+                    context: self.context,
+                    encoder: self.encoder,
+                    decoder: self.decoder
+                )
+                return closure(db).flatMap { result in
+                    conn.simpleQuery("COMMIT").map { _ in
+                        result
+                    }
+                }.flatMapError { error in
+                    conn.simpleQuery("ROLLBACK").flatMapThrowing { _ in
+                        throw error
+                    }
+                }
+            }
+        }
+    }
     
     func withConnection<T>(_ closure: @escaping (Database) -> EventLoopFuture<T>) -> EventLoopFuture<T> {
         self.database.withConnection {

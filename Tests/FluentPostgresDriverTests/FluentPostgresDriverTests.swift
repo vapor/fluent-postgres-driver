@@ -32,10 +32,6 @@ final class FluentPostgresDriverTests: XCTestCase {
         try self.benchmarker.testEagerLoadParent()
     }
 
-    func testEagerLoadParentJoin() throws {
-        try self.benchmarker.testEagerLoadParentJoin()
-    }
-
     func testEagerLoadParentJSON() throws {
         try self.benchmarker.testEagerLoadParentJSON()
     }
@@ -178,6 +174,14 @@ final class FluentPostgresDriverTests: XCTestCase {
 
     func testMultipleSet() throws {
         try self.benchmarker.testMultipleSet()
+    }
+
+    func testTransaction() throws {
+        try self.benchmarker.testTransaction()
+    }
+
+    func testPagination() throws {
+        try self.benchmarker.testPagination()
     }
 
     func testBlob() throws {
