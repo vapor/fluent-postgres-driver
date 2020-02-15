@@ -180,6 +180,10 @@ final class FluentPostgresDriverTests: XCTestCase {
         try self.benchmarker.testTransaction()
     }
 
+    func testPagination() throws {
+        try self.benchmarker.testPagination()
+    }
+
     func testBlob() throws {
         final class Foo: Model {
             static let schema = "foos"
