@@ -12,15 +12,15 @@ private struct _PostgresDatabaseRow: DatabaseRow {
 
     var description: String { self.row.description }
 
-    func contains(field: String) -> Bool {
-        return self.row.column(field) != nil
+    func contains(field: FieldKey) -> Bool {
+        return self.row.column(field.description) != nil
     }
 
     func decode<T>(
-        field: String,
+        field: FieldKey,
         as type: T.Type,
         for database: Database
     ) throws -> T where T : Decodable {
-        return try self.row.sql(decoder: self.decoder).decode(column: field, as: T.self)
+        return try self.row.sql(decoder: self.decoder).decode(column: field.description, as: T.self)
     }
 }

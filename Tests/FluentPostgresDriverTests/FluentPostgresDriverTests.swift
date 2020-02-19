@@ -184,6 +184,10 @@ final class FluentPostgresDriverTests: XCTestCase {
         try self.benchmarker.testPagination()
     }
 
+    func testSiblingsPerformance() throws {
+        try self.benchmarker.testSiblingsPerformance()
+    }
+
     func testBlob() throws {
         final class Foo: Model {
             static let schema = "foos"
