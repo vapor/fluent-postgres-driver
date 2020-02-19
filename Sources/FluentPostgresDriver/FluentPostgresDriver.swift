@@ -1,8 +1,8 @@
-extension DatabaseDriverFactory {
+extension DatabaseConfigurationFactory {
     public static func postgres(
         url: URL,
         maxConnectionsPerEventLoop: Int = 1
-    ) throws -> DatabaseDriverFactory {
+    ) throws -> DatabaseConfigurationFactory {
         guard let configuration = PostgresConfiguration(url: url) else {
             throw FluentPostgresError.invalidURL(url)
         }
@@ -20,7 +20,7 @@ extension DatabaseDriverFactory {
         database: String? = nil,
         tlsConfiguration: TLSConfiguration? = nil,
         maxConnectionsPerEventLoop: Int = 1
-    ) -> DatabaseDriverFactory {
+    ) -> DatabaseConfigurationFactory {
         return .postgres(
             configuration: .init(
                 hostname: hostname,
@@ -37,19 +37,35 @@ extension DatabaseDriverFactory {
     public static func postgres(
         configuration: PostgresConfiguration,
         maxConnectionsPerEventLoop: Int = 1
-    ) -> DatabaseDriverFactory {
-        return DatabaseDriverFactory { databases in
-            let db = PostgresConnectionSource(
-                configuration: configuration
+    ) -> DatabaseConfigurationFactory {
+        return DatabaseConfigurationFactory {
+            FluentPostgresConfiguration(
+                middleware: [],
+                configuration: configuration,
+                maxConnectionsPerEventLoop: maxConnectionsPerEventLoop
             )
-            let pool = EventLoopGroupConnectionPool(
-                source: db,
-                maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
-                on: databases.eventLoopGroup
-            )
-            return _FluentPostgresDriver(pool: pool)
         }
     }
+}
+
+struct FluentPostgresConfiguration: DatabaseConfiguration {
+    var middleware: [AnyModelMiddleware]
+    let configuration: PostgresConfiguration
+    let maxConnectionsPerEventLoop: Int
+
+    func makeDriver(for databases: Databases) -> DatabaseDriver {
+        let db = PostgresConnectionSource(
+            configuration: configuration
+        )
+        let pool = EventLoopGroupConnectionPool(
+            source: db,
+            maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
+            on: databases.eventLoopGroup
+        )
+        return _FluentPostgresDriver(pool: pool)
+    }
+
+
 }
 
 enum FluentPostgresError: Error {

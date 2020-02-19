@@ -60,8 +60,8 @@ final class FluentPostgresDriverTests: XCTestCase {
         try self.benchmarker.testBatchUpdate()
     }
 
-    func testNestedModel() throws {
-        try self.benchmarker.testNestedModel()
+    func testCompoundField() throws {
+        try self.benchmarker.testCompoundField()
     }
 
     func testAggregates() throws {
@@ -188,6 +188,10 @@ final class FluentPostgresDriverTests: XCTestCase {
         try self.benchmarker.testSiblingsPerformance()
     }
 
+    func testSet() throws {
+        try self.benchmarker.testSet()
+    }
+
     func testBlob() throws {
         final class Foo: Model {
             static let schema = "foos"
@@ -303,13 +307,13 @@ final class FluentPostgresDriverTests: XCTestCase {
 
     
     var benchmarker: FluentBenchmarker {
-        return .init(database: self.db)
+        return .init(databases: self.dbs)
     }
     var eventLoopGroup: EventLoopGroup!
     var threadPool: NIOThreadPool!
     var dbs: Databases!
     var db: Database {
-        self.dbs.database(logger: .init(label: "codes.vapor.test"), on: self.eventLoopGroup.next())!
+        self.benchmarker.database
     }
     
     override func setUp() {
