@@ -4,197 +4,36 @@ import FluentPostgresDriver
 import XCTest
 
 final class FluentPostgresDriverTests: XCTestCase {
-    func testAll() throws {
-        try self.benchmarker.testAll()
-    }
-
-    func testCreate() throws {
-        try self.benchmarker.testCreate()
-    }
-
-    func testRead() throws {
-        try self.benchmarker.testRead()
-    }
-
-    func testUpdate() throws {
-        try self.benchmarker.testUpdate()
-    }
-
-    func testDelete() throws {
-        try self.benchmarker.testDelete()
-    }
-
-    func testEagerLoadChildren() throws {
-        try self.benchmarker.testEagerLoadChildren()
-    }
-
-    func testEagerLoadParent() throws {
-        try self.benchmarker.testEagerLoadParent()
-    }
-
-    func testEagerLoadParentJSON() throws {
-        try self.benchmarker.testEagerLoadParentJSON()
-    }
-
-    func testEagerLoadChildrenJSON() throws {
-        try self.benchmarker.testEagerLoadChildrenJSON()
-    }
-
-    func testMigrator() throws {
-        try self.benchmarker.testMigrator()
-    }
-
-    func testMigratorError() throws {
-        try self.benchmarker.testMigratorError()
-    }
-
-    func testJoin() throws {
-        try self.benchmarker.testJoin()
-    }
-
-    func testBatchCreate() throws {
-        try self.benchmarker.testBatchCreate()
-    }
-
-    func testBatchUpdate() throws {
-        try self.benchmarker.testBatchUpdate()
-    }
-
-    func testCompoundField() throws {
-        try self.benchmarker.testCompoundField()
-    }
-
-    func testNestedField() throws {
-        try self.benchmarker.testNestedField()
-    }
-
-    func testAggregates() throws {
-        try self.benchmarker.testAggregates()
-    }
-
-    func testIdentifierGeneration() throws {
-        try self.benchmarker.testIdentifierGeneration()
-    }
-
-    func testNullifyField() throws {
-        try self.benchmarker.testNullifyField()
-    }
-
-    func testChunkedFetch() throws {
-        try self.benchmarker.testChunkedFetch()
-    }
-
-    func testUniqueFields() throws {
-        try self.benchmarker.testUniqueFields()
-    }
-
-    func testAsyncCreate() throws {
-        try self.benchmarker.testAsyncCreate()
-    }
-
-    func testSoftDelete() throws {
-        try self.benchmarker.testSoftDelete()
-    }
-
-    func testTimestampable() throws {
-        try self.benchmarker.testTimestampable()
-    }
-
-    func testModelMiddleware() throws {
-        try self.benchmarker.testModelMiddleware()
-    }
-
-    func testSort() throws {
-        try self.benchmarker.testSort()
-    }
-
-    func testUUIDModel() throws {
-        try self.benchmarker.testUUIDModel()
-    }
-
-    func testNewModelDecode() throws {
-        try self.benchmarker.testNewModelDecode()
-    }
-
-    func testSiblingsAttach() throws {
-        try self.benchmarker.testSiblingsAttach()
-    }
-
-    func testSiblingsEagerLoad() throws {
-        try self.benchmarker.testSiblingsEagerLoad()
-    }
-
-    func testParentGet() throws {
-        try self.benchmarker.testParentGet()
-    }
-
-    func testParentSerialization() throws {
-        try self.benchmarker.testParentSerialization()
-    }
-
-    func testMultipleJoinSameTable() throws {
-        try self.benchmarker.testMultipleJoinSameTable()
-    }
-
-    func testOptionalParent() throws {
-        try self.benchmarker.testOptionalParent()
-    }
-
-    func testFieldFilter() throws {
-        try self.benchmarker.testFieldFilter()
-    }
-
-    func testJoinedFieldFilter() throws {
-        try self.benchmarker.testJoinedFieldFilter()
-    }
-
-    func testSameChildrenFromKey() throws {
-        try self.benchmarker.testSameChildrenFromKey()
-    }
-
-    func testArray() throws {
-        try self.benchmarker.testArray()
-    }
-
-    func testPerformance() throws {
-        try self.benchmarker.testPerformance()
-    }
-
-    func testSoftDeleteWithQuery() throws {
-        try self.benchmarker.testSoftDeleteWithQuery()
-    }
-
-    func testDuplicatedUniquePropertyName() throws {
-        try self.benchmarker.testDuplicatedUniquePropertyName()
-    }
-    
-    func testEmptyEagerLoadChildren() throws {
-        try self.benchmarker.testEmptyEagerLoadChildren()
-    }
-    
-    func testUInt8BackedEnum() throws {
-        try self.benchmarker.testUInt8BackedEnum()
-    }
-
-    func testMultipleSet() throws {
-        try self.benchmarker.testMultipleSet()
-    }
-
-    func testTransaction() throws {
-        try self.benchmarker.testTransaction()
-    }
-
-    func testPagination() throws {
-        try self.benchmarker.testPagination()
-    }
-
-    func testSiblingsPerformance() throws {
-        try self.benchmarker.testSiblingsPerformance()
-    }
-
-    func testSet() throws {
-        try self.benchmarker.testSet()
-    }
+    func testAll() throws { try self.benchmarker.testAll() }
+    func testAggregate() throws { try self.benchmarker.testAggregate() }
+    func testArray() throws { try self.benchmarker.testArray() }
+    func testBatch() throws { try self.benchmarker.testBatch() }
+    func testChildren() throws { try self.benchmarker.testChildren() }
+    func testChunk() throws { try self.benchmarker.testChunk() }
+    func testCompoundField() throws { try self.benchmarker.testCompoundField() }
+    func testCRUD() throws { try self.benchmarker.testCRUD() }
+    func testEagerLoad() throws { try self.benchmarker.testEagerLoad() }
+    func testEnum() throws { try self.benchmarker.testEnum() }
+    func testFilter() throws { try self.benchmarker.testFilter() }
+    func testGroup() throws { try self.benchmarker.testGroup() }
+    func testID() throws { try self.benchmarker.testID() }
+    func testJoin() throws { try self.benchmarker.testJoin() }
+    func testMiddleware() throws { try self.benchmarker.testMiddleware() }
+    func testMigrator() throws { try self.benchmarker.testMigrator() }
+    func testModel() throws { try self.benchmarker.testModel() }
+    func testNestedField() throws { try self.benchmarker.testNestedField() }
+    func testOptionalParent() throws { try self.benchmarker.testOptionalParent() }
+    func testPagination() throws { try self.benchmarker.testPagination() }
+    func testParent() throws { try self.benchmarker.testParent() }
+    func testPerformance() throws { try self.benchmarker.testPerformance() }
+    func testRange() throws { try self.benchmarker.testRange() }
+    func testSet() throws { try self.benchmarker.testSet() }
+    func testSiblings() throws { try self.benchmarker.testSiblings() }
+    func testSoftDelete() throws { try self.benchmarker.testSoftDelete() }
+    func testSort() throws { try self.benchmarker.testSort() }
+    func testTimestamp() throws { try self.benchmarker.testTimestamp() }
+    func testTransaction() throws { try self.benchmarker.testTransaction() }
+    func testUnique() throws { try self.benchmarker.testUnique() }
 
     func testBlob() throws {
         final class Foo: Model {

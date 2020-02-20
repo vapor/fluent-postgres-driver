@@ -40,6 +40,31 @@ extension _FluentPostgresDatabase: Database {
         }
     }
 
+    func execute(enum e: DatabaseEnum) -> EventLoopFuture<Void> {
+        switch e.action {
+        case .create:
+            let builder = self.sql().create(enum: e.name)
+            for c in e.createCases {
+                _ = builder.value(c)
+            }
+            return builder.run()
+        case .update:
+            if !e.deleteCases.isEmpty {
+                self.logger.error("PostgreSQL does not support deleting enum cases.")
+            }
+            guard !e.createCases.isEmpty else {
+                return self.eventLoop.makeSucceededFuture(())
+            }
+            let builder = self.sql().alter(enum: e.name)
+            for create in e.createCases {
+                _ = builder.add(value: create)
+            }
+            return builder.run()
+        case .delete:
+            return self.sql().drop(enum: e.name).run()
+        }
+    }
+
     func transaction<T>(_ closure: @escaping (Database) -> EventLoopFuture<T>) -> EventLoopFuture<T> {
         self.database.withConnection { conn in
             conn.simpleQuery("BEGIN").flatMap { _ in

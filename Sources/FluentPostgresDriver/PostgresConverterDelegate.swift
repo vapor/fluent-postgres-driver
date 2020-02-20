@@ -17,6 +17,8 @@ struct PostgresConverterDelegate: SQLConverterDelegate {
             return SQLRaw("DOUBLE PRECISION")
         case .json:
             return SQLRaw("JSONB")
+        case .enum(let value):
+            return SQLIdentifier(value.name)
         default:
             return nil
         }
