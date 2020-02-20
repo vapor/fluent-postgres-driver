@@ -23,6 +23,14 @@ struct PostgresConverterDelegate: SQLConverterDelegate {
     }
 
     func nestedFieldExpression(_ column: String, _ path: [String]) -> SQLExpression {
-        return SQLRaw("\(column)->>'\(path[0])'")
+        switch path.count {
+        case 1:
+            return SQLRaw("\(column)->>'\(path[0])'")
+        case 2...:
+            let inner = path[0..<path.count - 1].map { "'\($0)'" }.joined(separator: "->")
+            return SQLRaw("\(column)->\(inner)->>'\(path.last!)'")
+        default:
+            fatalError()
+        }
     }
 }

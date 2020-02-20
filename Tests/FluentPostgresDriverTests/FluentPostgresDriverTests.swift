@@ -64,6 +64,10 @@ final class FluentPostgresDriverTests: XCTestCase {
         try self.benchmarker.testCompoundField()
     }
 
+    func testNestedField() throws {
+        try self.benchmarker.testNestedField()
+    }
+
     func testAggregates() throws {
         try self.benchmarker.testAggregates()
     }
