@@ -14,7 +14,10 @@ extension _FluentPostgresDatabase: Database {
             .convert(query)
         switch query.action {
         case .create:
-            expression = PostgresReturningID(base: expression)
+            expression = PostgresReturningID(
+                base: expression,
+                idKey: query.customIDKey ?? .id
+            )
         default: break
         }
         let (sql, binds) = self.serialize(expression)
@@ -119,12 +122,13 @@ extension _FluentPostgresDatabase: PostgresDatabase {
 
 private struct PostgresReturningID: SQLExpression {
     let base: SQLExpression
+    let idKey: FieldKey
 
     func serialize(to serializer: inout SQLSerializer) {
         serializer.statement {
             $0.append(self.base)
             $0.append("RETURNING")
-            $0.append(SQLIdentifier(FieldKey.id.description))
+            $0.append(SQLIdentifier(self.idKey.description))
         }
     }
 }

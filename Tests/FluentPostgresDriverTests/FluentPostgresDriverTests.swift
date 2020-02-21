@@ -69,7 +69,7 @@ final class FluentPostgresDriverTests: XCTestCase {
         final class Organization: Model {
             static let schema = "orgs"
 
-            @ID(key: "id")
+            @ID(custom: "id", generatedBy: .database)
             var id: Int?
 
             @Field(key: "disabled")
@@ -102,48 +102,36 @@ final class FluentPostgresDriverTests: XCTestCase {
     }
 
     func testCustomJSON() throws {
-        struct Metadata: Codable {
-            let createdAt: Date
-        }
-
-        final class Event: Model {
-            static let schema = "events"
-
-            @ID(key: "id") var id: Int?
-            @Field(key: "metadata") var metadata: Metadata
-        }
-
-        final class EventStringlyTyped: Model {
-            static let schema = "events"
-
-            @ID(key: "id") var id: Int?
-            @Field(key: "metadata") var metadata: [String: String]
-        }
-
-        struct EventMigration: Migration {
-            func prepare(on database: Database) -> EventLoopFuture<Void> {
-                return database.schema(Event.schema)
-                    .field("id", .int, .identifier(auto: true))
-                    .field("metadata", .json, .required)
-                    .create()
-            }
-
-            func revert(on database: Database) -> EventLoopFuture<Void> {
-                return database.schema(Event.schema).delete()
-            }
-        }
-
-        try? EventMigration().revert(on: self.db).wait()
         try EventMigration().prepare(on: self.db).wait()
         defer { try! EventMigration().revert(on: self.db).wait() }
+
+        let jsonEncoder = JSONEncoder()
+        jsonEncoder.dateEncodingStrategy = .iso8601
+        let jsonDecoder = JSONDecoder()
+        jsonDecoder.dateDecodingStrategy = .iso8601
+
+        let configuration = PostgresConfiguration(
+            hostname: hostname,
+            username: "vapor_username",
+            password: "vapor_password",
+            database: "vapor_database",
+            encoder: PostgresDataEncoder(json: jsonEncoder),
+            decoder: PostgresDataDecoder(json: jsonDecoder)
+        )
+        self.dbs.use(.postgres(configuration: configuration), as: .iso8601)
+        let db = self.dbs.database(
+            .iso8601,
+            logger: .init(label: "test"),
+            on: self.eventLoopGroup.next()
+        )!
 
         let date = Date()
         let event = Event()
         event.id = 1
         event.metadata = Metadata(createdAt: date)
-        try event.save(on: self.db).wait()
+        try event.save(on: db).wait()
 
-        let rows = try EventStringlyTyped.query(on: self.db).filter(\.$id == 1).all().wait()
+        let rows = try EventStringlyTyped.query(on: db).filter(\.$id == 1).all().wait()
         let expected = ISO8601DateFormatter().string(from: date)
         XCTAssertEqual(rows[0].metadata["createdAt"], expected)
     }
@@ -158,41 +146,81 @@ final class FluentPostgresDriverTests: XCTestCase {
     var db: Database {
         self.benchmarker.database
     }
+    var postgres: PostgresDatabase {
+        self.db as! PostgresDatabase
+    }
     
     override func setUp() {
-        let jsonEncoder = JSONEncoder()
-        jsonEncoder.dateEncodingStrategy = .iso8601
-
-        let jsonDecoder = JSONDecoder()
-        jsonDecoder.dateDecodingStrategy = .iso8601
-
-        let hostname: String
-        #if os(Linux)
-        hostname = "psql"
-        #else
-        hostname = "localhost"
-        #endif
-
         let configuration = PostgresConfiguration(
             hostname: hostname,
             username: "vapor_username",
             password: "vapor_password",
-            database: "vapor_database",
-            encoder: PostgresDataEncoder(json: jsonEncoder),
-            decoder: PostgresDataDecoder(json: jsonDecoder)
+            database: "vapor_database"
         )
-
         XCTAssert(isLoggingConfigured)
         self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         self.threadPool = NIOThreadPool(numberOfThreads: 1)
         self.dbs = Databases(threadPool: threadPool, on: self.eventLoopGroup)
         self.dbs.use(.postgres(configuration: configuration), as: .psql)
+
+        // reset the database
+        _ = try! self.postgres.query("drop schema public cascade").wait()
+        _ = try! self.postgres.query("create schema public").wait()
     }
 
     override func tearDown() {
         self.dbs.shutdown()
         try! self.threadPool.syncShutdownGracefully()
         try! self.eventLoopGroup.syncShutdownGracefully()
+    }
+}
+
+extension DatabaseID {
+    static var iso8601: Self {
+        .init(string: "iso8601")
+    }
+}
+
+var hostname: String {
+    getenv("POSTGRES_HOSTNAME").flatMap {
+        String(cString: $0)
+    } ?? "localhost"
+}
+
+struct Metadata: Codable {
+    let createdAt: Date
+}
+
+final class Event: Model {
+    static let schema = "events"
+
+    @ID(custom: "id", generatedBy: .database)
+    var id: Int?
+
+    @Field(key: "metadata")
+    var metadata: Metadata
+}
+
+final class EventStringlyTyped: Model {
+    static let schema = "events"
+
+    @ID(custom: "id", generatedBy: .database)
+    var id: Int?
+
+    @Field(key: "metadata")
+    var metadata: [String: String]
+}
+
+struct EventMigration: Migration {
+    func prepare(on database: Database) -> EventLoopFuture<Void> {
+        return database.schema(Event.schema)
+            .field("id", .int, .identifier(auto: true))
+            .field("metadata", .json, .required)
+            .create()
+    }
+
+    func revert(on database: Database) -> EventLoopFuture<Void> {
+        return database.schema(Event.schema).delete()
     }
 }
 
