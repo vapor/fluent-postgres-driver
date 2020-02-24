@@ -11,7 +11,7 @@ struct _FluentPostgresDatabase {
 extension _FluentPostgresDatabase: Database {
     func execute(
         query: DatabaseQuery,
-        onRow: @escaping (DatabaseOutput) -> ()
+        onOutput: @escaping (DatabaseOutput) -> ()
     ) -> EventLoopFuture<Void> {
         var expression = SQLQueryConverter(delegate: PostgresConverterDelegate())
             .convert(query)
@@ -26,7 +26,7 @@ extension _FluentPostgresDatabase: Database {
         let (sql, binds) = self.serialize(expression)
         do {
             return try self.query(sql, binds.map { try self.encoder.encode($0) }) {
-                onRow($0.databaseOutput(using: self.decoder))
+                onOutput($0.databaseOutput(using: self.decoder))
             }
         } catch {
             return self.eventLoop.makeFailedFuture(error)
