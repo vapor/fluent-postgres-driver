@@ -9,18 +9,24 @@ struct _FluentPostgresDatabase {
 }
 
 extension _FluentPostgresDatabase: Database {
-    func execute(query: DatabaseQuery, onRow: @escaping (DatabaseRow) -> ()) -> EventLoopFuture<Void> {
+    func execute(
+        query: DatabaseQuery,
+        onOutput: @escaping (DatabaseOutput) -> ()
+    ) -> EventLoopFuture<Void> {
         var expression = SQLQueryConverter(delegate: PostgresConverterDelegate())
             .convert(query)
         switch query.action {
         case .create:
-            expression = PostgresReturningKey(key: query.idKey, base: expression)
+            expression = PostgresReturningID(
+                base: expression,
+                idKey: query.customIDKey ?? .id
+            )
         default: break
         }
         let (sql, binds) = self.serialize(expression)
         do {
             return try self.query(sql, binds.map { try self.encoder.encode($0) }) {
-                onRow($0.databaseRow(using: self.decoder))
+                onOutput($0.databaseOutput(using: self.decoder))
             }
         } catch {
             return self.eventLoop.makeFailedFuture(error)
@@ -37,6 +43,31 @@ extension _FluentPostgresDatabase: Database {
             }
         } catch {
             return self.eventLoop.makeFailedFuture(error)
+        }
+    }
+
+    func execute(enum e: DatabaseEnum) -> EventLoopFuture<Void> {
+        switch e.action {
+        case .create:
+            let builder = self.sql().create(enum: e.name)
+            for c in e.createCases {
+                _ = builder.value(c)
+            }
+            return builder.run()
+        case .update:
+            if !e.deleteCases.isEmpty {
+                self.logger.error("PostgreSQL does not support deleting enum cases.")
+            }
+            guard !e.createCases.isEmpty else {
+                return self.eventLoop.makeSucceededFuture(())
+            }
+            let builder = self.sql().alter(enum: e.name)
+            for create in e.createCases {
+                _ = builder.add(value: create)
+            }
+            return builder.run()
+        case .delete:
+            return self.sql().drop(enum: e.name).run()
         }
     }
 
@@ -92,15 +123,15 @@ extension _FluentPostgresDatabase: PostgresDatabase {
     }
 }
 
-private struct PostgresReturningKey: SQLExpression {
-    let key: String
+private struct PostgresReturningID: SQLExpression {
     let base: SQLExpression
+    let idKey: FieldKey
 
     func serialize(to serializer: inout SQLSerializer) {
         serializer.statement {
             $0.append(self.base)
             $0.append("RETURNING")
-            $0.append(SQLIdentifier(self.key))
+            $0.append(SQLIdentifier(self.idKey.description))
         }
     }
 }
