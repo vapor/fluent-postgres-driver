@@ -19,8 +19,8 @@ private struct _PostgresDatabaseOutput: DatabaseOutput {
         self.row.description
     }
 
-    func contains(_ field: FieldKey) -> Bool {
-        return self.row.column(self.column(field)) != nil
+    func contains(_ path: [FieldKey]) -> Bool {
+        return self.row.column(self.columnName(path)) != nil
     }
 
     func schema(_ schema: String) -> DatabaseOutput {
@@ -32,18 +32,20 @@ private struct _PostgresDatabaseOutput: DatabaseOutput {
     }
 
     func decode<T>(
-        _ field: FieldKey,
+        _ path: [FieldKey],
         as type: T.Type
     ) throws -> T where T : Decodable {
         try self.row.sql(decoder: self.decoder)
-            .decode(column: self.column(field), as: T.self)
+            .decode(column: self.columnName(path), as: T.self)
     }
 
-    private func column(_ field: FieldKey) -> String {
+    private func columnName(_ path: [FieldKey]) -> String {
+        let field = path.map { $0.description }.joined(separator: "_")
         if let schema = self.schema {
-            return schema + "_" + field.description
+            return "\(schema)_\(field)"
         } else {
-            return field.description
+            return field
         }
+
     }
 }
