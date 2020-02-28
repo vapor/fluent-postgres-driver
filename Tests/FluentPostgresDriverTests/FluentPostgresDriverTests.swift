@@ -10,7 +10,6 @@ final class FluentPostgresDriverTests: XCTestCase {
     func testBatch() throws { try self.benchmarker.testBatch() }
     func testChildren() throws { try self.benchmarker.testChildren() }
     func testChunk() throws { try self.benchmarker.testChunk() }
-    func testCompoundField() throws { try self.benchmarker.testCompoundField() }
     func testCRUD() throws { try self.benchmarker.testCRUD() }
     func testEagerLoad() throws { try self.benchmarker.testEagerLoad() }
     func testEnum() throws { try self.benchmarker.testEnum() }
@@ -21,7 +20,6 @@ final class FluentPostgresDriverTests: XCTestCase {
     func testMiddleware() throws { try self.benchmarker.testMiddleware() }
     func testMigrator() throws { try self.benchmarker.testMigrator() }
     func testModel() throws { try self.benchmarker.testModel() }
-    func testNestedField() throws { try self.benchmarker.testNestedField() }
     func testOptionalParent() throws { try self.benchmarker.testOptionalParent() }
     func testPagination() throws { try self.benchmarker.testPagination() }
     func testParent() throws { try self.benchmarker.testParent() }
