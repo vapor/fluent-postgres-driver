@@ -2,7 +2,7 @@ name: test
 on:
 - pull_request
 jobs:
-  xenial:
+  fluent-postgres-driver_xenial:
     container: 
       image: vapor/swift:5.2-xenial
     services:
@@ -20,7 +20,7 @@ jobs:
     - run: swift test --enable-test-discovery --sanitize=thread
       env:
         POSTGRES_HOSTNAME: psql
-  bionic:
+  fluent-postgres-driver_bionic:
     container: 
       image: vapor/swift:5.2-bionic
     services:
