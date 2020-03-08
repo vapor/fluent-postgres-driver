@@ -18,7 +18,7 @@ Be careful to observe the script's output, it may have errors or ask you to do a
 
 Once in Xcode, select the `FluentPostgreSQL-Package` scheme and use `CMD+U` to run the tests.
 
-When adding new tests (please do 😁), don't forget to add the method name to the `allTests` array. 
+Please add tests to cover bug fixes and new features.
 
 If you are fixing a single GitHub issue in particular, you can add a test named `testGH<issue number>` to ensure
 that your fix is working. This will also help prevent regression.
