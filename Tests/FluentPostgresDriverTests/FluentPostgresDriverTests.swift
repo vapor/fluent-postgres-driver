@@ -33,6 +33,26 @@ final class FluentPostgresDriverTests: XCTestCase {
     func testTransaction() throws { try self.benchmarker.testTransaction() }
     func testUnique() throws { try self.benchmarker.testUnique() }
 
+    func testDatabaseError() throws {
+        let sql = (self.db as! SQLDatabase)
+        do {
+            try sql.raw("asd").run().wait()
+        } catch let error as DatabaseError where error.isSyntaxError {
+            // PASS
+        } catch {
+            XCTFail("\(error)")
+        }
+        do {
+            try sql.raw("CREATE TABLE foo (name TEXT UNIQUE)").run().wait()
+            try sql.raw("INSERT INTO foo (name) VALUES ('bar')").run().wait()
+            try sql.raw("INSERT INTO foo (name) VALUES ('bar')").run().wait()
+        } catch let error as DatabaseError where error.isConstraintFailure {
+            // pass
+        } catch {
+            XCTFail("\(error)")
+        }
+    }
+    
     func testBlob() throws {
         final class Foo: Model {
             static let schema = "foos"
