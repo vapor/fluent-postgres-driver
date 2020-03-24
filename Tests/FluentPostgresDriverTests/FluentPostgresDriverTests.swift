@@ -168,7 +168,9 @@ final class FluentPostgresDriverTests: XCTestCase {
         self.db as! PostgresDatabase
     }
     
-    override func setUp() {
+    override func setUpWithError() throws {
+        try super.setUpWithError()
+        
         let configuration = PostgresConfiguration(
             hostname: hostname,
             username: "vapor_username",
@@ -182,14 +184,15 @@ final class FluentPostgresDriverTests: XCTestCase {
         self.dbs.use(.postgres(configuration: configuration), as: .psql)
 
         // reset the database
-        _ = try! self.postgres.query("drop schema public cascade").wait()
-        _ = try! self.postgres.query("create schema public").wait()
+        _ = try self.postgres.query("drop schema public cascade").wait()
+        _ = try self.postgres.query("create schema public").wait()
     }
 
-    override func tearDown() {
+    override func tearDownWithError() throws {
         self.dbs.shutdown()
-        try! self.threadPool.syncShutdownGracefully()
-        try! self.eventLoopGroup.syncShutdownGracefully()
+        try self.threadPool.syncShutdownGracefully()
+        try self.eventLoopGroup.syncShutdownGracefully()
+        try super.tearDownWithError()
     }
 }
 
