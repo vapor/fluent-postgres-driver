@@ -11,6 +11,7 @@ jobs:
     steps:
     - run: sudo xcode-select -s /Applications/Xcode_11.4.app/Contents/Developer
     - run: brew install postgresql@${{ matrix.psql }}
+      continue-on-error: true
     - run: brew services start postgresql@${{ matrix.psql }}
     - run: sleep 4 # give the server a chance to settle
     - run: /usr/local/opt/postgresql@${{ matrix.psql }}/bin/createuser -d -l -s vapor_username
