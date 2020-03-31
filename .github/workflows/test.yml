@@ -6,23 +6,23 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        psql: ['11', '12']
+        psql: ['postgresql@11', 'postgresql@12']
     runs-on: macos-latest
     steps:
     - run: sudo xcode-select -s /Applications/Xcode_11.4.app/Contents/Developer
     - run: brew unlink libpq
-    - run: brew install postgresql@${{ matrix.psql }}
+    - run: brew install ${{ matrix.psql }}
       continue-on-error: true
-    - run: brew link -f --overwrite postgresql@${{ matrix.psql }}
-    - run: brew reinstall postgreqsql@${{ matrix.psql }}
-    - run: brew postinstall postgresql@${{ matrix.psql }}
-    - run: brew services start postgresql@${{ matrix.psql }}
+    - run: brew link -f --overwrite ${{ matrix.psql }}
+    - run: brew reinstall ${{ matrix.psql }}
+    - run: brew postinstall ${{ matrix.psql }}
+    - run: brew services start ${{ matrix.psql }}
     - run: sleep 4 # give the server a chance to settle
     - run: createuser -d -l -s vapor_username
     - run: createdb -O vapor_username vapor_database
     - uses: actions/checkout@v2
     - run: swift test --enable-test-discovery --sanitize=thread
-    - run: brew services stop postgresql@${{ matrix.psql }}
+    - run: brew services stop ${{ matrix.psql }}
   fluent-postgres-driver_ubuntu:
     strategy:
       fail-fast: false
