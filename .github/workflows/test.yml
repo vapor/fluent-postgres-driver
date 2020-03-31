@@ -14,6 +14,8 @@ jobs:
     - run: brew install postgresql@${{ matrix.psql }}
       continue-on-error: true
     - run: brew link -f --overwrite postgresql@${{ matrix.psql }}
+    - run: brew reinstall postgreqsql@${{ matrix.psql }}
+    - run: brew postinstall postgresql@${{ matrix.psql }}
     - run: brew services start postgresql@${{ matrix.psql }}
     - run: sleep 4 # give the server a chance to settle
     - run: createuser -d -l -s vapor_username
