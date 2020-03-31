@@ -12,7 +12,7 @@ jobs:
     - run: sudo xcode-select -s /Applications/Xcode_11.4.app/Contents/Developer
     - run: brew unlink libpq
     - run: brew install postgresql@${{ matrix.psql }}
-    - run: brew link -f postgresql@${{ matrix.psql }}
+    - run: brew link -f --overwrite postgresql@${{ matrix.psql }}
     - run: brew services start postgresql@${{ matrix.psql }}
     - run: sleep 4 # give the server a chance to settle
     - run: createuser -d -l -s vapor_username
