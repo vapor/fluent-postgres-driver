@@ -2,30 +2,38 @@ name: test
 on:
 - pull_request
 jobs:
-  fluent-postgres-driver_xenial:
-    container: 
-      image: vapor/swift:5.2-xenial
-    services:
-      psql:
-        image: postgres
-        ports:
-          - 5432:5432
-        env:
-          POSTGRES_USER: vapor_username
-          POSTGRES_DB: vapor_database
-          POSTGRES_PASSWORD: vapor_password
-    runs-on: ubuntu-latest
+  fluent-postgres-driver_macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        psql: ['postgresql@11', 'postgresql@12']
+    runs-on: macos-latest
     steps:
-    - uses: actions/checkout@v1
+    - run: sudo xcode-select -s /Applications/Xcode_11.4.app/Contents/Developer
+    - run: brew unlink libpq
+    - run: brew install ${{ matrix.psql }}
+      continue-on-error: true
+    - run: brew link -f --overwrite ${{ matrix.psql }}
+    - run: brew reinstall ${{ matrix.psql }}
+    - run: brew postinstall ${{ matrix.psql }}
+    - run: brew services start ${{ matrix.psql }}
+    - run: sleep 4 # give the server a chance to settle
+    - run: createuser -d -l -s vapor_username
+    - run: createdb -O vapor_username vapor_database
+    - uses: actions/checkout@v2
     - run: swift test --enable-test-discovery --sanitize=thread
-      env:
-        POSTGRES_HOSTNAME: psql
-  fluent-postgres-driver_bionic:
+    - run: brew services stop ${{ matrix.psql }}
+  fluent-postgres-driver_ubuntu:
+    strategy:
+      fail-fast: false
+      matrix:
+        psql: ['11', '11-alpine', '12', '12-alpine']
+        base: ['xenial', 'bionic']
     container: 
-      image: vapor/swift:5.2-bionic
+      image: vapor/swift:5.2-${{ matrix.base }}-ci
     services:
       psql:
-        image: postgres
+        image: postgres:${{ matrix.psql }}
         ports:
           - 5432:5432
         env:
@@ -34,7 +42,7 @@ jobs:
           POSTGRES_PASSWORD: vapor_password
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
     - run: swift test --enable-test-discovery --sanitize=thread
       env:
         POSTGRES_HOSTNAME: psql
