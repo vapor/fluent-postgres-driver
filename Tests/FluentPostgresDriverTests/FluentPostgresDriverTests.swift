@@ -132,11 +132,13 @@ final class FluentPostgresDriverTests: XCTestCase {
             hostname: hostname,
             username: "vapor_username",
             password: "vapor_password",
-            database: "vapor_database",
+            database: "vapor_database"
+        )
+        self.dbs.use(.postgres(
+            configuration: configuration,
             encoder: PostgresDataEncoder(json: jsonEncoder),
             decoder: PostgresDataDecoder(json: jsonDecoder)
-        )
-        self.dbs.use(.postgres(configuration: configuration), as: .iso8601)
+        ), as: .iso8601)
         let db = self.dbs.database(
             .iso8601,
             logger: .init(label: "test"),
