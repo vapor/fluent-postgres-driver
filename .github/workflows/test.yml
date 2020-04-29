@@ -20,7 +20,8 @@ jobs:
     - run: brew uninstall --force libpq postgresql@11 postgresql@12 php
     - run: brew install ${{ matrix.psql }}
     - run: brew link --force ${{ matrix.psql }}
-    - run: rm -rf "/usr/local/var/${{ matrix.dbroot }}"
+    - run: find "${{ matrix.dbroot }}" -depth 1 -delete
+      working-directory: /usr/local/var
     - run: mkdir -p /usr/local/var/log "/usr/local/var/${{ matrix.dbroot }}"
     - run: initdb --locale=C -E UTF-8 "/usr/local/var/${{ matrix.dbroot }}"
     - run: brew services start ${{ matrix.psql }}
