@@ -20,7 +20,7 @@ jobs:
     - run: brew uninstall --force libpq postgresql@11 postgresql@12 php
     - run: brew install ${{ matrix.psql }}
     - run: brew link --force ${{ matrix.psql }}
-    - run: bash -c '[[ -d "${{ matrix.dbroot }}" ]] && mv "${{ matrix.dbroot }}" /usr/local/var/.outta-the-way'
+    - run: bash -c '[[ -d "${{ matrix.dbroot }}" ]] && mv "${{ matrix.dbroot }}" /usr/local/var/.outta-the-way || true'
     - run: mkdir -p /usr/local/var/log "${{ matrix.dbroot }}"
     - run: initdb --locale=C -E UTF-8 "${{ matrix.dbroot }}"
     - run: brew services start ${{ matrix.psql }}
@@ -28,6 +28,7 @@ jobs:
     - run: find /tmp -type s # CI debug
     - run: brew services list # CI debug
     - run: tail /usr/local/var/log/postgresql*.log # CI debug
+      continue-on-error: true
     - run: which createuser # CI debug
     - run: createuser -d -l -s vapor_username
     - run: createdb -O vapor_username vapor_database
