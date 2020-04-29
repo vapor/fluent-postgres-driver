@@ -12,6 +12,7 @@ jobs:
     - run: sudo xcode-select -s /Applications/Xcode_11.4.app/Contents/Developer
     - run: brew uninstall --force libpq postgresql@11 postgresql@12 php
     - run: brew install ${{ matrix.psql }}
+    - run: brew link --force ${{ matrix.psql }}
     - run: brew services start ${{ matrix.psql }}
     - run: sleep 4 # give the server a chance to settle
     - run: find /tmp -type s # CI debug
