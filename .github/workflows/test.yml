@@ -20,7 +20,8 @@ jobs:
     - run: brew uninstall --force libpq postgresql@11 postgresql@12 php
     - run: brew install ${{ matrix.psql }}
     - run: brew link --force ${{ matrix.psql }}
-    - run: mkdir -p /usr/local/var/log /usr/local/var/${{ matrix.dbroot }}
+    - run: rm -rf "/usr/local/var/${{ matrix.dbroot }}"
+    - run: mkdir -p /usr/local/var/log "/usr/local/var/${{ matrix.dbroot }}"
     - run: initdb --locale=C -E UTF-8 "/usr/local/var/${{ matrix.dbroot }}"
     - run: brew services start ${{ matrix.psql }}
     - run: sleep 4 # give the server a chance to settle
