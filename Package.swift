@@ -11,7 +11,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/vapor/fluent-kit.git", from: "1.0.0-rc.1"),
-        .package(url: "https://github.com/vapor/postgres-kit.git", from: "2.0.0-rc.1"),
+        .package(url: "https://github.com/vapor/postgres-kit.git", from: "2.0.0"),
     ],
     targets: [
         .target(name: "FluentPostgresDriver", dependencies: [
