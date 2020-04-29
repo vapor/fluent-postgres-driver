@@ -7,12 +7,21 @@ jobs:
       fail-fast: false
       matrix:
         psql: ['postgresql@11', 'postgresql@12']
+        include:
+          # For arcane reasons of supposed forward compatibility, the formulae for
+          # PostgreSQL are totally inconsistent in their data directory names.
+          - psql: 'postgresql@11'
+            dbroot: 'postgresql@11'
+          - psql: 'postgresql@12'
+            dbroot: 'postgres'
     runs-on: macos-latest
     steps:
     - run: sudo xcode-select -s /Applications/Xcode_11.4.app/Contents/Developer
     - run: brew uninstall --force libpq postgresql@11 postgresql@12 php
     - run: brew install ${{ matrix.psql }}
     - run: brew link --force ${{ matrix.psql }}
+    - run: mkdir -p /usr/local/var/log /usr/local/var/${{ matrix.dbroot }}
+    - run: initdb --locale=C -E UTF-8 "/usr/local/var/${{ matrix.dbroot }}"
     - run: brew services start ${{ matrix.psql }}
     - run: sleep 4 # give the server a chance to settle
     - run: find /tmp -type s # CI debug
