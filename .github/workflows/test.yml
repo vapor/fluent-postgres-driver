@@ -8,8 +8,7 @@ jobs:
       matrix:
         psql: ['postgresql@11', 'postgresql@12']
         include:
-          # For arcane reasons of supposed forward compatibility, the formulae for
-          # PostgreSQL are totally inconsistent in their data directory names.
+          # The PostgreSQL formulas don't use a consistent data dir
           - psql: 'postgresql@11'
             dbroot: '/usr/local/var/postgresql@11'
           - psql: 'postgresql@12'
@@ -25,11 +24,6 @@ jobs:
     - run: initdb --locale=C -E UTF-8 "${{ matrix.dbroot }}"
     - run: brew services start ${{ matrix.psql }}
     - run: sleep 4 # give the server a chance to settle
-    - run: find /tmp -type s # CI debug
-    - run: brew services list # CI debug
-    - run: tail /usr/local/var/log/postgresql*.log # CI debug
-      continue-on-error: true
-    - run: which createuser # CI debug
     - run: createuser -d -l -s vapor_username
     - run: createdb -O vapor_username vapor_database
     - uses: actions/checkout@v2
