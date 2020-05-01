@@ -7,15 +7,21 @@ jobs:
       fail-fast: false
       matrix:
         psql: ['postgresql@11', 'postgresql@12']
+        include:
+          # The PostgreSQL formulas don't use a consistent data dir
+          - psql: 'postgresql@11'
+            dbroot: '/usr/local/var/postgresql@11'
+          - psql: 'postgresql@12'
+            dbroot: '/usr/local/var/postgres'
     runs-on: macos-latest
     steps:
     - run: sudo xcode-select -s /Applications/Xcode_11.4.app/Contents/Developer
-    - run: brew unlink libpq
+    - run: brew uninstall --force libpq postgresql@11 postgresql@12 php
     - run: brew install ${{ matrix.psql }}
-      continue-on-error: true
-    - run: brew link -f --overwrite ${{ matrix.psql }}
-    - run: brew reinstall ${{ matrix.psql }}
-    - run: brew postinstall ${{ matrix.psql }}
+    - run: brew link --force ${{ matrix.psql }}
+    - run: bash -c '[[ -d "${{ matrix.dbroot }}" ]] && mv "${{ matrix.dbroot }}" /usr/local/var/.outta-the-way || true'
+    - run: mkdir -p /usr/local/var/log "${{ matrix.dbroot }}"
+    - run: initdb --locale=C -E UTF-8 "${{ matrix.dbroot }}"
     - run: brew services start ${{ matrix.psql }}
     - run: sleep 4 # give the server a chance to settle
     - run: createuser -d -l -s vapor_username
