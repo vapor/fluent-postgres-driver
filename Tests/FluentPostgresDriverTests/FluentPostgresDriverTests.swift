@@ -158,7 +158,7 @@ final class FluentPostgresDriverTests: XCTestCase {
 
     
     var benchmarker: FluentBenchmarker {
-        return .init(databases: self.dbs)
+        return .init(databases: self.dbs, (.benchmark1, .benchmark2))
     }
     var eventLoopGroup: EventLoopGroup!
     var threadPool: NIOThreadPool!
@@ -173,21 +173,61 @@ final class FluentPostgresDriverTests: XCTestCase {
     override func setUpWithError() throws {
         try super.setUpWithError()
         
-        let configuration = PostgresConfiguration(
+        let defaultConfig = PostgresConfiguration(
             hostname: hostname,
             username: "vapor_username",
             password: "vapor_password",
             database: "vapor_database"
         )
+
+        let config1 = PostgresConfiguration(
+            hostname: hostname,
+            username: "vapor_username",
+            password: "vapor_password",
+            database: "vapor_benchmark1"
+        )
+
+        let config2 = PostgresConfiguration(
+            hostname: hostname,
+            username: "vapor_username",
+            password: "vapor_password",
+            database: "vapor_benchmark2"
+        )
+
         XCTAssert(isLoggingConfigured)
         self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         self.threadPool = NIOThreadPool(numberOfThreads: 1)
         self.dbs = Databases(threadPool: threadPool, on: self.eventLoopGroup)
-        self.dbs.use(.postgres(configuration: configuration), as: .psql)
+
+        self.dbs.use(.postgres(configuration: defaultConfig), as: .psql)
+        self.dbs.use(.postgres(configuration: config1), as: .benchmark1)
+        self.dbs.use(.postgres(configuration: config2), as: .benchmark2)
 
         // reset the database
+        let database1 = try XCTUnwrap(
+            self.benchmarker.databases.database(
+                .benchmark1,
+                logger: Logger(label: "com.test.benchmark1"),
+                on: self.eventLoopGroup.next()
+            ) as? PostgresDatabase
+        )
+
+        let database2 = try XCTUnwrap(
+            self.benchmarker.databases.database(
+                .benchmark2,
+                logger: Logger(label: "com.test.benchmark2"),
+                on: self.eventLoopGroup.next()
+            ) as? PostgresDatabase
+        )
+
         _ = try self.postgres.query("drop schema public cascade").wait()
         _ = try self.postgres.query("create schema public").wait()
+
+        _ = try database1.query("drop schema public cascade").wait()
+        _ = try database1.query("create schema public").wait()
+
+        _ = try database2.query("drop schema public cascade").wait()
+        _ = try database2.query("create schema public").wait()
     }
 
     override func tearDownWithError() throws {
@@ -199,9 +239,9 @@ final class FluentPostgresDriverTests: XCTestCase {
 }
 
 extension DatabaseID {
-    static var iso8601: Self {
-        .init(string: "iso8601")
-    }
+    static let iso8601 = DatabaseID(string: "iso8601")
+    static let benchmark1 = DatabaseID(string: "benchmark1")
+    static let benchmark2 = DatabaseID(string: "benchmark2")
 }
 
 var hostname: String {
