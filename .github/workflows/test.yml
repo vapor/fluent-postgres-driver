@@ -51,8 +51,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - run: createdb -O vapor_username vapor_benchmark1
-    - run: createdb -O vapor_username vapor_benchmark2
     - run: swift test --enable-test-discovery --sanitize=thread
       env:
         POSTGRES_HOSTNAME: psql
