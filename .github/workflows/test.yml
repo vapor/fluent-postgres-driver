@@ -26,6 +26,8 @@ jobs:
     - run: sleep 4 # give the server a chance to settle
     - run: createuser -d -l -s vapor_username
     - run: createdb -O vapor_username vapor_database
+    - run: createdb -O vapor_username vapor_benchmark1
+    - run: createdb -O vapor_username vapor_benchmark2
     - uses: actions/checkout@v2
     - run: swift test --enable-test-discovery --sanitize=thread
     - run: brew services stop ${{ matrix.psql }}
@@ -49,6 +51,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+    - run: createdb -O vapor_username vapor_benchmark1
+    - run: createdb -O vapor_username vapor_benchmark2
     - run: swift test --enable-test-discovery --sanitize=thread
       env:
         POSTGRES_HOSTNAME: psql
