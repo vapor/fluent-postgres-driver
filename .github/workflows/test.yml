@@ -51,6 +51,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+    - run: |
+        apt-get -q update
+        apt-get -q install -y postgresql-${{ matrix.psql }}
+      name: Install Postgres Client
+    - run: sleep 4
+      name: Wait for Database to Settle
+    - run: |
+        createdb -O vapor_username vapor_benchmark1 
+        createdb -O vapor_username vapor_benchmark2
+      name: Create Databases
     - run: swift test --enable-test-discovery --sanitize=thread
+      name: Swift Test
       env:
         POSTGRES_HOSTNAME: psql
