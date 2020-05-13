@@ -59,7 +59,7 @@ jobs:
         apt-get -q update
         apt-get -q install -y postgresql-client-12
       name: Install Postgres Client
-    - run: sleep 4
+    - run: until echo | psql -c "SELECT 1"; do sleep 1; done;
       name: Wait for Database to Settle
     - run: |
         createdb -O vapor_username vapor_benchmark1 
