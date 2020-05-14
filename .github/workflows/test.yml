@@ -59,7 +59,7 @@ jobs:
         apt-get -q update
         apt-get -q install -y postgresql-client-12
       name: Install Postgres Client
-    - run: until echo | psql --host=$POSTGRES_HOSTNAME --username=vapor_username -c "SELECT 1"; do sleep 1; done;
+    - run: until echo | psql --host=$POSTGRES_HOSTNAME --dbname=vapor_database --username=vapor_username -c "SELECT 1"; do sleep 1; done;
       name: Wait for Database to Settle
       env:
         POSTGRES_HOSTNAME: psql
