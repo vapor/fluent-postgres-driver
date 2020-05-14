@@ -16,7 +16,8 @@ struct _FluentPostgresDriver: DatabaseDriver {
             database: self.pool.pool(for: context.eventLoop).database(logger: context.logger),
             context: context,
             encoder: self.encoder,
-            decoder: self.decoder
+            decoder: self.decoder,
+            inTransaction: false
         )
     }
     
