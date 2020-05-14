@@ -59,16 +59,18 @@ jobs:
         apt-get -q update
         apt-get -q install -y postgresql-client-12
       name: Install Postgres Client
-    - run: until echo | psql --host=$POSTGRES_HOSTNAME --username=vapor_username --password=vapor_password -c "SELECT 1"; do sleep 1; done;
+    - run: until echo | psql --host=$POSTGRES_HOSTNAME --username=vapor_username -c "SELECT 1"; do sleep 1; done;
       name: Wait for Database to Settle
       env:
         POSTGRES_HOSTNAME: psql
+        PGPASSWORD: vapor_password
     - run: |
-        createdb --host=$POSTGRES_HOSTNAME --username=vapor_username --password=vapor_password -O vapor_username vapor_benchmark1 
-        createdb --host=$POSTGRES_HOSTNAME --username=vapor_username --password=vapor_password -O vapor_username vapor_benchmark2
+        createdb --host=$POSTGRES_HOSTNAME --username=vapor_username -O vapor_username vapor_benchmark1 
+        createdb --host=$POSTGRES_HOSTNAME --username=vapor_username -O vapor_username vapor_benchmark2
       name: Create Databases
       env:
         POSTGRES_HOSTNAME: psql
+        PGPASSWORD: vapor_password
     - run: swift test --enable-test-discovery --sanitize=thread
       name: Swift Test
       env:
