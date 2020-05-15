@@ -158,7 +158,7 @@ final class FluentPostgresDriverTests: XCTestCase {
 
     
     var benchmarker: FluentBenchmarker {
-        return .init(databases: self.dbs, (.benchmark1, .benchmark2))
+        return .init(databases: self.dbs)
     }
     var eventLoopGroup: EventLoopGroup!
     var threadPool: NIOThreadPool!
@@ -287,10 +287,14 @@ struct EventMigration: Migration {
     }
 }
 
+func env(_ name: String) -> String? {
+    return ProcessInfo.processInfo.environment[name]
+}
+
 let isLoggingConfigured: Bool = {
     LoggingSystem.bootstrap { label in
         var handler = StreamLogHandler.standardOutput(label: label)
-        handler.logLevel = .debug
+        handler.logLevel = env("LOG_LEVEL").flatMap { Logger.Level(rawValue: $0) } ?? .debug
         return handler
     }
     return true
