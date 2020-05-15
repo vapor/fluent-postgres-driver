@@ -37,7 +37,7 @@ jobs:
         timeout-minutes: 5
       - name: Set up Postgres databases and privileges
         run: |
-          for db in vapor_benchmark{1,2}; do createdb -hpostgres -Uvapor_username -Ovapor_username $db; done
+          for db in vapor_migration_extra; do createdb -hpostgres -Uvapor_username -Ovapor_username $db; done
       - name: Check out code
         uses: actions/checkout@v2
       - name: Run tests with Thread Sanitizer
@@ -47,7 +47,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        formula: ['postgresql@11', 'postgresql@12']
         include: 
           - {'formula': 'postgresql@11', 'datadir': 'postgresql@11'}
           - {'formula': 'postgresql@12', 'datadir': 'postgres'}
@@ -66,13 +65,13 @@ jobs:
       - name: Start Postgres server
         run: brew services start ${{ matrix.formula }}
       - name: Wait for Postgres server to be ready
-        run: until echo | psql -U$USER postgres; do sleep 1; done
+        run: until echo | psql postgres; do sleep 1; done
         timeout-minutes: 5
       - name: Set up Postgres databases and privileges
         run: |
-          createuser -U$USER --createdb --login vapor_username
-          for db in vapor_{database,benchmark{1,2}}; do
-            createdb -U$USER -Ovapor_username $db && psql $db <<<"ALTER SCHEMA public TO vapor_username;"
+          createuser --createdb --login vapor_username
+          for db in vapor_{database,migration_extra}; do
+            createdb -Ovapor_username $db && psql $db <<<"ALTER SCHEMA public OWNER TO vapor_username;"
           done
       - name: Check out code
         uses: actions/checkout@v2

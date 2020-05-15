@@ -180,18 +180,11 @@ final class FluentPostgresDriverTests: XCTestCase {
             database: "vapor_database"
         )
 
-        let config1 = PostgresConfiguration(
+        let migrationExtraConfig = PostgresConfiguration(
             hostname: hostname,
             username: "vapor_username",
             password: "vapor_password",
-            database: "vapor_benchmark1"
-        )
-
-        let config2 = PostgresConfiguration(
-            hostname: hostname,
-            username: "vapor_username",
-            password: "vapor_password",
-            database: "vapor_benchmark2"
+            database: "vapor_migration_extra"
         )
 
         XCTAssert(isLoggingConfigured)
@@ -200,22 +193,13 @@ final class FluentPostgresDriverTests: XCTestCase {
         self.dbs = Databases(threadPool: threadPool, on: self.eventLoopGroup)
 
         self.dbs.use(.postgres(configuration: defaultConfig), as: .psql)
-        self.dbs.use(.postgres(configuration: config1), as: .benchmark1)
-        self.dbs.use(.postgres(configuration: config2), as: .benchmark2)
+        self.dbs.use(.postgres(configuration: migrationExtraConfig), as: .migrationExtra)
 
         // reset the database
-        let database1 = try XCTUnwrap(
+        let databaseExtra = try XCTUnwrap(
             self.benchmarker.databases.database(
-                .benchmark1,
-                logger: Logger(label: "com.test.benchmark1"),
-                on: self.eventLoopGroup.next()
-            ) as? PostgresDatabase
-        )
-
-        let database2 = try XCTUnwrap(
-            self.benchmarker.databases.database(
-                .benchmark2,
-                logger: Logger(label: "com.test.benchmark2"),
+                .migrationExtra,
+                logger: Logger(label: "com.test.migration_extra"),
                 on: self.eventLoopGroup.next()
             ) as? PostgresDatabase
         )
@@ -223,11 +207,8 @@ final class FluentPostgresDriverTests: XCTestCase {
         _ = try self.postgres.query("drop schema public cascade").wait()
         _ = try self.postgres.query("create schema public").wait()
 
-        _ = try database1.query("drop schema public cascade").wait()
-        _ = try database1.query("create schema public").wait()
-
-        _ = try database2.query("drop schema public cascade").wait()
-        _ = try database2.query("create schema public").wait()
+        _ = try databaseExtra.query("drop schema public cascade").wait()
+        _ = try databaseExtra.query("create schema public").wait()
     }
 
     override func tearDownWithError() throws {
@@ -240,8 +221,7 @@ final class FluentPostgresDriverTests: XCTestCase {
 
 extension DatabaseID {
     static let iso8601 = DatabaseID(string: "iso8601")
-    static let benchmark1 = DatabaseID(string: "benchmark1")
-    static let benchmark2 = DatabaseID(string: "benchmark2")
+    static let migrationExtra = DatabaseID(string: "migration_extra")
 }
 
 var hostname: String {
