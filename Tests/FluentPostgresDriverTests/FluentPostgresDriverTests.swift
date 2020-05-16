@@ -10,6 +10,7 @@ final class FluentPostgresDriverTests: XCTestCase {
     func testBatch() throws { try self.benchmarker.testBatch() }
     func testChildren() throws { try self.benchmarker.testChildren() }
     func testChunk() throws { try self.benchmarker.testChunk() }
+    func testCodable() throws { try self.benchmarker.testCodable() }
     func testCRUD() throws { try self.benchmarker.testCRUD() }
     func testEagerLoad() throws { try self.benchmarker.testEagerLoad() }
     func testEnum() throws { try self.benchmarker.testEnum() }
@@ -25,6 +26,7 @@ final class FluentPostgresDriverTests: XCTestCase {
     func testParent() throws { try self.benchmarker.testParent() }
     func testPerformance() throws { try self.benchmarker.testPerformance() }
     func testRange() throws { try self.benchmarker.testRange() }
+    func testSchema() throws { try self.benchmarker.testSchema() }
     func testSet() throws { try self.benchmarker.testSet() }
     func testSiblings() throws { try self.benchmarker.testSiblings() }
     func testSoftDelete() throws { try self.benchmarker.testSoftDelete() }
