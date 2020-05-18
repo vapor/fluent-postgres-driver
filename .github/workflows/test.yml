@@ -79,10 +79,13 @@ jobs:
       - name: Set up Postgres databases and privileges
         run: |
           createuser --createdb --login vapor_username
-          for db in vapor_{database,migration_extra}; do
+          for db in vapor_{database_a,database_b}; do
             createdb -Ovapor_username $db && psql $db <<<"ALTER SCHEMA public OWNER TO vapor_username;"
           done
       - name: Check out code
         uses: actions/checkout@v2
       - name: Run tests with Thread Sanitizer
         run: swift test --enable-test-discovery --sanitize=thread
+        env: 
+          DB_A_NAME: vapor_database_a
+          DB_B_NAME: vapor_database_b

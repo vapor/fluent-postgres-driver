@@ -180,14 +180,14 @@ final class FluentPostgresDriverTests: XCTestCase {
             port: env("DB_A_PORT").flatMap(Int.init) ?? 5432,
             username: "vapor_username",
             password: "vapor_password",
-            database: "vapor_database"
+            database: env("DB_A_NAME") ?? "vapor_database"
         )
         let bConfig = PostgresConfiguration(
             hostname: env("DB_B_HOSTNAME") ?? "localhost",
             port: env("DB_B_PORT").flatMap(Int.init) ?? 5432,
             username: "vapor_username",
             password: "vapor_password",
-            database: "vapor_database"
+            database: env("DB_B_NAME") ?? "vapor_database"
         )
         XCTAssert(isLoggingConfigured)
         self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
