@@ -1,27 +1,30 @@
 name: Test Matrix
-on: ['pull_request']
-defaults:
-  run:
-    shell: bash
+on:
+  - pull_request
 jobs:
   linux:
     strategy:
       fail-fast: false
       matrix:
-        dbimage: ['postgres:11', 'postgres:12']
-        runner: [
-          'swift:5.2-xenial', 'swift:5.2-bionic',
-          'swiftlang/swift:nightly-5.2-xenial', 'swiftlang/swift:nightly-5.2-bionic',
-          'swiftlang/swift:nightly-5.3-xenial', 'swiftlang/swift:nightly-5.3-bionic',
-          'swiftlang/swift:nightly-master-xenial', 'swiftlang/swift:nightly-master-bionic',
-          'swiftlang/swift:nightly-master-focal',
-          'swiftlang/swift:nightly-master-centos8',
-          'swiftlang/swift:nightly-master-amazonlinux2'
-        ]
-        include:
-          - installcmd: 'apt-get -q update && apt-get -q install -y postgresql-client'
-          - { 'runner': 'swiftlang/swift:nightly-master-centos8', 'installcmd': 'dnf install -y zlib-devel postgresql' }
-          - { 'runner': 'swiftlang/swift:nightly-master-amazonlinux2', 'installcmd': 'yum install -y zlib-devel postgresql' }
+        dbimage: 
+          - postgres:11
+          - postgres:12
+        runner:
+          # 5.2 Stable
+          - swift:5.2-xenial
+          - swift:5.2-bionic
+          # 5.2 Unstable
+          - swiftlang/swift:nightly-5.2-xenial
+          - swiftlang/swift:nightly-5.2-bionic
+          # 5.3 Unstable
+          - swiftlang/swift:nightly-5.3-xenial
+          - swiftlang/swift:nightly-5.3-bionic
+          # Master Unsable
+          - swiftlang/swift:nightly-master-xenial
+          - swiftlang/swift:nightly-master-bionic
+          - swiftlang/swift:nightly-master-focal
+          - swiftlang/swift:nightly-master-centos8
+          - swiftlang/swift:nightly-master-amazonlinux2
     container: ${{ matrix.runner }}
     runs-on: ubuntu-latest
     services:
