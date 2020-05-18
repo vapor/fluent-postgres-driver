@@ -53,14 +53,18 @@ jobs:
       fail-fast: false
       matrix:
         include: 
-          - {'formula': 'postgresql@11', 'datadir': 'postgresql@11'}
-          - {'formula': 'postgresql@12', 'datadir': 'postgres'}
+          - formula: postgresql@11
+            datadir: postgresql@11
+          - formula: postgresql@12
+            datadir: postgres
     runs-on: macos-latest
-    env: { 'PGPASSWORD': 'vapor_password' }
+    env: 
+      PGPASSWORD: vapor_password
     steps:
       - name: Select latest available Xcode
         uses: maxim-lobanov/setup-xcode@1.0
-        with: { 'xcode-version': 'latest' }
+        with:
+          xcode-version: latest
       - name: Blow away the default Postgres installation
         run: brew uninstall --force postgresql php && rm -rf /usr/local/{etc,var}/{postgres,pg}*
       - name: Install Postgres server from Homebrew
