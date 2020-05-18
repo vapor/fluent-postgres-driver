@@ -173,21 +173,42 @@ final class FluentPostgresDriverTests: XCTestCase {
     override func setUpWithError() throws {
         try super.setUpWithError()
         
-        let configuration = PostgresConfiguration(
+        let defaultConfig = PostgresConfiguration(
             hostname: hostname,
             username: "vapor_username",
             password: "vapor_password",
             database: "vapor_database"
         )
+
+        let migrationExtraConfig = PostgresConfiguration(
+            hostname: hostname,
+            username: "vapor_username",
+            password: "vapor_password",
+            database: "vapor_migration_extra"
+        )
+
         XCTAssert(isLoggingConfigured)
         self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         self.threadPool = NIOThreadPool(numberOfThreads: 1)
         self.dbs = Databases(threadPool: threadPool, on: self.eventLoopGroup)
-        self.dbs.use(.postgres(configuration: configuration), as: .psql)
+
+        self.dbs.use(.postgres(configuration: defaultConfig), as: .psql)
+        self.dbs.use(.postgres(configuration: migrationExtraConfig), as: .migrationExtra)
 
         // reset the database
+        let databaseExtra = try XCTUnwrap(
+            self.benchmarker.databases.database(
+                .migrationExtra,
+                logger: Logger(label: "com.test.migration_extra"),
+                on: self.eventLoopGroup.next()
+            ) as? PostgresDatabase
+        )
+
         _ = try self.postgres.query("drop schema public cascade").wait()
         _ = try self.postgres.query("create schema public").wait()
+
+        _ = try databaseExtra.query("drop schema public cascade").wait()
+        _ = try databaseExtra.query("create schema public").wait()
     }
 
     override func tearDownWithError() throws {
@@ -199,9 +220,8 @@ final class FluentPostgresDriverTests: XCTestCase {
 }
 
 extension DatabaseID {
-    static var iso8601: Self {
-        .init(string: "iso8601")
-    }
+    static let iso8601 = DatabaseID(string: "iso8601")
+    static let migrationExtra = DatabaseID(string: "migration_extra")
 }
 
 var hostname: String {
@@ -247,10 +267,14 @@ struct EventMigration: Migration {
     }
 }
 
+func env(_ name: String) -> String? {
+    return ProcessInfo.processInfo.environment[name]
+}
+
 let isLoggingConfigured: Bool = {
     LoggingSystem.bootstrap { label in
         var handler = StreamLogHandler.standardOutput(label: label)
-        handler.logLevel = .debug
+        handler.logLevel = env("LOG_LEVEL").flatMap { Logger.Level(rawValue: $0) } ?? .debug
         return handler
     }
     return true
