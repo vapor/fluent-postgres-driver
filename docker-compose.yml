@@ -1,13 +1,7 @@
 version: '3'
 
 services:
-  test:
-    build: 
-      context: .
-      dockerfile: test.Dockerfile
-    depends_on: 
-      - psql-10
-  psql-11:
+  psql-11-a:
     image: postgres:11
     environment:
       POSTGRES_USER: vapor_username
@@ -15,6 +9,14 @@ services:
       POSTGRES_PASSWORD: vapor_password
     ports:
       - 5432:5432
+  psql-11-b:
+    image: postgres:11
+    environment:
+      POSTGRES_USER: vapor_username
+      POSTGRES_DB: vapor_database
+      POSTGRES_PASSWORD: vapor_password
+    ports:
+      - 5433:5432
   psql-10:
     image: postgres:10
     environment:

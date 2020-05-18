@@ -4,7 +4,7 @@ defaults:
   run:
     shell: bash
 jobs:
-  PR-tests-linux:
+  linux:
     strategy:
       fail-fast: false
       matrix:
@@ -25,25 +25,27 @@ jobs:
     container: ${{ matrix.runner }}
     runs-on: ubuntu-latest
     services:
-      postgres:
+      db-a:
         image: ${{ matrix.dbimage }}
-        env: { POSTGRES_USER: vapor_username, POSTGRES_PASSWORD: vapor_password, POSTGRES_DB: vapor_database }
-    env: { 'PGPASSWORD': 'vapor_password' }
+        env:
+          POSTGRES_USER: vapor_username
+          POSTGRES_PASSWORD: vapor_password
+          POSTGRES_DB: vapor_database
+      db-b:
+        image: ${{ matrix.dbimage }}
+        env:
+          POSTGRES_USER: vapor_username
+          POSTGRES_PASSWORD: vapor_password
+          POSTGRES_DB: vapor_database
     steps:
-      - name: Install dependencies
-        run: ${{ matrix.installcmd }}
-      - name: Wait for Postgres server to be ready
-        run: until echo | psql -hpostgres -Uvapor_username vapor_database; do sleep 1; done
-        timeout-minutes: 5
-      - name: Set up Postgres databases and privileges
-        run: |
-          for db in vapor_migration_extra; do createdb -hpostgres -Uvapor_username -Ovapor_username $db; done
       - name: Check out code
         uses: actions/checkout@v2
       - name: Run tests with Thread Sanitizer
         run: swift test --enable-test-discovery --sanitize=thread
-        env: { 'POSTGRES_HOSTNAME': 'postgres' }
-  PR-tests-macos:
+        env: 
+          DB_A_HOSTNAME: db-a
+          DB_B_HOSTNAME: db-b
+  macos:
     strategy:
       fail-fast: false
       matrix:
