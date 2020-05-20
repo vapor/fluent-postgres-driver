@@ -3,7 +3,8 @@ extension DatabaseConfigurationFactory {
         url urlString: String,
         maxConnectionsPerEventLoop: Int = 1,
         encoder: PostgresDataEncoder = .init(),
-        decoder: PostgresDataDecoder = .init()
+        decoder: PostgresDataDecoder = .init(),
+        tlsConfiguration: TLSConfiguration? = nil
     ) throws -> DatabaseConfigurationFactory {
         guard let url = URL(string: urlString) else {
             throw FluentPostgresError.invalidURL(urlString)
@@ -20,10 +21,14 @@ extension DatabaseConfigurationFactory {
         url: URL,
         maxConnectionsPerEventLoop: Int = 1,
         encoder: PostgresDataEncoder = .init(),
-        decoder: PostgresDataDecoder = .init()
+        decoder: PostgresDataDecoder = .init(),
+        tlsConfiguration: TLSConfiguration? = nil
     ) throws -> DatabaseConfigurationFactory {
-        guard let configuration = PostgresConfiguration(url: url) else {
+        guard var configuration = PostgresConfiguration(url: url) else {
             throw FluentPostgresError.invalidURL(url.absoluteString)
+        }
+        if let tlsConfiguration = tlsConfiguration {
+            configuration.tlsConfiguration = tlsConfiguration
         }
         return .postgres(
             configuration: configuration,
