@@ -28,13 +28,13 @@ jobs:
     container: ${{ matrix.runner }}
     runs-on: ubuntu-latest
     services:
-      db-a:
+      postgres-a:
         image: ${{ matrix.dbimage }}
         env:
           POSTGRES_USER: vapor_username
           POSTGRES_PASSWORD: vapor_password
           POSTGRES_DB: vapor_database
-      db-b:
+      postgres-b:
         image: ${{ matrix.dbimage }}
         env:
           POSTGRES_USER: vapor_username
@@ -46,8 +46,8 @@ jobs:
       - name: Run tests with Thread Sanitizer
         run: swift test --enable-test-discovery --sanitize=thread
         env: 
-          DB_A_HOSTNAME: db-a
-          DB_B_HOSTNAME: db-b
+          POSTGRES_HOSTNAME_A: postgres-a
+          POSTGRES_HOSTNAME_B: postgres-b
   macos:
     strategy:
       fail-fast: false
@@ -87,5 +87,5 @@ jobs:
       - name: Run tests with Thread Sanitizer
         run: swift test --enable-test-discovery --sanitize=thread
         env: 
-          DB_A_NAME: vapor_database_a
-          DB_B_NAME: vapor_database_b
+          POSTGRES_DATABASE_A: vapor_database_a
+          POSTGRES_DATABASE_B: vapor_database_b
