@@ -17,10 +17,6 @@ private struct _PostgresDatabaseOutput: DatabaseOutput {
         self.row.description
     }
 
-    func nested(_ key: FieldKey) throws -> DatabaseOutput {
-        fatalError("Nested decoding not yet supported.")
-    }
-
     func decodeNil(_ key: FieldKey) throws -> Bool {
         if let data = self.row.column(self.columnName(key)) {
             return data.type == .null
@@ -71,10 +67,6 @@ private struct _SchemaDatabaseOutput: DatabaseOutput {
 
     func schema(_ schema: String) -> DatabaseOutput {
         self.output.schema(schema)
-    }
-
-    func nested(_ key: FieldKey) throws -> DatabaseOutput {
-        try self.output.nested(self.key(key))
     }
 
     func contains(_ key: FieldKey) -> Bool {
