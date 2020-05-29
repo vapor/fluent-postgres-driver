@@ -10,6 +10,7 @@ final class FluentPostgresDriverTests: XCTestCase {
     func testBatch() throws { try self.benchmarker.testBatch() }
     func testChildren() throws { try self.benchmarker.testChildren() }
     func testChunk() throws { try self.benchmarker.testChunk() }
+    func testCodable() throws { try self.benchmarker.testCodable() }
     func testCRUD() throws { try self.benchmarker.testCRUD() }
     func testEagerLoad() throws { try self.benchmarker.testEagerLoad() }
     func testEnum() throws { try self.benchmarker.testEnum() }
@@ -25,6 +26,7 @@ final class FluentPostgresDriverTests: XCTestCase {
     func testParent() throws { try self.benchmarker.testParent() }
     func testPerformance() throws { try self.benchmarker.testPerformance() }
     func testRange() throws { try self.benchmarker.testRange() }
+    func testSchema() throws { try self.benchmarker.testSchema() }
     func testSet() throws { try self.benchmarker.testSet() }
     func testSiblings() throws { try self.benchmarker.testSiblings() }
     func testSoftDelete() throws { try self.benchmarker.testSoftDelete() }
@@ -129,10 +131,11 @@ final class FluentPostgresDriverTests: XCTestCase {
         jsonDecoder.dateDecodingStrategy = .iso8601
 
         let configuration = PostgresConfiguration(
-            hostname: hostname,
+            hostname: env("POSTGRES_HOSTNAME_A") ?? "localhost",
+            port: env("POSTGRES_PORT_A").flatMap(Int.init) ?? 5432,
             username: "vapor_username",
             password: "vapor_password",
-            database: "vapor_database"
+            database: env("POSTGRES_DATABASE_A") ?? "vapor_database"
         )
         self.dbs.use(.postgres(
             configuration: configuration,
@@ -173,42 +176,35 @@ final class FluentPostgresDriverTests: XCTestCase {
     override func setUpWithError() throws {
         try super.setUpWithError()
         
-        let defaultConfig = PostgresConfiguration(
-            hostname: hostname,
+        let aConfig = PostgresConfiguration(
+            hostname: env("POSTGRES_HOSTNAME_A") ?? "localhost",
+            port: env("POSTGRES_PORT_A").flatMap(Int.init) ?? 5432,
             username: "vapor_username",
             password: "vapor_password",
-            database: "vapor_database"
+            database: env("POSTGRES_DATABASE_A") ?? "vapor_database"
         )
-
-        let migrationExtraConfig = PostgresConfiguration(
-            hostname: hostname,
+        let bConfig = PostgresConfiguration(
+            hostname: env("POSTGRES_HOSTNAME_B") ?? "localhost",
+            port: env("POSTGRES_PORT_B").flatMap(Int.init) ?? 5432,
             username: "vapor_username",
             password: "vapor_password",
-            database: "vapor_migration_extra"
+            database: env("POSTGRES_DATABASE_B") ?? "vapor_database"
         )
-
         XCTAssert(isLoggingConfigured)
         self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         self.threadPool = NIOThreadPool(numberOfThreads: 1)
         self.dbs = Databases(threadPool: threadPool, on: self.eventLoopGroup)
 
-        self.dbs.use(.postgres(configuration: defaultConfig), as: .psql)
-        self.dbs.use(.postgres(configuration: migrationExtraConfig), as: .migrationExtra)
+        self.dbs.use(.postgres(configuration: aConfig), as: .a)
+        self.dbs.use(.postgres(configuration: bConfig), as: .b)
 
-        // reset the database
-        let databaseExtra = try XCTUnwrap(
-            self.benchmarker.databases.database(
-                .migrationExtra,
-                logger: Logger(label: "com.test.migration_extra"),
-                on: self.eventLoopGroup.next()
-            ) as? PostgresDatabase
-        )
+        let a = self.dbs.database(.a, logger: Logger(label: "test.fluent.a"), on: self.eventLoopGroup.next())
+        _ = try (a as! PostgresDatabase).query("drop schema public cascade").wait()
+        _ = try (a as! PostgresDatabase).query("create schema public").wait()
 
-        _ = try self.postgres.query("drop schema public cascade").wait()
-        _ = try self.postgres.query("create schema public").wait()
-
-        _ = try databaseExtra.query("drop schema public cascade").wait()
-        _ = try databaseExtra.query("create schema public").wait()
+        let b = self.dbs.database(.b, logger: Logger(label: "test.fluent.b"), on: self.eventLoopGroup.next())
+        _ = try (b as! PostgresDatabase).query("drop schema public cascade").wait()
+        _ = try (b as! PostgresDatabase).query("create schema public").wait()
     }
 
     override func tearDownWithError() throws {
@@ -221,13 +217,12 @@ final class FluentPostgresDriverTests: XCTestCase {
 
 extension DatabaseID {
     static let iso8601 = DatabaseID(string: "iso8601")
-    static let migrationExtra = DatabaseID(string: "migration_extra")
+    static let a = DatabaseID(string: "a")
+    static let b = DatabaseID(string: "b")
 }
 
-var hostname: String {
-    getenv("POSTGRES_HOSTNAME").flatMap {
-        String(cString: $0)
-    } ?? "localhost"
+func env(_ name: String) -> String? {
+    ProcessInfo.processInfo.environment[name]
 }
 
 struct Metadata: Codable {
@@ -265,10 +260,6 @@ struct EventMigration: Migration {
     func revert(on database: Database) -> EventLoopFuture<Void> {
         return database.schema(Event.schema).delete()
     }
-}
-
-func env(_ name: String) -> String? {
-    return ProcessInfo.processInfo.environment[name]
 }
 
 let isLoggingConfigured: Bool = {

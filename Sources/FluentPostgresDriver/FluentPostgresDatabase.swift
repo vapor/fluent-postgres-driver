@@ -3,9 +3,9 @@ import FluentSQL
 struct _FluentPostgresDatabase {
     let database: PostgresDatabase
     let context: DatabaseContext
-
     let encoder: PostgresDataEncoder
     let decoder: PostgresDataDecoder
+    let inTransaction: Bool
 }
 
 extension _FluentPostgresDatabase: Database {
@@ -72,13 +72,17 @@ extension _FluentPostgresDatabase: Database {
     }
 
     func transaction<T>(_ closure: @escaping (Database) -> EventLoopFuture<T>) -> EventLoopFuture<T> {
-        self.database.withConnection { conn in
+        guard !self.inTransaction else {
+            return closure(self)
+        }
+        return self.database.withConnection { conn in
             conn.simpleQuery("BEGIN").flatMap { _ in
                 let db = _FluentPostgresDatabase(
                     database: conn,
                     context: self.context,
                     encoder: self.encoder,
-                    decoder: self.decoder
+                    decoder: self.decoder,
+                    inTransaction: true
                 )
                 return closure(db).flatMap { result in
                     conn.simpleQuery("COMMIT").map { _ in
@@ -95,7 +99,13 @@ extension _FluentPostgresDatabase: Database {
     
     func withConnection<T>(_ closure: @escaping (Database) -> EventLoopFuture<T>) -> EventLoopFuture<T> {
         self.database.withConnection {
-            closure(_FluentPostgresDatabase(database: $0, context: self.context, encoder: self.encoder, decoder: self.decoder))
+            closure(_FluentPostgresDatabase(
+                database: $0,
+                context: self.context,
+                encoder: self.encoder,
+                decoder: self.decoder,
+                inTransaction: self.inTransaction
+            ))
         }
     }
 }
