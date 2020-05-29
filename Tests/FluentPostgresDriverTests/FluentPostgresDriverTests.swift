@@ -131,10 +131,11 @@ final class FluentPostgresDriverTests: XCTestCase {
         jsonDecoder.dateDecodingStrategy = .iso8601
 
         let configuration = PostgresConfiguration(
-            hostname: env("DB_A_HOSTNAME") ?? "localhost",
+            hostname: env("POSTGRES_HOSTNAME_A") ?? "localhost",
+            port: env("POSTGRES_PORT_A").flatMap(Int.init) ?? 5432,
             username: "vapor_username",
             password: "vapor_password",
-            database: "vapor_database"
+            database: env("POSTGRES_DATABASE_A") ?? "vapor_database"
         )
         self.dbs.use(.postgres(
             configuration: configuration,
@@ -197,11 +198,11 @@ final class FluentPostgresDriverTests: XCTestCase {
         self.dbs.use(.postgres(configuration: aConfig), as: .a)
         self.dbs.use(.postgres(configuration: bConfig), as: .b)
 
-        let a = self.dbs.database(.a, logger: Logger(label: "test"), on: self.eventLoopGroup.next())
+        let a = self.dbs.database(.a, logger: Logger(label: "test.fluent.a"), on: self.eventLoopGroup.next())
         _ = try (a as! PostgresDatabase).query("drop schema public cascade").wait()
         _ = try (a as! PostgresDatabase).query("create schema public").wait()
 
-        let b = self.dbs.database(.b, logger: Logger(label: "test"), on: self.eventLoopGroup.next())
+        let b = self.dbs.database(.b, logger: Logger(label: "test.fluent.b"), on: self.eventLoopGroup.next())
         _ = try (b as! PostgresDatabase).query("drop schema public cascade").wait()
         _ = try (b as! PostgresDatabase).query("create schema public").wait()
     }
