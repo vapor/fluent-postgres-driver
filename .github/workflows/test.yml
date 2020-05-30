@@ -1,15 +1,23 @@
 name: Test Matrix
+
 on:
-  - pull_request
+  pull_request:
+  push:
+    branches:
+    - master
+
+defaults:
+  run:
+    shell: bash
+
 jobs:
-  linux:
+
+  Linux:
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        dbimage: 
-          - postgres:11
-          - postgres:12
-        runner:
+        image:
           # 5.2 Stable
           - swift:5.2-xenial
           - swift:5.2-bionic
@@ -25,30 +33,44 @@ jobs:
           - swiftlang/swift:nightly-master-focal
           - swiftlang/swift:nightly-master-centos8
           - swiftlang/swift:nightly-master-amazonlinux2
-    container: ${{ matrix.runner }}
-    runs-on: ubuntu-latest
+        dbimage: 
+          - postgres:11
+          - postgres:12
+          - postgres:13
+        include:
+          - depscmd: 'apt-get -q update && apt-get -q install -y postgresql-client'
+          - image: swiftlang/swift:nightly-master-centos8
+            depscmd: 'dnf install -y postgresql'
+          - image: swiftlang/swift:nightly-master-amazonlinux2
+            depscmd: 'yum install -y postgresql'
+    container: ${{ matrix.image }}
     services:
       postgres-a:
         image: ${{ matrix.dbimage }}
-        env:
-          POSTGRES_USER: vapor_username
-          POSTGRES_PASSWORD: vapor_password
-          POSTGRES_DB: vapor_database
+        env: { POSTGRES_USER: vapor_username, POSTGRES_PASSWORD: vapor_password, POSTGRES_DB: vapor_database }
       postgres-b:
         image: ${{ matrix.dbimage }}
-        env:
-          POSTGRES_USER: vapor_username
-          POSTGRES_PASSWORD: vapor_password
-          POSTGRES_DB: vapor_database
+        env: { POSTGRES_USER: vapor_username, POSTGRES_PASSWORD: vapor_password, POSTGRES_DB: vapor_database }
+    env:
+      POSTGRES_HOSTNAME_A: postgres-a
+      POSTGRES_HOSTNAME_B: postgres-b
+      PGUSER: vapor_username
+      PGPASSWORD: vapor_password
     steps:
-      - name: Check out code
+      - name: Install dependencies
+        run: ${{ matrix.depscmd }}
+      - name: Compensate for AmazonLinux2's Postgres
+        if: ${{ endsWith(matrix.image, 'amazonlinux2') }}
+        run: printf '#!/bin/bash\nexec psql "$@" </dev/null\n' >/usr/bin/pg_isready && chmod 0755 /usr/bin/pg_isready
+      - name: Wait for database servers to be ready
+        run: until pg_isready -hpostgres-a -dvapor_database && pg_isready -hpostgres-b -dvapor_database; do sleep 1; done
+        timeout-minutes: 2
+      - name: Checkout code
         uses: actions/checkout@v2
       - name: Run tests with Thread Sanitizer
         run: swift test --enable-test-discovery --sanitize=thread
-        env: 
-          POSTGRES_HOSTNAME_A: postgres-a
-          POSTGRES_HOSTNAME_B: postgres-b
-  macos:
+
+  macOS:
     strategy:
       fail-fast: false
       matrix:
@@ -57,35 +79,30 @@ jobs:
             datadir: postgresql@11
           - formula: postgresql@12
             datadir: postgres
+    env:
+      POSTGRES_DATABASE_A: vapor_database_a
+      POSTGRES_DATABASE_B: vapor_database_b
     runs-on: macos-latest
-    env: 
-      PGPASSWORD: vapor_password
     steps:
       - name: Select latest available Xcode
         uses: maxim-lobanov/setup-xcode@1.0
-        with:
-          xcode-version: latest
-      - name: Blow away the default Postgres installation
-        run: brew uninstall --force postgresql php && rm -rf /usr/local/{etc,var}/{postgres,pg}*
-      - name: Install Postgres server from Homebrew
-        run: brew install ${{ matrix.formula }} && brew link --force ${{ matrix.formula }} 
-      - name: Make sure Postgres has a database, Homebrew fails REALLY bad at this
-        run: initdb --locale=C -E UTF-8 $(brew --prefix)/var/${{ matrix.datadir }}
-      - name: Start Postgres server
-        run: brew services start ${{ matrix.formula }}
-      - name: Wait for Postgres server to be ready
-        run: until echo | psql postgres; do sleep 1; done
-        timeout-minutes: 5
-      - name: Set up Postgres databases and privileges
+        with: { 'xcode-version': 'latest' }
+      - name: Replace Postgres install and start server
+        run: |
+          brew uninstall --force postgresql php && rm -rf /usr/local/{etc,var}/{postgres,pg}*
+          brew install ${{ matrix.formula }} && brew link --force ${{ matrix.formula }}
+          initdb --locale=C -E UTF-8 $(brew --prefix)/var/${{ matrix.datadir }}
+          brew services start ${{ matrix.formula }}
+      - name: Wait for server to be ready
+        run: until pg_isready; do sleep 1; done
+        timeout-minutes: 2
+      - name: Setup users and databases for Postgres
         run: |
           createuser --createdb --login vapor_username
-          for db in vapor_{database_a,database_b}; do
+          for db in vapor_database_{a,b}; do
             createdb -Ovapor_username $db && psql $db <<<"ALTER SCHEMA public OWNER TO vapor_username;"
           done
-      - name: Check out code
+      - name: Checkout code
         uses: actions/checkout@v2
       - name: Run tests with Thread Sanitizer
         run: swift test --enable-test-discovery --sanitize=thread
-        env: 
-          POSTGRES_DATABASE_A: vapor_database_a
-          POSTGRES_DATABASE_B: vapor_database_b
