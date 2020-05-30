@@ -179,20 +179,20 @@ final class FluentPostgresDriverTests: XCTestCase {
         let aConfig = PostgresConfiguration(
             hostname: env("POSTGRES_HOSTNAME_A") ?? "localhost",
             port: env("POSTGRES_PORT_A").flatMap(Int.init) ?? 5432,
-            username: "vapor_username",
-            password: "vapor_password",
+            username: env("POSTGRES_USERNAME_A") ?? "vapor_username",
+            password: env("POSTGRES_PASSWORD_A") ?? "vapor_password",
             database: env("POSTGRES_DATABASE_A") ?? "vapor_database"
         )
         let bConfig = PostgresConfiguration(
             hostname: env("POSTGRES_HOSTNAME_B") ?? "localhost",
             port: env("POSTGRES_PORT_B").flatMap(Int.init) ?? 5432,
-            username: "vapor_username",
-            password: "vapor_password",
+            username: env("POSTGRES_USERNAME_B") ?? "vapor_username",
+            password: env("POSTGRES_PASSWORD_B") ?? "vapor_password",
             database: env("POSTGRES_DATABASE_B") ?? "vapor_database"
         )
         XCTAssert(isLoggingConfigured)
-        self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
-        self.threadPool = NIOThreadPool(numberOfThreads: 1)
+        self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
+        self.threadPool = NIOThreadPool(numberOfThreads: System.coreCount)
         self.dbs = Databases(threadPool: threadPool, on: self.eventLoopGroup)
 
         self.dbs.use(.postgres(configuration: aConfig), as: .a)
