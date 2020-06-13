@@ -1,27 +1,36 @@
-# Contributing to Fluent PostgreSQL
+# Contributing to Fluent's PostgreSQL Driver
 
 👋 Welcome to the Vapor team! 
 
-## Bootstrap
+## Docker
 
-To prepare your computer for developing this package, you can run the bootstrap script.
+In order to build and test against Postgres, you will need a database running. The easiest way to do this is using Docker and the included `docker-compose.yml` file.
+
+If you have Docker installed on your computer, all you will need to do is:
 
 ```sh
-./contribute_boostrap.sh
+docker-compose up
 ```
 
-This script will start up a PostgreSQL docker container to test against. It will also generate and open Xcode for you.
+This will start the two databases required for running this package's unit tests.
 
-Be careful to observe the script's output, it may have errors or ask you to do additional steps manually.
+## Xcode
 
-## Testing
+To open the project in Xcode:
 
-Once in Xcode, select the `FluentPostgreSQL-Package` scheme and use `CMD+U` to run the tests.
+- Clone the repo to your computer
+- Drag and drop the folder onto Xcode
 
-Please add tests to cover bug fixes and new features.
+To test within Xcode, press `CMD+U`.
 
-If you are fixing a single GitHub issue in particular, you can add a test named `testGH<issue number>` to ensure
-that your fix is working. This will also help prevent regression.
+## SPM
+
+To develop using SPM, open the code in your favorite code editor. Use the following commands from within the project's root folder to build and test.
+
+```sh
+swift build
+swift test
+```
 
 ## SemVer
 
@@ -32,6 +41,6 @@ Code that is only additive and will not break any existing code can be included 
 
 ----------
 
-Join us on Slack if you have any questions: [http://vapor.team](http://vapor.team).
+Join us on Discord if you have any questions: [vapor.team](http://vapor.team).
 
 &mdash; Thanks! 🙌
