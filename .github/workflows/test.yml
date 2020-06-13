@@ -47,8 +47,7 @@ jobs:
     env:
       POSTGRES_HOSTNAME_A: postgres-a
       POSTGRES_HOSTNAME_B: postgres-b
-      PGUSER: vapor_username
-      PGPASSWORD: vapor_password
+      LOG_LEVEL: info
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
