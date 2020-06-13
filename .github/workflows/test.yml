@@ -30,39 +30,29 @@ jobs:
           - postgres:11
           - postgres:12
           - postgres:13
-        include:
-          - depscmd: 'apt-get -q update && apt-get -q install -y postgresql-client'
-          - image: swiftlang/swift:nightly-master-centos8
-            depscmd: 'dnf install -y postgresql'
-          - image: swiftlang/swift:nightly-master-amazonlinux2
-            depscmd: 'yum install -y postgresql'
     container: ${{ matrix.image }}
     services:
       postgres-a:
         image: ${{ matrix.dbimage }}
-        env: { POSTGRES_USER: vapor_username, POSTGRES_PASSWORD: vapor_password, POSTGRES_DB: vapor_database }
+        env: 
+          POSTGRES_USER: vapor_username
+          POSTGRES_PASSWORD: vapor_password
+          POSTGRES_DB: vapor_database
       postgres-b:
         image: ${{ matrix.dbimage }}
-        env: { POSTGRES_USER: vapor_username, POSTGRES_PASSWORD: vapor_password, POSTGRES_DB: vapor_database }
+        env:
+          POSTGRES_USER: vapor_username
+          POSTGRES_PASSWORD: vapor_password
+          POSTGRES_DB: vapor_database
     env:
       POSTGRES_HOSTNAME_A: postgres-a
       POSTGRES_HOSTNAME_B: postgres-b
-      PGUSER: vapor_username
-      PGPASSWORD: vapor_password
+      LOG_LEVEL: info
     steps:
-      - name: Install dependencies
-        run: ${{ matrix.depscmd }}
-      - name: Compensate for AmazonLinux2's Postgres
-        if: ${{ endsWith(matrix.image, 'amazonlinux2') }}
-        run: printf '#!/bin/bash\nexec psql "$@" </dev/null\n' >/usr/bin/pg_isready && chmod 0755 /usr/bin/pg_isready
-      - name: Wait for database servers to be ready
-        run: until pg_isready -hpostgres-a -dvapor_database && pg_isready -hpostgres-b -dvapor_database; do sleep 1; done
-        timeout-minutes: 2
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Run tests with Thread Sanitizer
         run: swift test --enable-test-discovery --sanitize=thread
-
   macOS:
     strategy:
       fail-fast: false
@@ -79,7 +69,8 @@ jobs:
     steps:
       - name: Select latest available Xcode
         uses: maxim-lobanov/setup-xcode@1.0
-        with: { 'xcode-version': 'latest' }
+        with:
+          xcode-version: latest
       - name: Replace Postgres install and start server
         run: |
           brew uninstall --force postgresql php && rm -rf /usr/local/{etc,var}/{postgres,pg}*
