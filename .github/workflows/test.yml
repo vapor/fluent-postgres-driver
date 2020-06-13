@@ -31,11 +31,11 @@ jobs:
           - postgres:12
           - postgres:13
         include:
-          - depscmd: 'apt-get -q update && apt-get -q install -y postgresql-client'
+          - depscmd: apt-get -q update && apt-get -q install -y postgresql-client
           - image: swiftlang/swift:nightly-master-centos8
-            depscmd: 'dnf install -y postgresql'
+            depscmd: dnf install -y postgresql
           - image: swiftlang/swift:nightly-master-amazonlinux2
-            depscmd: 'yum install -y postgresql'
+            depscmd: yum install -y postgresql
     container: ${{ matrix.image }}
     services:
       postgres-a:
