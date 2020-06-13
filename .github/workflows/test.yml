@@ -1,18 +1,11 @@
-name: Test Matrix
-
+name: test
 on:
   pull_request:
   push:
     branches:
     - master
-
-defaults:
-  run:
-    shell: bash
-
 jobs:
-
-  Linux:
+  linux:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
