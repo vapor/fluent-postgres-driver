@@ -2,7 +2,7 @@ extension DatabaseConfigurationFactory {
     public static func postgres(
         url urlString: String,
         maxConnectionsPerEventLoop: Int = 1,
-        newConnectionTimeout: NIO.TimeAmount = .seconds(10),
+        connectionPoolTimeout: NIO.TimeAmount = .seconds(10),
         encoder: PostgresDataEncoder = .init(),
         decoder: PostgresDataDecoder = .init()
     ) throws -> DatabaseConfigurationFactory {
@@ -12,7 +12,7 @@ extension DatabaseConfigurationFactory {
         return try .postgres(
             url: url,
             maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
-            newConnectionTimeout: newConnectionTimeout,
+            connectionPoolTimeout: connectionPoolTimeout,
             encoder: encoder,
             decoder: decoder
         )
@@ -21,7 +21,7 @@ extension DatabaseConfigurationFactory {
     public static func postgres(
         url: URL,
         maxConnectionsPerEventLoop: Int = 1,
-        newConnectionTimeout: NIO.TimeAmount = .seconds(10),
+        connectionPoolTimeout: NIO.TimeAmount = .seconds(10),
         encoder: PostgresDataEncoder = .init(),
         decoder: PostgresDataDecoder = .init()
     ) throws -> DatabaseConfigurationFactory {
@@ -31,7 +31,7 @@ extension DatabaseConfigurationFactory {
         return .postgres(
             configuration: configuration,
             maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
-            newConnectionTimeout: newConnectionTimeout
+            connectionPoolTimeout: connectionPoolTimeout
         )
     }
 
@@ -43,7 +43,7 @@ extension DatabaseConfigurationFactory {
         database: String? = nil,
         tlsConfiguration: TLSConfiguration? = nil,
         maxConnectionsPerEventLoop: Int = 1,
-        newConnectionTimeout: NIO.TimeAmount = .seconds(10),
+        connectionPoolTimeout: NIO.TimeAmount = .seconds(10),
         encoder: PostgresDataEncoder = .init(),
         decoder: PostgresDataDecoder = .init()
     ) -> DatabaseConfigurationFactory {
@@ -57,14 +57,14 @@ extension DatabaseConfigurationFactory {
                 tlsConfiguration: tlsConfiguration
             ),
             maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
-            newConnectionTimeout: newConnectionTimeout
+            connectionPoolTimeout: connectionPoolTimeout
         )
     }
 
     public static func postgres(
         configuration: PostgresConfiguration,
         maxConnectionsPerEventLoop: Int = 1,
-        newConnectionTimeout: NIO.TimeAmount = .seconds(10),
+        connectionPoolTimeout: NIO.TimeAmount = .seconds(10),
         encoder: PostgresDataEncoder = .init(),
         decoder: PostgresDataDecoder = .init()
     ) -> DatabaseConfigurationFactory {
@@ -73,7 +73,7 @@ extension DatabaseConfigurationFactory {
                 middleware: [],
                 configuration: configuration,
                 maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
-                newConnectionTimeout: newConnectionTimeout,
+                connectionPoolTimeout: connectionPoolTimeout,
                 encoder: encoder,
                 decoder: decoder
             )
@@ -85,9 +85,9 @@ struct FluentPostgresConfiguration: DatabaseConfiguration {
     var middleware: [AnyModelMiddleware]
     let configuration: PostgresConfiguration
     let maxConnectionsPerEventLoop: Int
-    /// The amount of time to wait for a new connection from
+    /// The amount of time to wait for a connection from
     /// the connection pool before timing out.
-    let newConnectionTimeout: NIO.TimeAmount
+    let connectionPoolTimeout: NIO.TimeAmount
     let encoder: PostgresDataEncoder
     let decoder: PostgresDataDecoder
 
@@ -98,7 +98,7 @@ struct FluentPostgresConfiguration: DatabaseConfiguration {
         let pool = EventLoopGroupConnectionPool(
             source: db,
             maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
-            requestTimeout: newConnectionTimeout,
+            requestTimeout: connectionPoolTimeout,
             on: databases.eventLoopGroup
         )
         return _FluentPostgresDriver(
