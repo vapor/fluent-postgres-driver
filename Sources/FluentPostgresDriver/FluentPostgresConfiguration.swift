@@ -62,6 +62,44 @@ extension DatabaseConfigurationFactory {
     }
 
     public static func postgres(
+        unixDomainSocketPath: String,
+        username: String,
+        maxConnectionsPerEventLoop: Int = 1,
+        connectionPoolTimeout: NIO.TimeAmount = .seconds(10),
+        encoder: PostgresDataEncoder = .init(),
+        decoder: PostgresDataDecoder = .init()
+    ) -> DatabaseConfigurationFactory {
+        let configuration = PostgresConfiguration(unixDomainSocketPath: unixDomainSocketPath,
+                                                  username: username)
+        return .postgres(
+            configuration: configuration,
+            maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
+            connectionPoolTimeout: connectionPoolTimeout
+        )
+    }
+
+    public static func postgres(
+        unixDomainSocketPath: String,
+        username: String,
+        password: String,
+        database: String? = nil,
+        maxConnectionsPerEventLoop: Int = 1,
+        connectionPoolTimeout: NIO.TimeAmount = .seconds(10),
+        encoder: PostgresDataEncoder = .init(),
+        decoder: PostgresDataDecoder = .init()
+    ) -> DatabaseConfigurationFactory {
+        let configuration = PostgresConfiguration(unixDomainSocketPath: unixDomainSocketPath,
+                                                  username: username,
+                                                  password: password,
+                                                  database: database)
+        return .postgres(
+            configuration: configuration,
+            maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
+            connectionPoolTimeout: connectionPoolTimeout
+        )
+    }
+
+    public static func postgres(
         configuration: PostgresConfiguration,
         maxConnectionsPerEventLoop: Int = 1,
         connectionPoolTimeout: NIO.TimeAmount = .seconds(10),
