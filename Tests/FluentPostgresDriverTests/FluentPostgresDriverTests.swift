@@ -135,7 +135,7 @@ final class FluentPostgresDriverTests: XCTestCase {
 
         let configuration = PostgresConfiguration(
             hostname: env("POSTGRES_HOSTNAME_A") ?? "localhost",
-            port: env("POSTGRES_PORT_A").flatMap(Int.init) ?? 5432,
+            port: env("POSTGRES_PORT_A").flatMap(Int.init) ?? PostgresConfiguration.ianaPortNumber,
             username: "vapor_username",
             password: "vapor_password",
             database: env("POSTGRES_DATABASE_A") ?? "vapor_database"
@@ -181,14 +181,14 @@ final class FluentPostgresDriverTests: XCTestCase {
         
         let aConfig = PostgresConfiguration(
             hostname: env("POSTGRES_HOSTNAME_A") ?? "localhost",
-            port: env("POSTGRES_PORT_A").flatMap(Int.init) ?? 5432,
+            port: env("POSTGRES_PORT_A").flatMap(Int.init) ?? PostgresConfiguration.ianaPortNumber,
             username: env("POSTGRES_USERNAME_A") ?? "vapor_username",
             password: env("POSTGRES_PASSWORD_A") ?? "vapor_password",
             database: env("POSTGRES_DATABASE_A") ?? "vapor_database"
         )
         let bConfig = PostgresConfiguration(
             hostname: env("POSTGRES_HOSTNAME_B") ?? "localhost",
-            port: env("POSTGRES_PORT_B").flatMap(Int.init) ?? 5432,
+            port: env("POSTGRES_PORT_B").flatMap(Int.init) ?? PostgresConfiguration.ianaPortNumber,
             username: env("POSTGRES_USERNAME_B") ?? "vapor_username",
             password: env("POSTGRES_PASSWORD_B") ?? "vapor_password",
             database: env("POSTGRES_DATABASE_B") ?? "vapor_database"

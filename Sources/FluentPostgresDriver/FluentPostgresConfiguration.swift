@@ -37,7 +37,7 @@ extension DatabaseConfigurationFactory {
 
     public static func postgres(
         hostname: String,
-        port: Int = 5432,
+        port: Int = PostgresConfiguration.ianaPortNumber,
         username: String,
         password: String,
         database: String? = nil,
