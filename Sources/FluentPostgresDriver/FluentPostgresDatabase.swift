@@ -24,6 +24,7 @@ extension _FluentPostgresDatabase: Database {
         default: break
         }
         let (sql, binds) = self.serialize(expression)
+        self.logger.debug("\(sql) \(binds)")
         do {
             return try self.query(sql, binds.map { try self.encoder.encode($0) }) {
                 onOutput($0.databaseOutput(using: self.decoder))
@@ -37,6 +38,7 @@ extension _FluentPostgresDatabase: Database {
         let expression = SQLSchemaConverter(delegate: PostgresConverterDelegate())
             .convert(schema)
         let (sql, binds) = self.serialize(expression)
+        self.logger.debug("\(sql) \(binds)")
         do {
             return try self.query(sql, binds.map { try self.encoder.encode($0) }) {
                 fatalError("unexpected row: \($0)")
@@ -65,6 +67,7 @@ extension _FluentPostgresDatabase: Database {
             for create in e.createCases {
                 _ = builder.add(value: create)
             }
+            self.logger.debug("\(builder.query)")
             return builder.run()
         case .delete:
             return self.sql().drop(enum: e.name).run()
@@ -76,7 +79,8 @@ extension _FluentPostgresDatabase: Database {
             return closure(self)
         }
         return self.database.withConnection { conn in
-            conn.simpleQuery("BEGIN").flatMap { _ in
+            self.logger.debug("BEGIN")
+            return conn.simpleQuery("BEGIN").flatMap { _ in
                 let db = _FluentPostgresDatabase(
                     database: conn,
                     context: self.context,
@@ -85,11 +89,13 @@ extension _FluentPostgresDatabase: Database {
                     inTransaction: true
                 )
                 return closure(db).flatMap { result in
-                    conn.simpleQuery("COMMIT").map { _ in
+                    self.logger.debug("COMMIT")
+                    return conn.simpleQuery("COMMIT").map { _ in
                         result
                     }
                 }.flatMapError { error in
-                    conn.simpleQuery("ROLLBACK").flatMapThrowing { _ in
+                    self.logger.debug("ROLLBACK")
+                    return conn.simpleQuery("ROLLBACK").flatMapThrowing { _ in
                         throw error
                     }
                 }
