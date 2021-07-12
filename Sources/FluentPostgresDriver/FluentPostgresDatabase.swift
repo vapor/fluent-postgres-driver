@@ -55,6 +55,7 @@ extension _FluentPostgresDatabase: Database {
             for c in e.createCases {
                 _ = builder.value(c)
             }
+            self.logger.debug("\(builder.query)")
             return builder.run()
         case .update:
             if !e.deleteCases.isEmpty {
@@ -70,7 +71,9 @@ extension _FluentPostgresDatabase: Database {
             self.logger.debug("\(builder.query)")
             return builder.run()
         case .delete:
-            return self.sql().drop(enum: e.name).run()
+            let builder = self.sql().drop(enum: e.name)
+            self.logger.debug("\(builder.query)")
+            return builder.run()
         }
     }
 
