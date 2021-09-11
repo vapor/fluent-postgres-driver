@@ -1,10 +1,13 @@
+import Logging
+
 extension DatabaseConfigurationFactory {
     public static func postgres(
         url urlString: String,
         maxConnectionsPerEventLoop: Int = 1,
         connectionPoolTimeout: NIO.TimeAmount = .seconds(10),
         encoder: PostgresDataEncoder = .init(),
-        decoder: PostgresDataDecoder = .init()
+        decoder: PostgresDataDecoder = .init(),
+        sqlLogLevel: Logger.Level = .debug
     ) throws -> DatabaseConfigurationFactory {
         guard let url = URL(string: urlString) else {
             throw FluentPostgresError.invalidURL(urlString)
@@ -14,7 +17,8 @@ extension DatabaseConfigurationFactory {
             maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
             connectionPoolTimeout: connectionPoolTimeout,
             encoder: encoder,
-            decoder: decoder
+            decoder: decoder,
+            sqlLogLevel: sqlLogLevel
         )
     }
 
@@ -23,7 +27,8 @@ extension DatabaseConfigurationFactory {
         maxConnectionsPerEventLoop: Int = 1,
         connectionPoolTimeout: NIO.TimeAmount = .seconds(10),
         encoder: PostgresDataEncoder = .init(),
-        decoder: PostgresDataDecoder = .init()
+        decoder: PostgresDataDecoder = .init(),
+        sqlLogLevel: Logger.Level = .debug
     ) throws -> DatabaseConfigurationFactory {
         guard let configuration = PostgresConfiguration(url: url) else {
             throw FluentPostgresError.invalidURL(url.absoluteString)
@@ -31,7 +36,8 @@ extension DatabaseConfigurationFactory {
         return .postgres(
             configuration: configuration,
             maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
-            connectionPoolTimeout: connectionPoolTimeout
+            connectionPoolTimeout: connectionPoolTimeout,
+            sqlLogLevel: sqlLogLevel
         )
     }
 
@@ -45,7 +51,8 @@ extension DatabaseConfigurationFactory {
         maxConnectionsPerEventLoop: Int = 1,
         connectionPoolTimeout: NIO.TimeAmount = .seconds(10),
         encoder: PostgresDataEncoder = .init(),
-        decoder: PostgresDataDecoder = .init()
+        decoder: PostgresDataDecoder = .init(),
+        sqlLogLevel: Logger.Level = .debug
     ) -> DatabaseConfigurationFactory {
         return .postgres(
             configuration: .init(
@@ -57,7 +64,8 @@ extension DatabaseConfigurationFactory {
                 tlsConfiguration: tlsConfiguration
             ),
             maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
-            connectionPoolTimeout: connectionPoolTimeout
+            connectionPoolTimeout: connectionPoolTimeout,
+            sqlLogLevel: sqlLogLevel
         )
     }
 
@@ -66,7 +74,8 @@ extension DatabaseConfigurationFactory {
         maxConnectionsPerEventLoop: Int = 1,
         connectionPoolTimeout: NIO.TimeAmount = .seconds(10),
         encoder: PostgresDataEncoder = .init(),
-        decoder: PostgresDataDecoder = .init()
+        decoder: PostgresDataDecoder = .init(),
+        sqlLogLevel: Logger.Level = .debug
     ) -> DatabaseConfigurationFactory {
         return DatabaseConfigurationFactory {
             FluentPostgresConfiguration(
@@ -75,7 +84,8 @@ extension DatabaseConfigurationFactory {
                 maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
                 connectionPoolTimeout: connectionPoolTimeout,
                 encoder: encoder,
-                decoder: decoder
+                decoder: decoder,
+                sqlLogLevel: sqlLogLevel
             )
         }
     }
@@ -90,6 +100,7 @@ struct FluentPostgresConfiguration: DatabaseConfiguration {
     let connectionPoolTimeout: NIO.TimeAmount
     let encoder: PostgresDataEncoder
     let decoder: PostgresDataDecoder
+    let sqlLogLevel: Logger.Level
 
     func makeDriver(for databases: Databases) -> DatabaseDriver {
         let db = PostgresConnectionSource(
@@ -103,8 +114,9 @@ struct FluentPostgresConfiguration: DatabaseConfiguration {
         )
         return _FluentPostgresDriver(
             pool: pool,
-            encoder: encoder,
-            decoder: decoder
+            encoder: self.encoder,
+            decoder: self.decoder,
+            sqlLogLevel: self.sqlLogLevel
         )
     }
 }

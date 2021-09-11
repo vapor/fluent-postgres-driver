@@ -1,3 +1,5 @@
+import Logging
+
 enum FluentPostgresError: Error {
     case invalidURL(String)
 }
@@ -6,6 +8,7 @@ struct _FluentPostgresDriver: DatabaseDriver {
     let pool: EventLoopGroupConnectionPool<PostgresConnectionSource>
     let encoder: PostgresDataEncoder
     let decoder: PostgresDataDecoder
+    let sqlLogLevel: Logger.Level
     
     var eventLoopGroup: EventLoopGroup {
         self.pool.eventLoopGroup
@@ -17,7 +20,8 @@ struct _FluentPostgresDriver: DatabaseDriver {
             context: context,
             encoder: self.encoder,
             decoder: self.decoder,
-            inTransaction: false
+            inTransaction: false,
+            sqlLogLevel: self.sqlLogLevel
         )
     }
     
