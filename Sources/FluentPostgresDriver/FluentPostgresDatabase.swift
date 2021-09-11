@@ -1,4 +1,5 @@
 import FluentSQL
+import Logging
 
 struct _FluentPostgresDatabase {
     let database: PostgresDatabase
@@ -6,6 +7,7 @@ struct _FluentPostgresDatabase {
     let encoder: PostgresDataEncoder
     let decoder: PostgresDataDecoder
     let inTransaction: Bool
+    let sqlLogLevel: Logger.Level
 }
 
 extension _FluentPostgresDatabase: Database {
@@ -89,7 +91,8 @@ extension _FluentPostgresDatabase: Database {
                     context: self.context,
                     encoder: self.encoder,
                     decoder: self.decoder,
-                    inTransaction: true
+                    inTransaction: true,
+                    sqlLogLevel: self.sqlLogLevel
                 )
                 return closure(db).flatMap { result in
                     self.logger.debug("COMMIT")
@@ -113,7 +116,8 @@ extension _FluentPostgresDatabase: Database {
                 context: self.context,
                 encoder: self.encoder,
                 decoder: self.decoder,
-                inTransaction: self.inTransaction
+                inTransaction: self.inTransaction,
+                sqlLogLevel: self.sqlLogLevel
             ))
         }
     }
