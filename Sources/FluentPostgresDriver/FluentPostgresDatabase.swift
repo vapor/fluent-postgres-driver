@@ -26,7 +26,7 @@ extension _FluentPostgresDatabase: Database {
         default: break
         }
         let (sql, binds) = self.serialize(expression)
-        self.logger.debug("\(sql) \(binds)")
+        self.logger.log(level: self.sqlLogLevel, "\(sql) \(binds)")
         do {
             return try self.query(sql, binds.map { try self.encoder.encode($0) }) {
                 onOutput($0.databaseOutput(using: self.decoder))
@@ -40,7 +40,7 @@ extension _FluentPostgresDatabase: Database {
         let expression = SQLSchemaConverter(delegate: PostgresConverterDelegate())
             .convert(schema)
         let (sql, binds) = self.serialize(expression)
-        self.logger.debug("\(sql) \(binds)")
+        self.logger.log(level: self.sqlLogLevel, "\(sql) \(binds)")
         do {
             return try self.query(sql, binds.map { try self.encoder.encode($0) }) {
                 fatalError("unexpected row: \($0)")
@@ -57,7 +57,7 @@ extension _FluentPostgresDatabase: Database {
             for c in e.createCases {
                 _ = builder.value(c)
             }
-            self.logger.debug("\(builder.query)")
+            self.logger.log(level: self.sqlLogLevel, "\(builder.query)")
             return builder.run()
         case .update:
             if !e.deleteCases.isEmpty {
@@ -70,11 +70,11 @@ extension _FluentPostgresDatabase: Database {
             for create in e.createCases {
                 _ = builder.add(value: create)
             }
-            self.logger.debug("\(builder.query)")
+            self.logger.log(level: self.sqlLogLevel, "\(builder.query)")
             return builder.run()
         case .delete:
             let builder = self.sql().drop(enum: e.name)
-            self.logger.debug("\(builder.query)")
+            self.logger.log(level: self.sqlLogLevel, "\(builder.query)")
             return builder.run()
         }
     }
@@ -84,7 +84,7 @@ extension _FluentPostgresDatabase: Database {
             return closure(self)
         }
         return self.database.withConnection { conn in
-            self.logger.debug("BEGIN")
+            self.logger.log(level: self.sqlLogLevel, "BEGIN")
             return conn.simpleQuery("BEGIN").flatMap { _ in
                 let db = _FluentPostgresDatabase(
                     database: conn,
@@ -95,12 +95,12 @@ extension _FluentPostgresDatabase: Database {
                     sqlLogLevel: self.sqlLogLevel
                 )
                 return closure(db).flatMap { result in
-                    self.logger.debug("COMMIT")
+                    self.logger.log(level: self.sqlLogLevel, "COMMIT")
                     return conn.simpleQuery("COMMIT").map { _ in
                         result
                     }
                 }.flatMapError { error in
-                    self.logger.debug("ROLLBACK")
+                    self.logger.log(level: self.sqlLogLevel, "ROLLBACK")
                     return conn.simpleQuery("ROLLBACK").flatMapThrowing { _ in
                         throw error
                     }
