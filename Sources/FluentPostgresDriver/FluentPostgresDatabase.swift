@@ -132,7 +132,9 @@ extension _FluentPostgresDatabase: SQLDatabase {
         sql query: SQLExpression,
         _ onRow: @escaping (SQLRow) -> ()
     ) -> EventLoopFuture<Void> {
-        self.sql(encoder: encoder, decoder: decoder).execute(sql: query, onRow)
+        let (sql, binds) = self.serialize(query)
+        self.logger.log(level: self.sqlLogLevel, "\(sql) \(binds)")
+        return self.sql(encoder: encoder, decoder: decoder).execute(sql: query, onRow)
     }
 }
 
