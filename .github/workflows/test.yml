@@ -90,7 +90,7 @@ jobs:
           xcode-version: ${{ matrix.xcode }}
       - name: Replace Postgres install and start server
         run: |
-          brew uninstall --force postgresql php && rm -rf /usr/local/{etc,var}/{postgres,pg}*
+          brew uninstall --ignore-dependencies postgresql php && rm -rf /usr/local/{etc,var}/{postgres,pg}*
           brew install ${{ matrix.formula }} && brew link --force ${{ matrix.formula }}
           initdb --locale=C -E UTF-8 $(brew --prefix)/var/${{ matrix.datadir }}
           brew services start ${{ matrix.formula }}
