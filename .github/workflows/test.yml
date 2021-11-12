@@ -59,7 +59,7 @@ jobs:
     steps:
       - name: Check out package
         uses: actions/checkout@v2
-      - name: Run unit tests with code coverage
+      - name: Run unit tests
         run: swift test --enable-test-discovery
 
   macos-all:
