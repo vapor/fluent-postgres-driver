@@ -198,8 +198,8 @@ final class FluentPostgresDriverTests: XCTestCase {
         self.threadPool = NIOThreadPool(numberOfThreads: System.coreCount)
         self.dbs = Databases(threadPool: threadPool, on: self.eventLoopGroup)
 
-        self.dbs.use(.postgres(configuration: aConfig), as: .a)
-        self.dbs.use(.postgres(configuration: bConfig), as: .b)
+        self.dbs.use(.postgres(configuration: aConfig, connectionPoolTimeout: .seconds(30)), as: .a)
+        self.dbs.use(.postgres(configuration: bConfig, connectionPoolTimeout: .seconds(30)), as: .b)
 
         let a = self.dbs.database(.a, logger: Logger(label: "test.fluent.a"), on: self.eventLoopGroup.next())
         _ = try (a as! PostgresDatabase).query("drop schema public cascade").wait()
