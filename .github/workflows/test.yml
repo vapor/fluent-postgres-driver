@@ -95,7 +95,7 @@ jobs:
         run: |
           export PATH="$(brew --prefix)/opt/${{ matrix.dbimage }}/bin:$PATH" PGDATA=/tmp/vapor-postgres-test PGUSER=postgres
           brew install ${{ matrix.dbimage }}
-          initdb --locale=C --auth-host ${{ matrix.dbauth }} --pwfile=<(echo postgres)
+          initdb --locale=C --auth-host ${{ matrix.dbauth }} --username=postgres --pwfile=<(echo postgres)
           pg_ctl start --wait
           psql postgres <<<"CREATE ROLE $POSTGRES_USERNAME_A LOGIN PASSWORD '$POSTGRES_PASSWORD_A';"
           psql postgres <<<"CREATE ROLE $POSTGRES_USERNAME_B LOGIN PASSWORD '$POSTGRES_PASSWORD_B';"
