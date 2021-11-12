@@ -136,8 +136,8 @@ final class FluentPostgresDriverTests: XCTestCase {
         let configuration = PostgresConfiguration(
             hostname: env("POSTGRES_HOSTNAME_A") ?? "localhost",
             port: env("POSTGRES_PORT_A").flatMap(Int.init) ?? PostgresConfiguration.ianaPortNumber,
-            username: "vapor_username",
-            password: "vapor_password",
+            username: env("POSTGRES_USERNAME_A") ?? "vapor_username",
+            password: env("POSTGRES_PASSWORD_A") ?? "vapor_password",
             database: env("POSTGRES_DATABASE_A") ?? "vapor_database"
         )
         self.dbs.use(.postgres(
