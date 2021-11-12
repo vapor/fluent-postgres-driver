@@ -83,8 +83,8 @@ jobs:
       POSTGRES_USERNAME_B: 'vapor_username'
       POSTGRES_PASSWORD_A: 'vapor_password'
       POSTGRES_PASSWORD_B: 'vapor_password'
-      POSTGRES_DATABASE_A: 'postgres'
-      POSTGRES_DATABASE_B: 'postgres'
+      POSTGRES_DATABASE_A: 'vapor_database'
+      POSTGRES_DATABASE_B: 'vapor_database'
       POSTGRES_HOST_AUTH_METHOD: ${{ matrix.dbauth }}
     steps:
       - name: Select latest available Xcode
@@ -93,11 +93,14 @@ jobs:
           xcode-version: ${{ matrix.xcode }}
       - name: Install Postgres, setup DB and auth, and wait for server start
         run: |
-          export PATH="$(brew --prefix)/opt/${{ matrix.dbimage }}/bin:$PATH" PGDATA=/tmp/vapor-postgres-test
+          export PATH="$(brew --prefix)/opt/${{ matrix.dbimage }}/bin:$PATH" PGDATA=/tmp/vapor-postgres-test PGUSER=postgres
           brew install ${{ matrix.dbimage }}
-          initdb --locale=C --auth-host ${{ matrix.dbauth }} -U $POSTGRES_USERNAME_A --pwfile=<(echo $POSTGRES_PASSWORD_A)
+          initdb --locale=C --auth-host ${{ matrix.dbauth }} --pwfile=<(echo postgres)
           pg_ctl start --wait
-          createdb -O$POSTGRES_USERNAME_A $POSTGRES_DATABASE_A && createdb -O$POSTGRES_USERNAME_A $POSTGRES_DATABASE_A
+          psql postgres <<<"CREATE ROLE $POSTGRES_USERNAME_A LOGIN PASSWORD '$POSTGRES_PASSWORD_A';"
+          psql postgres <<<"CREATE ROLE $POSTGRES_USERNAME_B LOGIN PASSWORD '$POSTGRES_PASSWORD_B';"
+          psql postgres <<<"CREATE DATABASE $POSTGRES_DATABASE_A OWNER = $POSTGRES_USERNAME_A;"
+          psql postgres <<<"CREATE DATABASE $POSTGRES_DATABASE_B OWNER = $POSTGRES_USERNAME_B;"
           psql $POSTGRES_DATABASE_A <<<"ALTER SCHEMA public OWNER TO $POSTGRES_USERNAME_A;"
           psql $POSTGRES_DATABASE_B <<<"ALTER SCHEMA public OWNER TO $POSTGRES_USERNAME_B;"
         timeout-minutes: 2
