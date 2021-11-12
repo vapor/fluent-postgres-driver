@@ -93,7 +93,7 @@ jobs:
           xcode-version: ${{ matrix.xcode }}
       - name: Install Postgres, setup DB and auth, and wait for server start
         run: |
-          export PATH="$(brew prefix)/opt/${{ matrix.dbimage }}/bin:$PATH" PGDATA=/tmp/vapor-postgres-test
+          export PATH="$(brew --prefix)/opt/${{ matrix.dbimage }}/bin:$PATH" PGDATA=/tmp/vapor-postgres-test
           brew install ${{ matrix.dbimage }}
           initdb --locale=C --auth-host ${{ matrix.dbauth }} -U $POSTGRES_USERNAME_A --pwfile=<(echo $POSTGRES_PASSWORD_A)
           pg_ctl start --wait
