@@ -1,109 +1,112 @@
 name: test
-on:
-  pull_request:
-  push:
-    branches:
-    - main
+on: [ 'pull_request' ]
+
 jobs:
   linux:
-    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        runner:
-          - swift:5.2-xenial
-          - swift:5.2-bionic
-          - swift:5.2-focal
-          - swift:5.2-centos7
-          - swift:5.2-centos8
-          - swift:5.2-amazonlinux2
-          - swift:5.3-xenial
-          - swift:5.3-bionic
-          - swift:5.3-focal
-          - swift:5.3-centos7
-          - swift:5.3-centos8
-          - swift:5.3-amazonlinux2
-          - swift:5.4-bionic
-          - swift:5.4-focal
-          - swift:5.4-centos7
-          - swift:5.4-centos8
-          - swift:5.4-amazonlinux2
-          - swiftlang/swift:nightly-5.5-focal
-          - swiftlang/swift:nightly-5.5-centos8
-          - swiftlang/swift:nightly-5.5-amazonlinux2
-          - swiftlang/swift:nightly-main-focal
-          - swiftlang/swift:nightly-main-centos8
-          - swiftlang/swift:nightly-main-amazonlinux2
-        dbimage: 
-          - postgres:11
-          - postgres:12
+        dbimage:
+          - postgres:14
           - postgres:13
-    container: ${{ matrix.runner }}
+          - postgres:12
+          - postgres:11
+        dbauth:
+          - trust
+          - md5
+          - scram-sha-256
+        swiftver:
+          - swift:5.2
+          - swift:5.5
+          - swiftlang/swift:nightly-main
+        swiftos:
+          - focal
+    container: ${{ format('{0}-{1}', matrix.swiftver, matrix.swiftos) }}
+    runs-on: ubuntu-latest
+    env:
+      LOG_LEVEL: debug
+      POSTGRES_DB: 'vapor_database'
+      POSTGRES_DATABASE: 'vapor_database'
+      POSTGRES_DATABASE_A: 'vapor_database'
+      POSTGRES_DATABASE_B: 'vapor_database'
+      POSTGRES_USER: 'vapor_username'
+      POSTGRES_USERNAME: 'vapor_username'
+      POSTGRES_USERNAME_A: 'vapor_username'
+      POSTGRES_USERNAME_B: 'vapor_username'
+      POSTGRES_PASSWORD: 'vapor_password'
+      POSTGRES_PASSWORD_A: 'vapor_password'
+      POSTGRES_PASSWORD_B: 'vapor_password'
+      POSTGRES_HOSTNAME_A: 'psql-a'
+      POSTGRES_HOSTNAME_B: 'psql-b'
+      POSTGRES_HOST_AUTH_METHOD: ${{ matrix.dbauth }}
     services:
-      postgres-a:
-        image: ${{ matrix.dbimage }}
-        env: 
-          POSTGRES_USER: vapor_username
-          POSTGRES_PASSWORD: vapor_password
-          POSTGRES_DB: vapor_database
-      postgres-b:
+      psql-a:
         image: ${{ matrix.dbimage }}
         env:
-          POSTGRES_USER: vapor_username
-          POSTGRES_PASSWORD: vapor_password
-          POSTGRES_DB: vapor_database
-    env:
-      POSTGRES_HOSTNAME_A: postgres-a
-      POSTGRES_HOSTNAME_B: postgres-b
-      LOG_LEVEL: info
+          POSTGRES_USER: 'vapor_username'
+          POSTGRES_DB: 'vapor_database'
+          POSTGRES_PASSWORD: 'vapor_password'
+          POSTGRES_HOST_AUTH_METHOD: ${{ matrix.dbauth }}
+          POSTGRES_INITDB_ARGS: --auth-host=${{ matrix.dbauth }}
+      psql-b:
+        image: ${{ matrix.dbimage }}
+        env:
+          POSTGRES_USER: 'vapor_username'
+          POSTGRES_DB: 'vapor_database'
+          POSTGRES_PASSWORD: 'vapor_password'
+          POSTGRES_HOST_AUTH_METHOD: ${{ matrix.dbauth }}
+          POSTGRES_INITDB_ARGS: --auth-host=${{ matrix.dbauth }}
     steps:
-      - name: Workaround SPM incompatibility with old Git on CentOS 7
-        if: ${{ contains(matrix.runner, 'centos7') }}
-        run: |
-          yum install -y make libcurl-devel
-          git clone https://github.com/git/git -bv2.28.0 --depth 1 && cd git
-          make prefix=/usr -j all install NO_OPENSSL=1 NO_EXPAT=1 NO_TCLTK=1 NO_GETTEXT=1 NO_PERL=1
-      - name: Checkout code
+      - name: Check out package
         uses: actions/checkout@v2
-      - name: Run tests with Thread Sanitizer
-        run: swift test --enable-test-discovery --sanitize=thread
-  macOS:
+      - name: Run unit tests
+        run: swift test --enable-test-discovery
+
+  macos-all:
     strategy:
       fail-fast: false
       matrix:
-        include: 
-          - formula: postgresql@11
-            datadir: postgresql@11
-          - formula: postgresql@12
-            datadir: postgres
+        dbimage:
+          - postgresql@14
+          - postgresql@13
+        dbauth:
+          - scram-sha-256
         xcode:
-          - latest
           - latest-stable
+          - latest
+    runs-on: macos-11
     env:
-      POSTGRES_DATABASE_A: vapor_database_a
-      POSTGRES_DATABASE_B: vapor_database_b
-    runs-on: macos-latest
+      LOG_LEVEL: debug
+      POSTGRES_HOSTNAME_A: 127.0.0.1
+      POSTGRES_HOSTNAME_B: 127.0.0.1
+      POSTGRES_USERNAME_A: 'vapor_username'
+      POSTGRES_USERNAME_B: 'vapor_username'
+      POSTGRES_PASSWORD_A: 'vapor_password'
+      POSTGRES_PASSWORD_B: 'vapor_password'
+      POSTGRES_DATABASE_A: 'vapor_database_a'
+      POSTGRES_DATABASE_B: 'vapor_database_b'
+      POSTGRES_HOST_AUTH_METHOD: ${{ matrix.dbauth }}
     steps:
       - name: Select latest available Xcode
         uses: maxim-lobanov/setup-xcode@v1
-        with: 
+        with:
           xcode-version: ${{ matrix.xcode }}
-      - name: Replace Postgres install and start server
+      - name: Install Postgres, setup DB and auth, and wait for server start
         run: |
-          brew uninstall --force postgresql php && rm -rf /usr/local/{etc,var}/{postgres,pg}*
-          brew install ${{ matrix.formula }} && brew link --force ${{ matrix.formula }}
-          initdb --locale=C -E UTF-8 $(brew --prefix)/var/${{ matrix.datadir }}
-          brew services start ${{ matrix.formula }}
-      - name: Wait for server to be ready
-        run: until pg_isready; do sleep 1; done
+          export PATH="$(brew --prefix)/opt/${{ matrix.dbimage }}/bin:$PATH" PGDATA=/tmp/vapor-postgres-test PGUSER=postgres
+          brew install ${{ matrix.dbimage }}
+          initdb --locale=C --auth-host ${{ matrix.dbauth }} --username=postgres --pwfile=<(echo postgres)
+          pg_ctl start --wait
+          psql postgres <<<"CREATE ROLE $POSTGRES_USERNAME_A LOGIN PASSWORD '$POSTGRES_PASSWORD_A';"
+          psql postgres <<<"CREATE ROLE $POSTGRES_USERNAME_B LOGIN PASSWORD '$POSTGRES_PASSWORD_B';"
+          psql postgres <<<"CREATE DATABASE $POSTGRES_DATABASE_A OWNER = $POSTGRES_USERNAME_A;"
+          psql postgres <<<"CREATE DATABASE $POSTGRES_DATABASE_B OWNER = $POSTGRES_USERNAME_B;"
+          psql $POSTGRES_DATABASE_A <<<"ALTER SCHEMA public OWNER TO $POSTGRES_USERNAME_A;"
+          psql $POSTGRES_DATABASE_B <<<"ALTER SCHEMA public OWNER TO $POSTGRES_USERNAME_B;"
         timeout-minutes: 2
-      - name: Setup users and databases for Postgres
-        run: |
-          createuser --createdb --login vapor_username
-          for db in vapor_database_{a,b}; do
-            createdb -Ovapor_username $db && psql $db <<<"ALTER SCHEMA public OWNER TO vapor_username;"
-          done
       - name: Checkout code
         uses: actions/checkout@v2
-      - name: Run tests with Thread Sanitizer
-        run: swift test --enable-test-discovery --sanitize=thread
+      - name: Run all tests
+        run: |
+          swift test --enable-test-discovery -Xlinker -rpath \
+                -Xlinker $(xcode-select -p)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.5/macosx
