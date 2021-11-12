@@ -83,8 +83,8 @@ jobs:
       POSTGRES_USERNAME_B: 'vapor_username'
       POSTGRES_PASSWORD_A: 'vapor_password'
       POSTGRES_PASSWORD_B: 'vapor_password'
-      POSTGRES_DATABASE_A: 'vapor_database'
-      POSTGRES_DATABASE_B: 'vapor_database'
+      POSTGRES_DATABASE_A: 'vapor_database_a'
+      POSTGRES_DATABASE_B: 'vapor_database_b'
       POSTGRES_HOST_AUTH_METHOD: ${{ matrix.dbauth }}
     steps:
       - name: Select latest available Xcode
