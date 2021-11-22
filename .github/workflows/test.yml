@@ -2,7 +2,7 @@ name: test
 on: [ 'pull_request' ]
 
 jobs:
-  linux:
+  linux-all:
     strategy:
       fail-fast: false
       matrix:
@@ -25,15 +25,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       LOG_LEVEL: debug
-      POSTGRES_DB: 'vapor_database'
-      POSTGRES_DATABASE: 'vapor_database'
-      POSTGRES_DATABASE_A: 'vapor_database'
-      POSTGRES_DATABASE_B: 'vapor_database'
-      POSTGRES_USER: 'vapor_username'
-      POSTGRES_USERNAME: 'vapor_username'
-      POSTGRES_USERNAME_A: 'vapor_username'
-      POSTGRES_USERNAME_B: 'vapor_username'
-      POSTGRES_PASSWORD: 'vapor_password'
+      POSTGRES_DB_A: 'vapor_database'
+      POSTGRES_DB_B: 'vapor_database'
+      POSTGRES_USER_A: 'vapor_username'
+      POSTGRES_USER_B: 'vapor_username'
       POSTGRES_PASSWORD_A: 'vapor_password'
       POSTGRES_PASSWORD_B: 'vapor_password'
       POSTGRES_HOSTNAME_A: 'psql-a'
@@ -59,17 +54,18 @@ jobs:
     steps:
       - name: Check out package
         uses: actions/checkout@v2
-      - name: Run unit tests
-        run: swift test --enable-test-discovery
+      - name: Run all tests with Thread Sanitizer
+        run: swift test --enable-test-discovery --sanitize=thread
 
   macos-all:
     strategy:
       fail-fast: false
       matrix:
         dbimage:
+          # Only test the lastest version on macOS, let Linux do the rest
           - postgresql@14
-          - postgresql@13
         dbauth:
+          # Only test one auth method on macOS, Linux tests will cover the others
           - scram-sha-256
         xcode:
           - latest-stable
@@ -79,13 +75,12 @@ jobs:
       LOG_LEVEL: debug
       POSTGRES_HOSTNAME_A: 127.0.0.1
       POSTGRES_HOSTNAME_B: 127.0.0.1
-      POSTGRES_USERNAME_A: 'vapor_username'
-      POSTGRES_USERNAME_B: 'vapor_username'
+      POSTGRES_USER_A: 'vapor_username'
+      POSTGRES_USER_B: 'vapor_username'
       POSTGRES_PASSWORD_A: 'vapor_password'
       POSTGRES_PASSWORD_B: 'vapor_password'
-      POSTGRES_DATABASE_A: 'vapor_database_a'
-      POSTGRES_DATABASE_B: 'vapor_database_b'
-      POSTGRES_HOST_AUTH_METHOD: ${{ matrix.dbauth }}
+      POSTGRES_DB_A: 'vapor_database_a'
+      POSTGRES_DB_B: 'vapor_database_b'
     steps:
       - name: Select latest available Xcode
         uses: maxim-lobanov/setup-xcode@v1
@@ -94,19 +89,19 @@ jobs:
       - name: Install Postgres, setup DB and auth, and wait for server start
         run: |
           export PATH="$(brew --prefix)/opt/${{ matrix.dbimage }}/bin:$PATH" PGDATA=/tmp/vapor-postgres-test PGUSER=postgres
-          brew install ${{ matrix.dbimage }}
+          (brew unlink postgresql || true) && brew install ${{ matrix.dbimage }} && brew link --force ${{ matrix.dbimage }}
           initdb --locale=C --auth-host ${{ matrix.dbauth }} --username=postgres --pwfile=<(echo postgres)
           pg_ctl start --wait
-          psql postgres <<<"CREATE ROLE $POSTGRES_USERNAME_A LOGIN PASSWORD '$POSTGRES_PASSWORD_A';"
-          psql postgres <<<"CREATE ROLE $POSTGRES_USERNAME_B LOGIN PASSWORD '$POSTGRES_PASSWORD_B';"
-          psql postgres <<<"CREATE DATABASE $POSTGRES_DATABASE_A OWNER = $POSTGRES_USERNAME_A;"
-          psql postgres <<<"CREATE DATABASE $POSTGRES_DATABASE_B OWNER = $POSTGRES_USERNAME_B;"
-          psql $POSTGRES_DATABASE_A <<<"ALTER SCHEMA public OWNER TO $POSTGRES_USERNAME_A;"
-          psql $POSTGRES_DATABASE_B <<<"ALTER SCHEMA public OWNER TO $POSTGRES_USERNAME_B;"
+          psql postgres <<<"CREATE ROLE $POSTGRES_USER_A LOGIN PASSWORD '$POSTGRES_PASSWORD_A';"
+          psql postgres <<<"CREATE ROLE $POSTGRES_USER_B LOGIN PASSWORD '$POSTGRES_PASSWORD_B';"
+          psql postgres <<<"CREATE DATABASE $POSTGRES_DB_A OWNER = $POSTGRES_USER_A;"
+          psql postgres <<<"CREATE DATABASE $POSTGRES_DB_B OWNER = $POSTGRES_USER_B;"
+          psql $POSTGRES_DB_A <<<"ALTER SCHEMA public OWNER TO $POSTGRES_USER_A;"
+          psql $POSTGRES_DB_B <<<"ALTER SCHEMA public OWNER TO $POSTGRES_USER_B;"
         timeout-minutes: 2
       - name: Checkout code
         uses: actions/checkout@v2
-      - name: Run all tests
+      - name: Run all tests with Thread Sanitizer
         run: |
-          swift test --enable-test-discovery -Xlinker -rpath \
+          swift test --sanitize=thread -Xlinker -rpath \
                 -Xlinker $(xcode-select -p)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.5/macosx
