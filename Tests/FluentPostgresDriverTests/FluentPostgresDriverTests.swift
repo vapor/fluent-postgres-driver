@@ -1,7 +1,9 @@
 import Logging
+import FluentKit
 import FluentBenchmark
 import FluentPostgresDriver
 import XCTest
+import PostgresKit
 
 final class FluentPostgresDriverTests: XCTestCase {
     func testAll() throws { try self.benchmarker.testAll() }
@@ -133,15 +135,7 @@ final class FluentPostgresDriverTests: XCTestCase {
         let jsonDecoder = JSONDecoder()
         jsonDecoder.dateDecodingStrategy = .iso8601
 
-        let configuration = PostgresConfiguration(
-            hostname: env("POSTGRES_HOSTNAME_A") ?? "localhost",
-            port: env("POSTGRES_PORT_A").flatMap(Int.init) ?? PostgresConfiguration.ianaPortNumber,
-            username: env("POSTGRES_USERNAME_A") ?? "vapor_username",
-            password: env("POSTGRES_PASSWORD_A") ?? "vapor_password",
-            database: env("POSTGRES_DATABASE_A") ?? "vapor_database"
-        )
-        self.dbs.use(.postgres(
-            configuration: configuration,
+        self.dbs.use(.testPostgres(subconfig: "A",
             encoder: PostgresDataEncoder(json: jsonEncoder),
             decoder: PostgresDataDecoder(json: jsonDecoder)
         ), as: .iso8601)
@@ -179,27 +173,13 @@ final class FluentPostgresDriverTests: XCTestCase {
     override func setUpWithError() throws {
         try super.setUpWithError()
         
-        let aConfig = PostgresConfiguration(
-            hostname: env("POSTGRES_HOSTNAME_A") ?? "localhost",
-            port: env("POSTGRES_PORT_A").flatMap(Int.init) ?? PostgresConfiguration.ianaPortNumber,
-            username: env("POSTGRES_USERNAME_A") ?? "vapor_username",
-            password: env("POSTGRES_PASSWORD_A") ?? "vapor_password",
-            database: env("POSTGRES_DATABASE_A") ?? "vapor_database"
-        )
-        let bConfig = PostgresConfiguration(
-            hostname: env("POSTGRES_HOSTNAME_B") ?? "localhost",
-            port: env("POSTGRES_PORT_B").flatMap(Int.init) ?? PostgresConfiguration.ianaPortNumber,
-            username: env("POSTGRES_USERNAME_B") ?? "vapor_username",
-            password: env("POSTGRES_PASSWORD_B") ?? "vapor_password",
-            database: env("POSTGRES_DATABASE_B") ?? "vapor_database"
-        )
         XCTAssert(isLoggingConfigured)
         self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
         self.threadPool = NIOThreadPool(numberOfThreads: System.coreCount)
         self.dbs = Databases(threadPool: threadPool, on: self.eventLoopGroup)
 
-        self.dbs.use(.postgres(configuration: aConfig, connectionPoolTimeout: .seconds(30)), as: .a)
-        self.dbs.use(.postgres(configuration: bConfig, connectionPoolTimeout: .seconds(30)), as: .b)
+        self.dbs.use(.testPostgres(subconfig: "A"), as: .a)
+        self.dbs.use(.testPostgres(subconfig: "B"), as: .b)
 
         let a = self.dbs.database(.a, logger: Logger(label: "test.fluent.a"), on: self.eventLoopGroup.next())
         _ = try (a as! PostgresDatabase).query("drop schema public cascade").wait()
@@ -215,6 +195,23 @@ final class FluentPostgresDriverTests: XCTestCase {
         try self.threadPool.syncShutdownGracefully()
         try self.eventLoopGroup.syncShutdownGracefully()
         try super.tearDownWithError()
+    }
+}
+
+extension DatabaseConfigurationFactory {
+    static func testPostgres(
+        subconfig: String,
+        encoder: PostgresDataEncoder = .init(), decoder: PostgresDataDecoder = .init()
+    ) -> DatabaseConfigurationFactory {
+        let baseSubconfig = PostgresConfiguration(
+            hostname: env("POSTGRES_HOSTNAME_\(subconfig)") ?? "localhost",
+            port: env("POSTGRES_PORT_\(subconfig)").flatMap(Int.init) ?? PostgresConfiguration.ianaPortNumber,
+            username: env("POSTGRES_USER_\(subconfig)") ?? "vapor_username",
+            password: env("POSTGRES_PASSWORD_\(subconfig)") ?? "vapor_password",
+            database: env("POSTGRES_DB_\(subconfig)") ?? "vapor_database"
+        )
+        
+        return .postgres(configuration: baseSubconfig, connectionPoolTimeout: .seconds(30), encoder: encoder, decoder: decoder)
     }
 }
 
