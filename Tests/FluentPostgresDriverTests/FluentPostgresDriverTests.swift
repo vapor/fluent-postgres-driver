@@ -6,9 +6,7 @@ import XCTest
 import PostgresKit
 
 final class FluentPostgresDriverTests: XCTestCase {
-    func testAll() throws { try self.benchmarker.testAll() }
-    
-    #if Xcode
+    //func testAll() throws { try self.benchmarker.testAll() }
     func testAggregate() throws { try self.benchmarker.testAggregate() }
     func testArray() throws { try self.benchmarker.testArray() }
     func testBatch() throws { try self.benchmarker.testBatch() }
@@ -35,10 +33,10 @@ final class FluentPostgresDriverTests: XCTestCase {
     func testSiblings() throws { try self.benchmarker.testSiblings() }
     func testSoftDelete() throws { try self.benchmarker.testSoftDelete() }
     func testSort() throws { try self.benchmarker.testSort() }
+    func testSQL() throws { try self.benchmarker.testSQL() }
     func testTimestamp() throws { try self.benchmarker.testTimestamp() }
     func testTransaction() throws { try self.benchmarker.testTransaction() }
     func testUnique() throws { try self.benchmarker.testUnique() }
-    #endif
 
     func testDatabaseError() throws {
         let sql = (self.db as! SQLDatabase)

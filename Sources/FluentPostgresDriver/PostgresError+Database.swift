@@ -53,7 +53,12 @@ extension PostgresError: DatabaseError {
     }
     
     public var isConnectionClosed: Bool {
-        return false
+        switch self {
+        case .connectionClosed:
+            return true
+        default:
+            return false
+        }
     }
     
     public var isConstraintFailure: Bool {
