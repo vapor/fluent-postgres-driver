@@ -154,6 +154,26 @@ final class FluentPostgresDriverTests: XCTestCase {
         XCTAssertEqual(rows[0].metadata["createdAt"], expected)
     }
 
+    func testEnumAddingMultipleCases() throws {
+        try EnumMigration().prepare(on: self.db).wait()
+        try EventWithFooMigration().prepare(on: self.db).wait()
+
+        let event = EventWithFoo()
+        event.foobar = .foo
+        try event.save(on: self.db).wait()
+
+        XCTAssertNoThrow(try EnumAddMultipleCasesMigration().prepare(on: self.db).wait())
+
+        event.foobar = .baz
+        XCTAssertNoThrow(try event.update(on: self.db).wait())
+        event.foobar = .qux
+        XCTAssertNoThrow(try event.update(on: self.db).wait())
+
+        XCTAssertNoThrow(try EnumAddMultipleCasesMigration().revert(on: self.db).wait())
+        try! EventWithFooMigration().revert(on: self.db).wait()
+        try! EnumMigration().revert(on: self.db).wait()
+    }
+
     
     var benchmarker: FluentBenchmarker {
         return .init(databases: self.dbs)
@@ -257,6 +277,72 @@ struct EventMigration: Migration {
 
     func revert(on database: Database) -> EventLoopFuture<Void> {
         return database.schema(Event.schema).delete()
+    }
+}
+
+final class EventWithFoo: Model {
+    static let schema = "foobar_events"
+
+    @ID
+    var id: UUID?
+
+    @Enum(key: "foo")
+    var foobar: Foobar
+}
+
+enum Foobar: String, Codable {
+    static let schema = "foobars"
+    case foo
+    case bar
+    case baz
+    case qux
+}
+
+struct EventWithFooMigration: Migration {
+    func prepare(on database: Database) -> EventLoopFuture<Void> {
+        return database.enum(Foobar.schema).read()
+            .flatMap { foobar in
+                database.schema(EventWithFoo.schema)
+                    .id()
+                    .field("foo", foobar, .required)
+                    .create()
+            }
+    }
+
+    func revert(on database: Database) -> EventLoopFuture<Void> {
+        return database.schema(EventWithFoo.schema).delete()
+    }
+}
+
+struct EnumMigration: Migration {
+    func prepare(on database: Database) -> EventLoopFuture<Void> {
+        return database.enum(Foobar.schema)
+            .case("foo")
+            .case("bar")
+            .create()
+            .transform(to: ())
+    }
+
+    func revert(on database: Database) -> EventLoopFuture<Void> {
+        return database.enum(Foobar.schema).delete()
+    }
+}
+
+struct EnumAddMultipleCasesMigration: Migration {
+    func prepare(on database: Database) -> EventLoopFuture<Void> {
+        return database.enum(Foobar.schema)
+            .case("baz")
+            .case("qux")
+            .update()
+            .transform(to: ())
+    }
+
+    func revert(on database: Database) -> EventLoopFuture<Void> {
+        return database.enum(Foobar.schema)
+            .deleteCase("baz")
+            .deleteCase("qux")
+            .update()
+            .transform(to: ())
     }
 }
 
