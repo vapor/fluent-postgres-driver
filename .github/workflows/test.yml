@@ -9,7 +9,6 @@ jobs:
         dbimage:
           - postgres:14
           - postgres:13
-          - postgres:12
           - postgres:11
         dbauth:
           - trust
@@ -18,19 +17,23 @@ jobs:
         swiftver:
           - swift:5.2
           - swift:5.5
+          - swift:5.6
           - swiftlang/swift:nightly-main
         swiftos:
           - focal
+        include:
+          - swiftver: swift:5.2
+            test_flag: --enable-test-discovery
     container: ${{ format('{0}-{1}', matrix.swiftver, matrix.swiftos) }}
     runs-on: ubuntu-latest
     env:
       LOG_LEVEL: debug
-      POSTGRES_DB_A: 'vapor_database'
-      POSTGRES_DB_B: 'vapor_database'
-      POSTGRES_USER_A: 'vapor_username'
-      POSTGRES_USER_B: 'vapor_username'
-      POSTGRES_PASSWORD_A: 'vapor_password'
-      POSTGRES_PASSWORD_B: 'vapor_password'
+      POSTGRES_DB_A: 'test_database'
+      POSTGRES_DB_B: 'test_database'
+      POSTGRES_USER_A: 'test_username'
+      POSTGRES_USER_B: 'test_username'
+      POSTGRES_PASSWORD_A: 'test_password'
+      POSTGRES_PASSWORD_B: 'test_password'
       POSTGRES_HOSTNAME_A: 'psql-a'
       POSTGRES_HOSTNAME_B: 'psql-b'
       POSTGRES_HOST_AUTH_METHOD: ${{ matrix.dbauth }}
@@ -38,49 +41,48 @@ jobs:
       psql-a:
         image: ${{ matrix.dbimage }}
         env:
-          POSTGRES_USER: 'vapor_username'
-          POSTGRES_DB: 'vapor_database'
-          POSTGRES_PASSWORD: 'vapor_password'
+          POSTGRES_USER: 'test_username'
+          POSTGRES_DB: 'test_database'
+          POSTGRES_PASSWORD: 'test_password'
           POSTGRES_HOST_AUTH_METHOD: ${{ matrix.dbauth }}
           POSTGRES_INITDB_ARGS: --auth-host=${{ matrix.dbauth }}
       psql-b:
         image: ${{ matrix.dbimage }}
         env:
-          POSTGRES_USER: 'vapor_username'
-          POSTGRES_DB: 'vapor_database'
-          POSTGRES_PASSWORD: 'vapor_password'
+          POSTGRES_USER: 'test_username'
+          POSTGRES_DB: 'test_database'
+          POSTGRES_PASSWORD: 'test_password'
           POSTGRES_HOST_AUTH_METHOD: ${{ matrix.dbauth }}
           POSTGRES_INITDB_ARGS: --auth-host=${{ matrix.dbauth }}
     steps:
       - name: Check out package
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Run all tests with Thread Sanitizer
-        run: swift test --enable-test-discovery --sanitize=thread
+        run: swift test ${{ matrix.test_flag }} --sanitize=thread
 
   macos-all:
     strategy:
       fail-fast: false
       matrix:
+        # Only test latest version and one auth method on macOS
         dbimage:
-          # Only test the lastest version on macOS, let Linux do the rest
           - postgresql@14
         dbauth:
-          # Only test one auth method on macOS, Linux tests will cover the others
           - scram-sha-256
         xcode:
           - latest-stable
-          - latest
+          #- latest
     runs-on: macos-11
     env:
       LOG_LEVEL: debug
       POSTGRES_HOSTNAME_A: 127.0.0.1
       POSTGRES_HOSTNAME_B: 127.0.0.1
-      POSTGRES_USER_A: 'vapor_username'
-      POSTGRES_USER_B: 'vapor_username'
-      POSTGRES_PASSWORD_A: 'vapor_password'
-      POSTGRES_PASSWORD_B: 'vapor_password'
-      POSTGRES_DB_A: 'vapor_database_a'
-      POSTGRES_DB_B: 'vapor_database_b'
+      POSTGRES_USER_A: 'test_username'
+      POSTGRES_USER_B: 'test_username'
+      POSTGRES_PASSWORD_A: 'test_password'
+      POSTGRES_PASSWORD_B: 'test_password'
+      POSTGRES_DB_A: 'test_database_a'
+      POSTGRES_DB_B: 'test_database_b'
     steps:
       - name: Select latest available Xcode
         uses: maxim-lobanov/setup-xcode@v1
@@ -100,7 +102,7 @@ jobs:
           psql $POSTGRES_DB_B <<<"ALTER SCHEMA public OWNER TO $POSTGRES_USER_B;"
         timeout-minutes: 2
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Run all tests with Thread Sanitizer
         run: |
           swift test --sanitize=thread -Xlinker -rpath \

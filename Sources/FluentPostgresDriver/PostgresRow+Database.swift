@@ -1,5 +1,3 @@
-import class Foundation.JSONDecoder
-
 extension PostgresRow {
     internal func databaseOutput(using decoder: PostgresDataDecoder) -> DatabaseOutput {
         _PostgresDatabaseOutput(
@@ -10,40 +8,33 @@ extension PostgresRow {
 }
 
 private struct _PostgresDatabaseOutput: DatabaseOutput {
-    let row: PostgresRow
-    let decoder: PostgresDataDecoder
-
+    let row: SQLRow
+    
+    init(row: PostgresRow, decoder: PostgresDataDecoder) {
+        self.row = row.sql(decoder: decoder)
+    }
+    
     var description: String {
-        self.row.description
-    }
-
-    func decodeNil(_ key: FieldKey) throws -> Bool {
-        if let data = self.row.column(self.columnName(key)) {
-            return data.type == .null
-        } else {
-            return true
-        }
-    }
-
-    func contains(_ key: FieldKey) -> Bool {
-        self.row.column(self.columnName(key)) != nil
+        String(describing: self.row)
     }
 
     func schema(_ schema: String) -> DatabaseOutput {
-        _SchemaDatabaseOutput(
-            output: self,
-            schema: schema
-        )
+        _SchemaDatabaseOutput(output: self, schema: schema)
     }
 
-    func decode<T>(_ key: FieldKey, as type: T.Type) throws -> T
-        where T: Decodable
-    {
-        try self.row.sql(decoder: self.decoder)
-            .decode(column: self.columnName(key), as: T.self)
+    func contains(_ key: FieldKey) -> Bool {
+        self.row.contains(column: self.columnName(key))
     }
 
-    func columnName(_ key: FieldKey) -> String {
+    func decodeNil(_ key: FieldKey) throws -> Bool {
+        try self.row.decodeNil(column: self.columnName(key))
+    }
+
+    func decode<T>(_ key: FieldKey, as type: T.Type) throws -> T where T: Decodable {
+        try self.row.decode(column: self.columnName(key), as: T.self)
+    }
+
+    private func columnName(_ key: FieldKey) -> String {
         switch key {
         case .id:
             return "id"
