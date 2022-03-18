@@ -53,7 +53,7 @@ extension _FluentPostgresDatabase: Database {
     func execute(enum e: DatabaseEnum) -> EventLoopFuture<Void> {
         switch e.action {
         case .create:
-            let builder = self.sql().create(enum: e.name)
+            let builder = self.create(enum: e.name)
             for c in e.createCases {
                 _ = builder.value(c)
             }
@@ -68,13 +68,13 @@ extension _FluentPostgresDatabase: Database {
             }
 
             return database.eventLoop.flatten(e.createCases.map { create in
-                let builder = self.sql().alter(enum: e.name)
+                let builder = self.alter(enum: e.name)
                 builder.add(value: create)
                 self.logger.log(level: self.sqlLogLevel, "\(builder.query)")
                 return builder.run()
             })
         case .delete:
-            let builder = self.sql().drop(enum: e.name)
+            let builder = self.drop(enum: e.name)
             self.logger.log(level: self.sqlLogLevel, "\(builder.query)")
             return builder.run()
         }
