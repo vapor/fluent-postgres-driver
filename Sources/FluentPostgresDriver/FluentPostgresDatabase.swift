@@ -18,7 +18,7 @@ extension _FluentPostgresDatabase: Database {
         var expression = SQLQueryConverter(delegate: PostgresConverterDelegate())
             .convert(query)
         switch query.action {
-        case .create:
+        case .create where query.customIDKey != .string(""):
             expression = PostgresReturningID(
                 base: expression,
                 idKey: query.customIDKey ?? .id
