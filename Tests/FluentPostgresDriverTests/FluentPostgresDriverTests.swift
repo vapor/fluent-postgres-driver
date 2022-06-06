@@ -173,7 +173,6 @@ final class FluentPostgresDriverTests: XCTestCase {
         try! EventWithFooMigration().revert(on: self.db).wait()
         try! EnumMigration().revert(on: self.db).wait()
     }
-
     
     var benchmarker: FluentBenchmarker {
         return .init(databases: self.dbs)
