@@ -7,7 +7,8 @@ extension DatabaseConfigurationFactory {
         connectionPoolTimeout: NIO.TimeAmount = .seconds(10),
         encoder: PostgresDataEncoder = .init(),
         decoder: PostgresDataDecoder = .init(),
-        sqlLogLevel: Logger.Level = .debug
+        sqlLogLevel: Logger.Level = .debug,
+        inTransaction: Bool = false
     ) throws -> DatabaseConfigurationFactory {
         guard let url = URL(string: urlString) else {
             throw FluentPostgresError.invalidURL(urlString)
@@ -18,7 +19,8 @@ extension DatabaseConfigurationFactory {
             connectionPoolTimeout: connectionPoolTimeout,
             encoder: encoder,
             decoder: decoder,
-            sqlLogLevel: sqlLogLevel
+            sqlLogLevel: sqlLogLevel,
+            inTransaction: inTransaction
         )
     }
 
@@ -28,7 +30,8 @@ extension DatabaseConfigurationFactory {
         connectionPoolTimeout: NIO.TimeAmount = .seconds(10),
         encoder: PostgresDataEncoder = .init(),
         decoder: PostgresDataDecoder = .init(),
-        sqlLogLevel: Logger.Level = .debug
+        sqlLogLevel: Logger.Level = .debug,
+        inTransaction: Bool = false
     ) throws -> DatabaseConfigurationFactory {
         guard let configuration = PostgresConfiguration(url: url) else {
             throw FluentPostgresError.invalidURL(url.absoluteString)
@@ -37,7 +40,8 @@ extension DatabaseConfigurationFactory {
             configuration: configuration,
             maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
             connectionPoolTimeout: connectionPoolTimeout,
-            sqlLogLevel: sqlLogLevel
+            sqlLogLevel: sqlLogLevel,
+            inTransaction: inTransaction
         )
     }
 
@@ -52,7 +56,8 @@ extension DatabaseConfigurationFactory {
         connectionPoolTimeout: NIO.TimeAmount = .seconds(10),
         encoder: PostgresDataEncoder = .init(),
         decoder: PostgresDataDecoder = .init(),
-        sqlLogLevel: Logger.Level = .debug
+        sqlLogLevel: Logger.Level = .debug,
+        inTransaction: Bool = false
     ) -> DatabaseConfigurationFactory {
         return .postgres(
             configuration: .init(
@@ -65,7 +70,8 @@ extension DatabaseConfigurationFactory {
             ),
             maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
             connectionPoolTimeout: connectionPoolTimeout,
-            sqlLogLevel: sqlLogLevel
+            sqlLogLevel: sqlLogLevel,
+            inTransaction: inTransaction
         )
     }
 
@@ -75,7 +81,8 @@ extension DatabaseConfigurationFactory {
         connectionPoolTimeout: NIO.TimeAmount = .seconds(10),
         encoder: PostgresDataEncoder = .init(),
         decoder: PostgresDataDecoder = .init(),
-        sqlLogLevel: Logger.Level = .debug
+        sqlLogLevel: Logger.Level = .debug,
+        inTransaction: Bool = false
     ) -> DatabaseConfigurationFactory {
         return DatabaseConfigurationFactory {
             FluentPostgresConfiguration(
@@ -85,7 +92,8 @@ extension DatabaseConfigurationFactory {
                 connectionPoolTimeout: connectionPoolTimeout,
                 encoder: encoder,
                 decoder: decoder,
-                sqlLogLevel: sqlLogLevel
+                sqlLogLevel: sqlLogLevel,
+                inTransaction: inTransaction
             )
         }
     }
@@ -101,6 +109,7 @@ struct FluentPostgresConfiguration: DatabaseConfiguration {
     let encoder: PostgresDataEncoder
     let decoder: PostgresDataDecoder
     let sqlLogLevel: Logger.Level
+    let inTransaction: Bool
 
     func makeDriver(for databases: Databases) -> DatabaseDriver {
         let db = PostgresConnectionSource(
@@ -116,7 +125,8 @@ struct FluentPostgresConfiguration: DatabaseConfiguration {
             pool: pool,
             encoder: self.encoder,
             decoder: self.decoder,
-            sqlLogLevel: self.sqlLogLevel
+            sqlLogLevel: self.sqlLogLevel,
+            inTransaction: self.inTransaction
         )
     }
 }

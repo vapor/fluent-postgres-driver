@@ -9,6 +9,7 @@ struct _FluentPostgresDriver: DatabaseDriver {
     let encoder: PostgresDataEncoder
     let decoder: PostgresDataDecoder
     let sqlLogLevel: Logger.Level
+    let inTransaction: Bool
     
     var eventLoopGroup: EventLoopGroup {
         self.pool.eventLoopGroup
@@ -20,7 +21,7 @@ struct _FluentPostgresDriver: DatabaseDriver {
             context: context,
             encoder: self.encoder,
             decoder: self.decoder,
-            inTransaction: false,
+            inTransaction: inTransaction,
             sqlLogLevel: self.sqlLogLevel
         )
     }
