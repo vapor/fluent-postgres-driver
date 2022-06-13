@@ -15,15 +15,12 @@ jobs:
           - md5
           - scram-sha-256
         swiftver:
-          - swift:5.2
+          - swift:5.4
           - swift:5.5
           - swift:5.6
           - swiftlang/swift:nightly-main
         swiftos:
           - focal
-        include:
-          - swiftver: swift:5.2
-            test_flag: --enable-test-discovery
     container: ${{ format('{0}-{1}', matrix.swiftver, matrix.swiftos) }}
     runs-on: ubuntu-latest
     env:
@@ -57,8 +54,8 @@ jobs:
     steps:
       - name: Check out package
         uses: actions/checkout@v3
-      - name: Run all tests with Thread Sanitizer
-        run: swift test ${{ matrix.test_flag }} --sanitize=thread
+      - name: Run all tests
+        run: swift test
 
   macos-all:
     strategy:
@@ -69,10 +66,10 @@ jobs:
           - postgresql@14
         dbauth:
           - scram-sha-256
-        xcode:
-          - latest-stable
-          #- latest
-    runs-on: macos-11
+        macos: ['macos-11', 'macos-12']
+        xcode: ['latest-stable', 'latest']
+        exclude: [{ macos: 'macos-11', xcode: 'latest' }]
+    runs-on: ${{ matrix.macos }}
     env:
       LOG_LEVEL: debug
       POSTGRES_HOSTNAME_A: 127.0.0.1
@@ -103,7 +100,5 @@ jobs:
         timeout-minutes: 2
       - name: Checkout code
         uses: actions/checkout@v3
-      - name: Run all tests with Thread Sanitizer
-        run: |
-          swift test --sanitize=thread -Xlinker -rpath \
-                -Xlinker $(xcode-select -p)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.5/macosx
+      - name: Run all tests
+        run: swift test
