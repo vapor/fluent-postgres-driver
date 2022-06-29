@@ -124,6 +124,29 @@ extension _FluentPostgresDatabase: Database {
     }
 }
 
+extension _FluentPostgresDatabase: TransactionControlDatabase {
+    func beginTransaction() -> EventLoopFuture<Void> {
+        self.database.withConnection { conn in
+            self.logger.log(level: self.sqlLogLevel, "BEGIN")
+            return conn.simpleQuery("BEGIN").map { _ in }
+        }
+    }
+    
+    func commitTransaction() -> NIOCore.EventLoopFuture<Void> {
+        self.database.withConnection { conn in
+            self.logger.log(level: self.sqlLogLevel, "COMMIT")
+            return conn.simpleQuery("COMMIT").map { _ in }
+        }
+    }
+    
+    func rollbackTransaction() -> NIOCore.EventLoopFuture<Void> {
+        self.database.withConnection { conn in
+            self.logger.log(level: self.sqlLogLevel, "ROLLBACK")
+            return conn.simpleQuery("ROLLBACK").map { _ in }
+        }
+    }
+}
+
 extension _FluentPostgresDatabase: SQLDatabase {
     var dialect: SQLDialect {
         PostgresDialect()
