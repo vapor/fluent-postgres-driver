@@ -1,39 +1,100 @@
 name: test
-on: [ 'pull_request' ]
+on:
+  pull_request: { branches: ['*'] }
+  push: { branches: ['main'] }
+
+env:
+  LOG_LEVEL: debug
+  SWIFT_DETERMINISTIC_HASHING: 1
+  POSTGRES_HOSTNAME: 'psql-a'
+  POSTGRES_HOSTNAME_A: 'psql-a'
+  POSTGRES_HOSTNAME_B: 'psql-b'
+  POSTGRES_DB: 'test_database'
+  POSTGRES_DB_A: 'test_database'
+  POSTGRES_DB_B: 'test_database'
+  POSTGRES_USER: 'test_username'
+  POSTGRES_USER_A: 'test_username'
+  POSTGRES_USER_B: 'test_username'
+  POSTGRES_PASSWORD: 'test_password'
+  POSTGRES_PASSWORD_A: 'test_password'
+  POSTGRES_PASSWORD_B: 'test_password'
 
 jobs:
+  # Baseline test run for code coverage stats
+  codecov:
+    strategy:
+      matrix: { dbimage: ['postgres:15'], dbauth: ['scram-sha-256'] }
+    runs-on: ubuntu-latest
+    container: swift:5.7-jammy
+    services:
+      psql-a:
+        image: ${{ matrix.dbimage }}
+        env:
+          POSTGRES_USER: 'test_username'
+          POSTGRES_DB: 'test_database'
+          POSTGRES_PASSWORD: 'test_password'
+          POSTGRES_HOST_AUTH_METHOD: ${{ matrix.dbauth }}
+          POSTGRES_INITDB_ARGS: --auth-host=${{ matrix.dbauth }}
+      psql-b:
+        image: ${{ matrix.dbimage }}
+        env:
+          POSTGRES_USER: 'test_username'
+          POSTGRES_DB: 'test_database'
+          POSTGRES_PASSWORD: 'test_password'
+          POSTGRES_HOST_AUTH_METHOD: ${{ matrix.dbauth }}
+          POSTGRES_INITDB_ARGS: --auth-host=${{ matrix.dbauth }}
+    steps:
+      - name: Save Postgres version and method to env
+        run: |
+          echo POSTGRES_VERSION='${{ matrix.dbimage }}' >> $GITHUB_ENV
+          echo POSTGRES_AUTH_METHOD='${{ matrix.dbauth }}' >> $GITHUB_ENV
+      - name: Check out package
+        uses: actions/checkout@v3
+      - name: Run local tests with coverage
+        run: swift test --enable-code-coverage
+      - name: Submit coverage report to Codecov.io
+        uses: vapor/swift-codecov-action@v0.2
+        with:
+          cc_flags: 'unittests'
+          cc_env_vars: 'SWIFT_VERSION,SWIFT_PLATFORM,RUNNER_OS,RUNNER_ARCH,POSTGRES_VERSION,POSTGRES_AUTH_METHOD'
+          cc_fail_ci_if_error: true
+          cc_verbose: true
+          cc_dry_run: false
+
+  # Check for API breakage versus main
+  api-breakage:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    container: swift:5.7-jammy
+    steps:
+      - name: Check out package
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      # https://github.com/actions/checkout/issues/766
+      - name: Mark the workspace as safe
+        run: git config --global --add safe.directory ${GITHUB_WORKSPACE}
+      - name: Check for API breaking changes
+        run: swift package diagnose-api-breaking-changes origin/main
+
   linux-all:
+    if: github.event_name == 'pull_request'
     strategy:
       fail-fast: false
       matrix:
-        dbimage:
-          - postgres:14
-          - postgres:13
-          - postgres:11
-        dbauth:
-          - trust
-          - md5
-          - scram-sha-256
-        swiftver:
-          - swift:5.4
-          - swift:5.5
-          - swift:5.6
-          - swiftlang/swift:nightly-main
-        swiftos:
-          - focal
-    container: ${{ format('{0}-{1}', matrix.swiftver, matrix.swiftos) }}
+        dbimage: ['postgres:15', 'postgres:14', 'postgres:11']
+        swiftver: [
+            'swift:5.4-focal', 'swift:5.5-focal', 'swift:5.6-focal',
+            'swift:5.7-jammy',
+            'swiftlang/swift:nightly-main-jammy'
+        ]
+        include: [
+            {dbimage: 'postgres:15', dbauth: 'scram-sha-256'},
+            {dbimage: 'postgres:14', dbauth: 'md5'},
+            {dbimage: 'postgres:11', dbauth: 'trust'}
+        ]
+    container: ${{ matrix.swiftver }}
     runs-on: ubuntu-latest
-    env:
-      LOG_LEVEL: debug
-      POSTGRES_DB_A: 'test_database'
-      POSTGRES_DB_B: 'test_database'
-      POSTGRES_USER_A: 'test_username'
-      POSTGRES_USER_B: 'test_username'
-      POSTGRES_PASSWORD_A: 'test_password'
-      POSTGRES_PASSWORD_B: 'test_password'
-      POSTGRES_HOSTNAME_A: 'psql-a'
-      POSTGRES_HOSTNAME_B: 'psql-b'
-      POSTGRES_HOST_AUTH_METHOD: ${{ matrix.dbauth }}
     services:
       psql-a:
         image: ${{ matrix.dbimage }}
@@ -58,28 +119,26 @@ jobs:
         run: swift test
 
   macos-all:
+    if: github.event_name == 'pull_request'
     strategy:
       fail-fast: false
       matrix:
-        # Only test latest version and one auth method on macOS
-        dbimage:
-          - postgresql@14
-        dbauth:
-          - scram-sha-256
+        dbimage: ['postgresql@14'] # N.B.: As of this writing, Homebrew didn't have Postgres 15 yet
+        dbauth: ['scram-sha-256']
         macos: ['macos-11', 'macos-12']
-        xcode: ['latest-stable', 'latest']
-        exclude: [{ macos: 'macos-11', xcode: 'latest' }]
+        xcode: ['latest-stable']
     runs-on: ${{ matrix.macos }}
     env:
       LOG_LEVEL: debug
+      POSTGRES_HOSTNAME: 127.0.0.1
       POSTGRES_HOSTNAME_A: 127.0.0.1
       POSTGRES_HOSTNAME_B: 127.0.0.1
-      POSTGRES_USER_A: 'test_username'
-      POSTGRES_USER_B: 'test_username'
-      POSTGRES_PASSWORD_A: 'test_password'
-      POSTGRES_PASSWORD_B: 'test_password'
+      POSTGRES_DB: 'test_database_a'
       POSTGRES_DB_A: 'test_database_a'
       POSTGRES_DB_B: 'test_database_b'
+      POSTGRES_USER: 'test_username_a'
+      POSTGRES_USER_A: 'test_username_a'
+      POSTGRES_USER_B: 'test_username_b'
     steps:
       - name: Select latest available Xcode
         uses: maxim-lobanov/setup-xcode@v1
