@@ -141,7 +141,7 @@ final class FluentPostgresDriverTests: XCTestCase {
         let db = self.dbs.database(
             .iso8601,
             logger: .init(label: "test"),
-            on: self.eventLoopGroup.next()
+            on: self.eventLoopGroup.any()
         )!
 
         let date = Date()
@@ -200,11 +200,11 @@ final class FluentPostgresDriverTests: XCTestCase {
         self.dbs.use(.testPostgres(subconfig: "A"), as: .a)
         self.dbs.use(.testPostgres(subconfig: "B"), as: .b)
 
-        let a = self.dbs.database(.a, logger: Logger(label: "test.fluent.a"), on: self.eventLoopGroup.next())
+        let a = self.dbs.database(.a, logger: Logger(label: "test.fluent.a"), on: self.eventLoopGroup.any())
         _ = try (a as! PostgresDatabase).query("drop schema public cascade").wait()
         _ = try (a as! PostgresDatabase).query("create schema public").wait()
 
-        let b = self.dbs.database(.b, logger: Logger(label: "test.fluent.b"), on: self.eventLoopGroup.next())
+        let b = self.dbs.database(.b, logger: Logger(label: "test.fluent.b"), on: self.eventLoopGroup.any())
         _ = try (b as! PostgresDatabase).query("drop schema public cascade").wait()
         _ = try (b as! PostgresDatabase).query("create schema public").wait()
     }
@@ -225,9 +225,9 @@ extension DatabaseConfigurationFactory {
         let baseSubconfig = PostgresConfiguration(
             hostname: env("POSTGRES_HOSTNAME_\(subconfig)") ?? "localhost",
             port: env("POSTGRES_PORT_\(subconfig)").flatMap(Int.init) ?? PostgresConfiguration.ianaPortNumber,
-            username: env("POSTGRES_USER_\(subconfig)") ?? "vapor_username",
-            password: env("POSTGRES_PASSWORD_\(subconfig)") ?? "vapor_password",
-            database: env("POSTGRES_DB_\(subconfig)") ?? "vapor_database"
+            username: env("POSTGRES_USER_\(subconfig)") ?? "test_username",
+            password: env("POSTGRES_PASSWORD_\(subconfig)") ?? "test_password",
+            database: env("POSTGRES_DB_\(subconfig)") ?? "test_database"
         )
         
         return .postgres(configuration: baseSubconfig, connectionPoolTimeout: .seconds(30), encoder: encoder, decoder: decoder)
