@@ -3,6 +3,11 @@
 @_exported import FluentKit
 @_exported import PostgresKit
 
+#else 
+
+import FluentKit
+import PostgresKit
+
 #endif
 
 extension DatabaseID {

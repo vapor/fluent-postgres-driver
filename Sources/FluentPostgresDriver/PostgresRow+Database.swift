@@ -1,3 +1,6 @@
+import PostgresKit
+import FluentKit
+
 extension PostgresRow {
     internal func databaseOutput(using decoder: PostgresDataDecoder) -> DatabaseOutput {
         _PostgresDatabaseOutput(

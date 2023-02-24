@@ -1,4 +1,5 @@
 import FluentSQL
+import PostgresKit
 
 extension PostgresError: DatabaseError {
     public var isSyntaxError: Bool {

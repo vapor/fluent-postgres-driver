@@ -1,5 +1,6 @@
 import FluentSQL
 import Logging
+import PostgresKit
 
 struct _FluentPostgresDatabase {
     let database: PostgresDatabase

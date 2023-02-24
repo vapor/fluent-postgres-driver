@@ -1,4 +1,7 @@
 import Logging
+import FluentKit
+import NIOCore
+import PostgresKit
 
 extension DatabaseConfigurationFactory {
     public static func postgres(
