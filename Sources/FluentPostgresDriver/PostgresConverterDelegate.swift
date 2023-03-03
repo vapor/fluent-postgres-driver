@@ -1,4 +1,6 @@
+import FluentKit
 import FluentSQL
+import SQLKit
 
 struct PostgresConverterDelegate: SQLConverterDelegate {
     func customDataType(_ dataType: DatabaseSchema.DataType) -> SQLExpression? {

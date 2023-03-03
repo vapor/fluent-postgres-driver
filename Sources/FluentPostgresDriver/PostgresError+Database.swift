@@ -1,3 +1,4 @@
+import FluentKit
 import FluentSQL
 import PostgresKit
 
