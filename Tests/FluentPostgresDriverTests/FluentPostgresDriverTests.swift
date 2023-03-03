@@ -181,8 +181,8 @@ final class FluentPostgresDriverTests: XCTestCase {
         try super.setUpWithError()
         
         XCTAssert(isLoggingConfigured)
-        self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
-        self.threadPool = NIOThreadPool(numberOfThreads: System.coreCount)
+        self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: Swift.min(System.coreCount, 2))
+        self.threadPool = NIOThreadPool(numberOfThreads: 1)
         self.dbs = Databases(threadPool: threadPool, on: self.eventLoopGroup)
 
         self.dbs.use(.testPostgres(subconfig: "A"), as: .a)

@@ -64,7 +64,7 @@ final class FluentPostgresTransactionControlTests: XCTestCase {
         try super.setUpWithError()
         
         XCTAssert(isLoggingConfigured)
-        self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+        self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: Swift.min(System.coreCount, 2))
         self.threadPool = NIOThreadPool(numberOfThreads: 1)
         self.dbs = Databases(threadPool: threadPool, on: self.eventLoopGroup)
 
@@ -99,7 +99,7 @@ final class FluentPostgresTransactionControlTests: XCTestCase {
         @Field(key: "title")
         var title: String
 
-        init() { }
+        init() {}
         init(title: String) { self.title = title; id = nil }
     }
     
