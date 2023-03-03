@@ -60,18 +60,6 @@ final class FluentPostgresDriverTests: XCTestCase {
     }
     
     func testBlob() throws {
-        final class Foo: Model {
-            static let schema = "foos"
-
-            @ID(key: "id")
-            var id: Int?
-
-            @Field(key: "data")
-            var data: [UInt8]
-
-            init() { }
-        }
-
         struct CreateFoo: Migration {
             func prepare(on database: Database) -> EventLoopFuture<Void> {
                 return database.schema("foos")
