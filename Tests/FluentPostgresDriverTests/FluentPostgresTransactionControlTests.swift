@@ -9,16 +9,16 @@ final class FluentPostgresTransactionControlTests: XCTestCase {
     
     func testRollback() throws {
         do {
-            try self.db.withConnection { db in
-                (db as! TransactionControlDatabase).beginTransaction().flatMap {
+            try self.db.withConnection { db -> EventLoopFuture<Void> in
+                (db as! TransactionControlDatabase).beginTransaction().flatMap { () -> EventLoopFuture<Void> in
                     let todo1 = Todo(title: "Test")
                     return todo1.save(on: db)
-                }.flatMap {
+                }.flatMap { () -> EventLoopFuture<Void> in
                     let duplicate = Todo(title: "Test")
                     return duplicate.create(on: db)
                         .flatMap {
                             (db as! TransactionControlDatabase).commitTransaction()
-                        }.flatMapError { e in
+                        }.flatMapError { (e: Error) -> EventLoopFuture<Void> in
                             return (db as! TransactionControlDatabase).rollbackTransaction()
                                 .flatMap { db.eventLoop.makeFailedFuture(e) }
                         }
