@@ -60,18 +60,6 @@ final class FluentPostgresDriverTests: XCTestCase {
     }
     
     func testBlob() throws {
-        final class Foo: Model {
-            static let schema = "foos"
-
-            @ID(key: "id")
-            var id: Int?
-
-            @Field(key: "data")
-            var data: [UInt8]
-
-            init() { }
-        }
-
         struct CreateFoo: Migration {
             func prepare(on database: Database) -> EventLoopFuture<Void> {
                 return database.schema("foos")
@@ -193,8 +181,8 @@ final class FluentPostgresDriverTests: XCTestCase {
         try super.setUpWithError()
         
         XCTAssert(isLoggingConfigured)
-        self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
-        self.threadPool = NIOThreadPool(numberOfThreads: System.coreCount)
+        self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: Swift.min(System.coreCount, 2))
+        self.threadPool = NIOThreadPool(numberOfThreads: 1)
         self.dbs = Databases(threadPool: threadPool, on: self.eventLoopGroup)
 
         self.dbs.use(.testPostgres(subconfig: "A"), as: .a)
