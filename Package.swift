@@ -4,7 +4,9 @@ import PackageDescription
 let package = Package(
     name: "fluent-postgres-driver",
     platforms: [
-       .macOS(.v10_15)
+        .macOS(.v10_15),
+        .iOS(.v13),
+        .watchOS(.v6)
     ],
     products: [
         .library(name: "FluentPostgresDriver", targets: ["FluentPostgresDriver"]),
