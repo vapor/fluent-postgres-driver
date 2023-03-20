@@ -2,6 +2,7 @@ import FluentKit
 import FluentSQL
 import Logging
 import PostgresKit
+import PostgresNIO
 import SQLKit
 
 struct _FluentPostgresDatabase {
