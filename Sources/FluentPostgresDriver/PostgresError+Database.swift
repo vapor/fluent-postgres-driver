@@ -1,6 +1,7 @@
 import FluentKit
 import FluentSQL
 import PostgresKit
+import PostgresNIO
 
 extension PostgresError: DatabaseError {
     public var isSyntaxError: Bool {

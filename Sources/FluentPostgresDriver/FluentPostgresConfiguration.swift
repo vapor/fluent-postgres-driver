@@ -1,13 +1,16 @@
 import Logging
 import FluentKit
+import AsyncKit
 import NIOCore
+import NIOSSL
+import Foundation
 import PostgresKit
 
 extension DatabaseConfigurationFactory {
     public static func postgres(
         url urlString: String,
         maxConnectionsPerEventLoop: Int = 1,
-        connectionPoolTimeout: NIO.TimeAmount = .seconds(10),
+        connectionPoolTimeout: TimeAmount = .seconds(10),
         encoder: PostgresDataEncoder = .init(),
         decoder: PostgresDataDecoder = .init(),
         sqlLogLevel: Logger.Level = .debug
@@ -28,7 +31,7 @@ extension DatabaseConfigurationFactory {
     public static func postgres(
         url: URL,
         maxConnectionsPerEventLoop: Int = 1,
-        connectionPoolTimeout: NIO.TimeAmount = .seconds(10),
+        connectionPoolTimeout: TimeAmount = .seconds(10),
         encoder: PostgresDataEncoder = .init(),
         decoder: PostgresDataDecoder = .init(),
         sqlLogLevel: Logger.Level = .debug
@@ -52,7 +55,7 @@ extension DatabaseConfigurationFactory {
         database: String? = nil,
         tlsConfiguration: TLSConfiguration? = nil,
         maxConnectionsPerEventLoop: Int = 1,
-        connectionPoolTimeout: NIO.TimeAmount = .seconds(10),
+        connectionPoolTimeout: TimeAmount = .seconds(10),
         encoder: PostgresDataEncoder = .init(),
         decoder: PostgresDataDecoder = .init(),
         sqlLogLevel: Logger.Level = .debug
@@ -75,7 +78,7 @@ extension DatabaseConfigurationFactory {
     public static func postgres(
         configuration: PostgresConfiguration,
         maxConnectionsPerEventLoop: Int = 1,
-        connectionPoolTimeout: NIO.TimeAmount = .seconds(10),
+        connectionPoolTimeout: TimeAmount = .seconds(10),
         encoder: PostgresDataEncoder = .init(),
         decoder: PostgresDataDecoder = .init(),
         sqlLogLevel: Logger.Level = .debug
@@ -100,7 +103,7 @@ struct FluentPostgresConfiguration: DatabaseConfiguration {
     let maxConnectionsPerEventLoop: Int
     /// The amount of time to wait for a connection from
     /// the connection pool before timing out.
-    let connectionPoolTimeout: NIO.TimeAmount
+    let connectionPoolTimeout: TimeAmount
     let encoder: PostgresDataEncoder
     let decoder: PostgresDataDecoder
     let sqlLogLevel: Logger.Level
