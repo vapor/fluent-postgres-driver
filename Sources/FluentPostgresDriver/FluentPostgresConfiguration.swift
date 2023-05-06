@@ -5,123 +5,116 @@ import NIOCore
 import NIOSSL
 import Foundation
 import PostgresKit
+import PostgresNIO
 
 extension DatabaseConfigurationFactory {
+    /// Create a PostgreSQL database configuration from a URL string.
+    ///
+    /// See ``PostgresKit/SQLPostgresConfiguration/init(url:)`` for the allowed URL format.
+    ///
+    /// - Parameters:
+    ///   - urlString: The URL describing the connection, as a string.
+    ///   - maxConnectionsPerEventLoop: Maximum number of connections to open per event loop.
+    ///   - connectionPoolTimeout: Maximum time to wait for a connection to become available per request.
+    ///   - encodingContext: Encoding context to use for serializing data.
+    ///   - decodingContext: Decoding context to use for deserializing data.
+    ///   - sqlLogLevel: Level at which to log SQL queries.
     public static func postgres(
         url urlString: String,
         maxConnectionsPerEventLoop: Int = 1,
         connectionPoolTimeout: TimeAmount = .seconds(10),
-        encoder: PostgresDataEncoder = .init(),
-        decoder: PostgresDataDecoder = .init(),
+        encodingContext: PostgresEncodingContext<some PostgresJSONEncoder> = .default,
+        decodingContext: PostgresDecodingContext<some PostgresJSONDecoder> = .default,
         sqlLogLevel: Logger.Level = .debug
     ) throws -> DatabaseConfigurationFactory {
-        guard let url = URL(string: urlString) else {
-            throw FluentPostgresError.invalidURL(urlString)
-        }
-        return try .postgres(
-            url: url,
+        .postgres(
+            configuration: try .init(url: urlString),
             maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
             connectionPoolTimeout: connectionPoolTimeout,
-            encoder: encoder,
-            decoder: decoder,
+            encodingContext: encodingContext, decodingContext: decodingContext,
             sqlLogLevel: sqlLogLevel
         )
     }
 
+    /// Create a PostgreSQL database configuration from a URL.
+    ///
+    /// See ``PostgresKit/SQLPostgresConfiguration/init(url:)`` for the allowed URL format.
+    ///
+    /// - Parameters:
+    ///   - url: The URL describing the connection.
+    ///   - maxConnectionsPerEventLoop: Maximum number of connections to open per event loop.
+    ///   - connectionPoolTimeout: Maximum time to wait for a connection to become available per request.
+    ///   - encodingContext: Encoding context to use for serializing data.
+    ///   - decodingContext: Decoding context to use for deserializing data.
+    ///   - sqlLogLevel: Level at which to log SQL queries.
     public static func postgres(
         url: URL,
         maxConnectionsPerEventLoop: Int = 1,
         connectionPoolTimeout: TimeAmount = .seconds(10),
-        encoder: PostgresDataEncoder = .init(),
-        decoder: PostgresDataDecoder = .init(),
+        encodingContext: PostgresEncodingContext<some PostgresJSONEncoder> = .default,
+        decodingContext: PostgresDecodingContext<some PostgresJSONDecoder> = .default,
         sqlLogLevel: Logger.Level = .debug
     ) throws -> DatabaseConfigurationFactory {
-        guard let configuration = PostgresConfiguration(url: url) else {
-            throw FluentPostgresError.invalidURL(url.absoluteString)
-        }
-        return .postgres(
-            configuration: configuration,
+        .postgres(
+            configuration: try .init(url: url),
             maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
             connectionPoolTimeout: connectionPoolTimeout,
+            encodingContext: encodingContext, decodingContext: decodingContext,
             sqlLogLevel: sqlLogLevel
         )
     }
 
+    /// Create a PostgreSQL database configuration from lower-level configuration.
+    ///
+    /// - Parameters:
+    ///   - configuration: A ``PostgresKit/SQLPostgresConfiguration`` describing the connection.
+    ///   - maxConnectionsPerEventLoop: Maximum number of connections to open per event loop.
+    ///   - connectionPoolTimeout: Maximum time to wait for a connection to become available per request.
+    ///   - encodingContext: Encoding context to use for serializing data.
+    ///   - decodingContext: Decoding context to use for deserializing data.
+    ///   - sqlLogLevel: Level at which to log SQL queries.
     public static func postgres(
-        hostname: String,
-        port: Int = PostgresConfiguration.ianaPortNumber,
-        username: String,
-        password: String,
-        database: String? = nil,
-        tlsConfiguration: TLSConfiguration? = nil,
+        configuration: SQLPostgresConfiguration,
         maxConnectionsPerEventLoop: Int = 1,
         connectionPoolTimeout: TimeAmount = .seconds(10),
-        encoder: PostgresDataEncoder = .init(),
-        decoder: PostgresDataDecoder = .init(),
+        encodingContext: PostgresEncodingContext<some PostgresJSONEncoder> = .default,
+        decodingContext: PostgresDecodingContext<some PostgresJSONDecoder> = .default,
         sqlLogLevel: Logger.Level = .debug
     ) -> DatabaseConfigurationFactory {
-        return .postgres(
-            configuration: .init(
-                hostname: hostname,
-                port: port,
-                username: username,
-                password: password,
-                database: database,
-                tlsConfiguration: tlsConfiguration
-            ),
-            maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
-            connectionPoolTimeout: connectionPoolTimeout,
-            sqlLogLevel: sqlLogLevel
-        )
-    }
-
-    public static func postgres(
-        configuration: PostgresConfiguration,
-        maxConnectionsPerEventLoop: Int = 1,
-        connectionPoolTimeout: TimeAmount = .seconds(10),
-        encoder: PostgresDataEncoder = .init(),
-        decoder: PostgresDataDecoder = .init(),
-        sqlLogLevel: Logger.Level = .debug
-    ) -> DatabaseConfigurationFactory {
-        return DatabaseConfigurationFactory {
+        .init {
             FluentPostgresConfiguration(
-                middleware: [],
                 configuration: configuration,
                 maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
                 connectionPoolTimeout: connectionPoolTimeout,
-                encoder: encoder,
-                decoder: decoder,
+                encodingContext: encodingContext, decodingContext: decodingContext,
                 sqlLogLevel: sqlLogLevel
             )
         }
     }
 }
 
-struct FluentPostgresConfiguration: DatabaseConfiguration {
-    var middleware: [AnyModelMiddleware]
-    let configuration: PostgresConfiguration
+struct FluentPostgresConfiguration<E: PostgresJSONEncoder, D: PostgresJSONDecoder>: DatabaseConfiguration {
+    var middleware: [any AnyModelMiddleware] = []
+    let configuration: SQLPostgresConfiguration
     let maxConnectionsPerEventLoop: Int
-    /// The amount of time to wait for a connection from
-    /// the connection pool before timing out.
     let connectionPoolTimeout: TimeAmount
-    let encoder: PostgresDataEncoder
-    let decoder: PostgresDataDecoder
+    let encodingContext: PostgresEncodingContext<E>
+    let decodingContext: PostgresDecodingContext<D>
     let sqlLogLevel: Logger.Level
 
-    func makeDriver(for databases: Databases) -> DatabaseDriver {
-        let db = PostgresConnectionSource(
-            configuration: configuration
-        )
-        let pool = EventLoopGroupConnectionPool(
-            source: db,
-            maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
-            requestTimeout: connectionPoolTimeout,
+    func makeDriver(for databases: Databases) -> any DatabaseDriver {
+        let connectionSource = PostgresConnectionSource(sqlConfiguration: self.configuration)
+        let elgPool = EventLoopGroupConnectionPool(
+            source: connectionSource,
+            maxConnectionsPerEventLoop: self.maxConnectionsPerEventLoop,
+            requestTimeout: self.connectionPoolTimeout,
             on: databases.eventLoopGroup
         )
+        
         return _FluentPostgresDriver(
-            pool: pool,
-            encoder: self.encoder,
-            decoder: self.decoder,
+            pool: elgPool,
+            encodingContext: self.encodingContext,
+            decodingContext: self.decodingContext,
             sqlLogLevel: self.sqlLogLevel
         )
     }

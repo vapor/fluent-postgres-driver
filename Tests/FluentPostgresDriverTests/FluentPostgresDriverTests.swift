@@ -208,17 +208,19 @@ final class FluentPostgresDriverTests: XCTestCase {
 extension DatabaseConfigurationFactory {
     static func testPostgres(
         subconfig: String,
-        encoder: PostgresDataEncoder = .init(), decoder: PostgresDataDecoder = .init()
+        encodingContext: PostgresEncodingContext<some PostgresJSONEncoder> = .default,
+        decodingContext: PostgresDecodingContext<some PostgresJSONDecoder> = .default
     ) -> DatabaseConfigurationFactory {
-        let baseSubconfig = PostgresConfiguration(
+        let baseSubconfig = SQLPostgresConfiguration(
             hostname: env("POSTGRES_HOSTNAME_\(subconfig)") ?? "localhost",
-            port: env("POSTGRES_PORT_\(subconfig)").flatMap(Int.init) ?? PostgresConfiguration.ianaPortNumber,
+            port: env("POSTGRES_PORT_\(subconfig)").flatMap(Int.init) ?? SQLPostgresConfiguration.ianaPortNumber,
             username: env("POSTGRES_USER_\(subconfig)") ?? "test_username",
             password: env("POSTGRES_PASSWORD_\(subconfig)") ?? "test_password",
-            database: env("POSTGRES_DB_\(subconfig)") ?? "test_database"
+            database: env("POSTGRES_DB_\(subconfig)") ?? "test_database",
+            tls: try! .prefer(.init(configuration: .makeClientConfiguration()))
         )
         
-        return .postgres(configuration: baseSubconfig, connectionPoolTimeout: .seconds(30), encoder: encoder, decoder: decoder)
+        return .postgres(configuration: baseSubconfig, connectionPoolTimeout: .seconds(30), encodingContext: encodingContext, decodingContext: decodingContext)
     }
 }
 

@@ -25,7 +25,7 @@ final class FluentPostgresTransactionControlTests: XCTestCase {
                 }
             }.wait()
             XCTFail("Expected error but none was thrown")
-        } catch PostgresError.server(let e) where e.fields[.sqlState] == "23505" {
+        } catch let error as PSQLError where error.code == .server && error.serverInfo?[.sqlState] == "23505" {
             // ignore
         } catch {
             XCTFail("Expected SQL state 23505 but got \(error)")
