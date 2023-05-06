@@ -7,7 +7,7 @@ on:
   push: { branches: ['main'] }
 
 env:
-  LOG_LEVEL: debug
+  LOG_LEVEL: info
   SWIFT_DETERMINISTIC_HASHING: 1
   POSTGRES_HOSTNAME: 'psql-a'
   POSTGRES_HOSTNAME_A: 'psql-a'
@@ -85,7 +85,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {dbimage: 'postgres:11', dbauth: 'trust',         swiftver: 'swift:5.6-focal'}
+          - {dbimage: 'postgres:11', dbauth: 'trust',         swiftver: 'swift:5.7-focal'}
           - {dbimage: 'postgres:13', dbauth: 'md5',           swiftver: 'swift:5.7-jammy'}
           - {dbimage: 'postgres:15', dbauth: 'scram-sha-256', swiftver: 'swift:5.8-jammy'}
           - {dbimage: 'postgres:15', dbauth: 'scram-sha-256', swiftver: 'swiftlang/swift:nightly-5.9-jammy'}
@@ -159,14 +159,3 @@ jobs:
         uses: actions/checkout@v3
       - name: Run all tests
         run: swift test --sanitize=thread
-
-  test-exports:
-    name: Test exports
-    runs-on: ubuntu-latest
-    container: swift:5.8-jammy
-    steps:
-      - name: Check out Vapor
-        uses: actions/checkout@v3
-        with: { 'fetch-depth': 0 }
-      - name: Build
-        run: swift build -Xswiftc -DBUILDING_DOCC
