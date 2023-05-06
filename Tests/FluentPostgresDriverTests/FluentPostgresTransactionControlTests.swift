@@ -6,20 +6,19 @@ import XCTest
 import PostgresKit
 
 final class FluentPostgresTransactionControlTests: XCTestCase {
-    
     func testRollback() throws {
         do {
             try self.db.withConnection { db -> EventLoopFuture<Void> in
-                (db as! TransactionControlDatabase).beginTransaction().flatMap { () -> EventLoopFuture<Void> in
+                (db as! any TransactionControlDatabase).beginTransaction().flatMap { () -> EventLoopFuture<Void> in
                     let todo1 = Todo(title: "Test")
                     return todo1.save(on: db)
                 }.flatMap { () -> EventLoopFuture<Void> in
                     let duplicate = Todo(title: "Test")
                     return duplicate.create(on: db)
                         .flatMap {
-                            (db as! TransactionControlDatabase).commitTransaction()
+                            (db as! any TransactionControlDatabase).commitTransaction()
                         }.flatMapError { (e: Error) -> EventLoopFuture<Void> in
-                            return (db as! TransactionControlDatabase).rollbackTransaction()
+                            return (db as! any TransactionControlDatabase).rollbackTransaction()
                                 .flatMap { db.eventLoop.makeFailedFuture(e) }
                         }
                 }
@@ -35,10 +34,10 @@ final class FluentPostgresTransactionControlTests: XCTestCase {
         XCTAssertEqual(count2, 0)
     }
     
-    var eventLoopGroup: EventLoopGroup!
+    var eventLoopGroup: (any EventLoopGroup)!
     var threadPool: NIOThreadPool!
     var dbs: Databases!
-    var db: Database!
+    var db: (any Database)!
     
     override func setUpWithError() throws {
         try super.setUpWithError()
@@ -79,16 +78,16 @@ final class FluentPostgresTransactionControlTests: XCTestCase {
     }
     
     struct CreateTodo: Migration {
-        func prepare(on database: Database) -> EventLoopFuture<Void> {
-            return database.schema("todos")
+        func prepare(on database: any Database) -> EventLoopFuture<Void> {
+            database.schema("todos")
                 .id()
                 .field("title", .string, .required)
                 .unique(on: "title")
                 .create()
         }
 
-        func revert(on database: Database) -> EventLoopFuture<Void> {
-            return database.schema("todos").delete()
+        func revert(on database: any Database) -> EventLoopFuture<Void> {
+            database.schema("todos").delete()
         }
     }
 }

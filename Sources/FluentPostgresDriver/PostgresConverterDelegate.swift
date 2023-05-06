@@ -3,7 +3,7 @@ import FluentSQL
 import SQLKit
 
 struct PostgresConverterDelegate: SQLConverterDelegate {
-    func customDataType(_ dataType: DatabaseSchema.DataType) -> SQLExpression? {
+    func customDataType(_ dataType: DatabaseSchema.DataType) -> (any SQLExpression)? {
         switch dataType {
         case .uuid:
             return SQLRaw("UUID")
@@ -28,7 +28,7 @@ struct PostgresConverterDelegate: SQLConverterDelegate {
         case .enum(let value):
             return SQLIdentifier(value.name)
         case .int8, .uint8:
-            return SQLRaw(#""char""#)
+            return SQLIdentifier("char")
         case .int16, .uint16:
             return SQLRaw("SMALLINT")
         case .int32, .uint32:
@@ -46,7 +46,7 @@ struct PostgresConverterDelegate: SQLConverterDelegate {
         }
     }
 
-    func nestedFieldExpression(_ column: String, _ path: [String]) -> SQLExpression {
+    func nestedFieldExpression(_ column: String, _ path: [String]) -> any SQLExpression {
         switch path.count {
         case 1:
             return SQLRaw("\(column)->>'\(path[0])'")
@@ -60,7 +60,8 @@ struct PostgresConverterDelegate: SQLConverterDelegate {
 }
 
 private struct SQLArrayDataType: SQLExpression {
-    let dataType: SQLExpression
+    let dataType: any SQLExpression
+    
     func serialize(to serializer: inout SQLSerializer) {
         self.dataType.serialize(to: &serializer)
         serializer.write("[]")
