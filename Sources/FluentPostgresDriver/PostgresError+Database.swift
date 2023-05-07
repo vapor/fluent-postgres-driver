@@ -3,9 +3,9 @@ import FluentSQL
 import PostgresKit
 import PostgresNIO
 
-extension PostgresError: DatabaseError {
-    public var isSyntaxError: Bool {
-        switch self.code {
+fileprivate extension PostgresError.Code {
+    var isSyntaxError: Bool {
+        switch self {
         case .syntaxErrorOrAccessRuleViolation,
              .syntaxError,
              .insufficientPrivilege,
@@ -54,18 +54,9 @@ extension PostgresError: DatabaseError {
             return false
         }
     }
-    
-    public var isConnectionClosed: Bool {
+
+    var isConstraintFailure: Bool {
         switch self {
-        case .connectionClosed:
-            return true
-        default:
-            return false
-        }
-    }
-    
-    public var isConstraintFailure: Bool {
-        switch self.code {
         case .integrityConstraintViolation,
              .restrictViolation,
              .notNullViolation,
@@ -76,6 +67,40 @@ extension PostgresError: DatabaseError {
             return true
         default:
             return false
+        }
+    }
+}
+
+extension PostgresError: DatabaseError {
+    public var isSyntaxError: Bool { self.code.isSyntaxError }
+    public var isConnectionClosed: Bool {
+        switch self {
+        case .connectionClosed: return true
+        default: return false
+        }
+    }
+    public var isConstraintFailure: Bool { self.code.isConstraintFailure }
+}
+
+extension PSQLError: DatabaseError {
+    public var isSyntaxError: Bool {
+        switch self.code {
+        case .server: return self.serverInfo?[.sqlState].map { PostgresError.Code(raw: $0).isSyntaxError } ?? false
+        default: return false
+        }
+    }
+    
+    public var isConnectionClosed: Bool {
+        switch self.code {
+        case .connectionClosed: return true
+        default: return false
+        }
+    }
+    
+    public var isConstraintFailure: Bool {
+        switch self.code {
+        case .server: return self.serverInfo?[.sqlState].map { PostgresError.Code(raw: $0).isConstraintFailure } ?? false
+        default: return false
         }
     }
 }
