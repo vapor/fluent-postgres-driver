@@ -31,7 +31,7 @@ jobs:
           - dbimage: postgres:15
             dbauth: scram-sha-256
     runs-on: ubuntu-latest
-    container: swift:5.7-jammy
+    container: swift:5.8-jammy
     services:
       psql-a:
         image: ${{ matrix.dbimage }}
@@ -61,11 +61,8 @@ jobs:
       - name: Submit coverage report to Codecov.io
         uses: vapor/swift-codecov-action@v0.2
         with:
-          cc_flags: 'unittests'
           cc_env_vars: 'SWIFT_VERSION,SWIFT_PLATFORM,RUNNER_OS,RUNNER_ARCH,POSTGRES_VERSION,POSTGRES_AUTH_METHOD'
-          cc_fail_ci_if_error: true
-          cc_verbose: true
-          cc_dry_run: false
+          cc_fail_ci_if_error: false
 
   # Check for API breakage versus main
   api-breakage:
