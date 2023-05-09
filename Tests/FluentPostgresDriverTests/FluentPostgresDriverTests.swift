@@ -40,7 +40,7 @@ final class FluentPostgresDriverTests: XCTestCase {
     func testUnique() throws { try self.benchmarker.testUnique() }
 
     func testDatabaseError() throws {
-        let sql = (self.db as! SQLDatabase)
+        let sql = (self.db as! any SQLDatabase)
         do {
             try sql.raw("asd").run().wait()
         } catch let error as DatabaseError where error.isSyntaxError {
@@ -61,15 +61,15 @@ final class FluentPostgresDriverTests: XCTestCase {
     
     func testBlob() throws {
         struct CreateFoo: Migration {
-            func prepare(on database: Database) -> EventLoopFuture<Void> {
-                return database.schema("foos")
+            func prepare(on database: any Database) -> EventLoopFuture<Void> {
+                database.schema("foos")
                     .field("id", .int, .identifier(auto: true))
                     .field("data", .data, .required)
                     .create()
             }
 
-            func revert(on database: Database) -> EventLoopFuture<Void> {
-                return database.schema("foos").delete()
+            func revert(on database: any Database) -> EventLoopFuture<Void> {
+                database.schema("foos").delete()
             }
         }
 
@@ -91,15 +91,15 @@ final class FluentPostgresDriverTests: XCTestCase {
         }
 
         struct CreateOrganization: Migration {
-            func prepare(on database: Database) -> EventLoopFuture<Void> {
-                return database.schema("orgs")
+            func prepare(on database: any Database) -> EventLoopFuture<Void> {
+                database.schema("orgs")
                     .field("id", .int, .identifier(auto: true))
                     .field("disabled", .bool, .required)
                     .create()
             }
 
-            func revert(on database: Database) -> EventLoopFuture<Void> {
-                return database.schema("orgs").delete()
+            func revert(on database: any Database) -> EventLoopFuture<Void> {
+                database.schema("orgs").delete()
             }
         }
 
@@ -123,8 +123,8 @@ final class FluentPostgresDriverTests: XCTestCase {
         jsonDecoder.dateDecodingStrategy = .iso8601
 
         self.dbs.use(.testPostgres(subconfig: "A",
-            encoder: PostgresDataEncoder(json: jsonEncoder),
-            decoder: PostgresDataDecoder(json: jsonDecoder)
+            encodingContext: .init(jsonEncoder: jsonEncoder),
+            decodingContext: .init(jsonDecoder: jsonDecoder)
         ), as: .iso8601)
         let db = self.dbs.database(
             .iso8601,
@@ -167,14 +167,14 @@ final class FluentPostgresDriverTests: XCTestCase {
     var benchmarker: FluentBenchmarker {
         return .init(databases: self.dbs)
     }
-    var eventLoopGroup: EventLoopGroup!
+    var eventLoopGroup: (any EventLoopGroup)!
     var threadPool: NIOThreadPool!
     var dbs: Databases!
-    var db: Database {
+    var db: any Database {
         self.benchmarker.database
     }
-    var postgres: PostgresDatabase {
-        self.db as! PostgresDatabase
+    var postgres: any PostgresDatabase {
+        self.db as! any PostgresDatabase
     }
     
     override func setUpWithError() throws {
@@ -189,12 +189,12 @@ final class FluentPostgresDriverTests: XCTestCase {
         self.dbs.use(.testPostgres(subconfig: "B"), as: .b)
 
         let a = self.dbs.database(.a, logger: Logger(label: "test.fluent.a"), on: self.eventLoopGroup.any())
-        _ = try (a as! PostgresDatabase).query("drop schema public cascade").wait()
-        _ = try (a as! PostgresDatabase).query("create schema public").wait()
+        _ = try (a as! any PostgresDatabase).query("drop schema public cascade").wait()
+        _ = try (a as! any PostgresDatabase).query("create schema public").wait()
 
         let b = self.dbs.database(.b, logger: Logger(label: "test.fluent.b"), on: self.eventLoopGroup.any())
-        _ = try (b as! PostgresDatabase).query("drop schema public cascade").wait()
-        _ = try (b as! PostgresDatabase).query("create schema public").wait()
+        _ = try (b as! any PostgresDatabase).query("drop schema public cascade").wait()
+        _ = try (b as! any PostgresDatabase).query("create schema public").wait()
     }
 
     override func tearDownWithError() throws {
@@ -208,17 +208,19 @@ final class FluentPostgresDriverTests: XCTestCase {
 extension DatabaseConfigurationFactory {
     static func testPostgres(
         subconfig: String,
-        encoder: PostgresDataEncoder = .init(), decoder: PostgresDataDecoder = .init()
+        encodingContext: PostgresEncodingContext<some PostgresJSONEncoder> = .default,
+        decodingContext: PostgresDecodingContext<some PostgresJSONDecoder> = .default
     ) -> DatabaseConfigurationFactory {
-        let baseSubconfig = PostgresConfiguration(
+        let baseSubconfig = SQLPostgresConfiguration(
             hostname: env("POSTGRES_HOSTNAME_\(subconfig)") ?? "localhost",
-            port: env("POSTGRES_PORT_\(subconfig)").flatMap(Int.init) ?? PostgresConfiguration.ianaPortNumber,
+            port: env("POSTGRES_PORT_\(subconfig)").flatMap(Int.init) ?? SQLPostgresConfiguration.ianaPortNumber,
             username: env("POSTGRES_USER_\(subconfig)") ?? "test_username",
             password: env("POSTGRES_PASSWORD_\(subconfig)") ?? "test_password",
-            database: env("POSTGRES_DB_\(subconfig)") ?? "test_database"
+            database: env("POSTGRES_DB_\(subconfig)") ?? "test_database",
+            tls: try! .prefer(.init(configuration: .makeClientConfiguration()))
         )
         
-        return .postgres(configuration: baseSubconfig, connectionPoolTimeout: .seconds(30), encoder: encoder, decoder: decoder)
+        return .postgres(configuration: baseSubconfig, connectionPoolTimeout: .seconds(30), encodingContext: encodingContext, decodingContext: decodingContext)
     }
 }
 
@@ -257,15 +259,15 @@ final class EventStringlyTyped: Model {
 }
 
 struct EventMigration: Migration {
-    func prepare(on database: Database) -> EventLoopFuture<Void> {
-        return database.schema(Event.schema)
+    func prepare(on database: any Database) -> EventLoopFuture<Void> {
+        database.schema(Event.schema)
             .field("id", .int, .identifier(auto: true))
             .field("metadata", .json, .required)
             .create()
     }
 
-    func revert(on database: Database) -> EventLoopFuture<Void> {
-        return database.schema(Event.schema).delete()
+    func revert(on database: any Database) -> EventLoopFuture<Void> {
+        database.schema(Event.schema).delete()
     }
 }
 
@@ -288,8 +290,8 @@ enum Foobar: String, Codable {
 }
 
 struct EventWithFooMigration: Migration {
-    func prepare(on database: Database) -> EventLoopFuture<Void> {
-        return database.enum(Foobar.schema).read()
+    func prepare(on database: any Database) -> EventLoopFuture<Void> {
+        database.enum(Foobar.schema).read()
             .flatMap { foobar in
                 database.schema(EventWithFoo.schema)
                     .id()
@@ -298,36 +300,36 @@ struct EventWithFooMigration: Migration {
             }
     }
 
-    func revert(on database: Database) -> EventLoopFuture<Void> {
-        return database.schema(EventWithFoo.schema).delete()
+    func revert(on database: any Database) -> EventLoopFuture<Void> {
+        database.schema(EventWithFoo.schema).delete()
     }
 }
 
 struct EnumMigration: Migration {
-    func prepare(on database: Database) -> EventLoopFuture<Void> {
-        return database.enum(Foobar.schema)
+    func prepare(on database: any Database) -> EventLoopFuture<Void> {
+        database.enum(Foobar.schema)
             .case("foo")
             .case("bar")
             .create()
             .transform(to: ())
     }
 
-    func revert(on database: Database) -> EventLoopFuture<Void> {
-        return database.enum(Foobar.schema).delete()
+    func revert(on database: any Database) -> EventLoopFuture<Void> {
+        database.enum(Foobar.schema).delete()
     }
 }
 
 struct EnumAddMultipleCasesMigration: Migration {
-    func prepare(on database: Database) -> EventLoopFuture<Void> {
-        return database.enum(Foobar.schema)
+    func prepare(on database: any Database) -> EventLoopFuture<Void> {
+        database.enum(Foobar.schema)
             .case("baz")
             .case("qux")
             .update()
             .transform(to: ())
     }
 
-    func revert(on database: Database) -> EventLoopFuture<Void> {
-        return database.enum(Foobar.schema)
+    func revert(on database: any Database) -> EventLoopFuture<Void> {
+        database.enum(Foobar.schema)
             .deleteCase("baz")
             .deleteCase("qux")
             .update()
@@ -338,7 +340,7 @@ struct EnumAddMultipleCasesMigration: Migration {
 let isLoggingConfigured: Bool = {
     LoggingSystem.bootstrap { label in
         var handler = StreamLogHandler.standardOutput(label: label)
-        handler.logLevel = env("LOG_LEVEL").flatMap { Logger.Level(rawValue: $0) } ?? .debug
+        handler.logLevel = env("LOG_LEVEL").flatMap { Logger.Level(rawValue: $0) } ?? .info
         return handler
     }
     return true

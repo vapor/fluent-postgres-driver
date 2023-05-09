@@ -1,0 +1,8 @@
+API breakage: func DatabaseConfigurationFactory.postgres(url:maxConnectionsPerEventLoop:connectionPoolTimeout:encoder:decoder:sqlLogLevel:) has removed default argument from parameter 3
+API breakage: func DatabaseConfigurationFactory.postgres(url:maxConnectionsPerEventLoop:connectionPoolTimeout:encoder:decoder:sqlLogLevel:) has removed default argument from parameter 4
+API breakage: func DatabaseConfigurationFactory.postgres(url:maxConnectionsPerEventLoop:connectionPoolTimeout:encoder:decoder:sqlLogLevel:) has removed default argument from parameter 3
+API breakage: func DatabaseConfigurationFactory.postgres(url:maxConnectionsPerEventLoop:connectionPoolTimeout:encoder:decoder:sqlLogLevel:) has removed default argument from parameter 4
+API breakage: func DatabaseConfigurationFactory.postgres(hostname:port:username:password:database:tlsConfiguration:maxConnectionsPerEventLoop:connectionPoolTimeout:encoder:decoder:sqlLogLevel:) has removed default argument from parameter 8
+API breakage: func DatabaseConfigurationFactory.postgres(hostname:port:username:password:database:tlsConfiguration:maxConnectionsPerEventLoop:connectionPoolTimeout:encoder:decoder:sqlLogLevel:) has removed default argument from parameter 9
+API breakage: func DatabaseConfigurationFactory.postgres(configuration:maxConnectionsPerEventLoop:connectionPoolTimeout:encoder:decoder:sqlLogLevel:) has removed default argument from parameter 3
+API breakage: func DatabaseConfigurationFactory.postgres(configuration:maxConnectionsPerEventLoop:connectionPoolTimeout:encoder:decoder:sqlLogLevel:) has removed default argument from parameter 4
