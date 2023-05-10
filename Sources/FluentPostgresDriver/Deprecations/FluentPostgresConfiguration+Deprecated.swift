@@ -116,6 +116,20 @@ extension DatabaseConfigurationFactory {
         )
     }
 
+    @available(*, deprecated, message: "Use `.postgres(configuration:.init(hostname:port:username:password:database:tls:),maxConnectionsPerEventLoop:connectionPoolTimeout:encodingContext:decodingContext:sqlLogLevel:)` instead.")
+    public static func postgres(
+        hostname: String, port: Int = PostgresConfiguration.ianaPortNumber,
+        username: String, password: String, database: String? = nil, tlsConfiguration: TLSConfiguration? = nil,
+        maxConnectionsPerEventLoop: Int = 1, connectionPoolTimeout: TimeAmount = .seconds(10),
+        sqlLogLevel: Logger.Level = .debug
+    ) -> DatabaseConfigurationFactory {
+        .postgres(
+            hostname: hostname, port: port, username: username, password: password, database: database, tlsConfiguration: tlsConfiguration,
+            maxConnectionsPerEventLoop: maxConnectionsPerEventLoop, connectionPoolTimeout: connectionPoolTimeout,
+            encoder: .init(), decoder: .init(), sqlLogLevel: sqlLogLevel
+        )
+    }
+
     @available(*, deprecated, message: "Use `.postgres(configuration:maxConnectionsPerEventLoop:connectionPoolTimeout:encodingContext:decodingContext:sqlLogLevel:)` instead.")
     public static func postgres(
         hostname: String, port: Int = PostgresConfiguration.ianaPortNumber,
