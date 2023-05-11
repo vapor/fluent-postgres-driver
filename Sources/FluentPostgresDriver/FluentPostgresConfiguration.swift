@@ -77,8 +77,8 @@ extension DatabaseConfigurationFactory {
         configuration: SQLPostgresConfiguration,
         maxConnectionsPerEventLoop: Int = 1,
         connectionPoolTimeout: TimeAmount = .seconds(10),
-        encodingContext: PostgresEncodingContext<some PostgresJSONEncoder> = .default,
-        decodingContext: PostgresDecodingContext<some PostgresJSONDecoder> = .default,
+        encodingContext: PostgresEncodingContext<some PostgresJSONEncoder>,
+        decodingContext: PostgresDecodingContext<some PostgresJSONDecoder>,
         sqlLogLevel: Logger.Level = .debug
     ) -> DatabaseConfigurationFactory {
         .init {
@@ -93,6 +93,77 @@ extension DatabaseConfigurationFactory {
     }
 }
 
+/// We'd like to just default the context parameters of the "actual" method. Unfortunately, there are a few
+/// cases involving the UNIX domain socket initalizer where usage can resolve to either the new
+/// ``SQLPostgresConfiguration``-based method or the deprecated ``PostgresConfiguration``-based method, with no
+/// obvious way to disambiguate which to call. Because the context parameters are generic, if they are defaulted,
+/// the compiler resolves the ambiguity in favor of the deprecated method (which has no generic parameters).
+/// However, by adding the non-defaulted-parameter variant which takes neither context, we've provided a version
+/// which has no generic parameters either, which allows the compiler to resolve the ambiguity in favor of
+/// the one with better availability (i.e. the one that isn't deprecated).
+///
+/// Example affected code:
+///
+///     _ = DatabaseConfigurationFactory.postgres(configuration: .init(unixDomainSocketPath: "", username: ""))
+extension DatabaseConfigurationFactory {
+    /// ``postgres(configuration:maxConnectionsPerEventLoop:connectionPoolTimeout:encodingContext:decodingContext:sqlLogLevel:)``
+    /// with the `decodingContext` defaulted.
+    public static func postgres(
+        configuration: SQLPostgresConfiguration,
+        maxConnectionsPerEventLoop: Int = 1,
+        connectionPoolTimeout: TimeAmount = .seconds(10),
+        encodingContext: PostgresEncodingContext<some PostgresJSONEncoder>,
+        sqlLogLevel: Logger.Level = .debug
+    ) -> DatabaseConfigurationFactory {
+        .postgres(
+            configuration: configuration,
+            maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
+            connectionPoolTimeout: connectionPoolTimeout,
+            encodingContext: encodingContext,
+            decodingContext: .default,
+            sqlLogLevel: sqlLogLevel
+        )
+    }
+
+    /// ``postgres(configuration:maxConnectionsPerEventLoop:connectionPoolTimeout:encodingContext:decodingContext:sqlLogLevel:)``
+    /// with the `encodingContext` defaulted.
+    public static func postgres(
+        configuration: SQLPostgresConfiguration,
+        maxConnectionsPerEventLoop: Int = 1,
+        connectionPoolTimeout: TimeAmount = .seconds(10),
+        decodingContext: PostgresDecodingContext<some PostgresJSONDecoder>,
+        sqlLogLevel: Logger.Level = .debug
+    ) -> DatabaseConfigurationFactory {
+        .postgres(
+            configuration: configuration,
+            maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
+            connectionPoolTimeout: connectionPoolTimeout,
+            encodingContext: .default,
+            decodingContext: decodingContext,
+            sqlLogLevel: sqlLogLevel
+        )
+    }
+
+    /// ``postgres(configuration:maxConnectionsPerEventLoop:connectionPoolTimeout:encodingContext:decodingContext:sqlLogLevel:)``
+    /// with both `encodingContext` and `decodingContext` defaulted.
+    public static func postgres(
+        configuration: SQLPostgresConfiguration,
+        maxConnectionsPerEventLoop: Int = 1,
+        connectionPoolTimeout: TimeAmount = .seconds(10),
+        sqlLogLevel: Logger.Level = .debug
+    ) -> DatabaseConfigurationFactory {
+        .postgres(
+            configuration: configuration,
+            maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
+            connectionPoolTimeout: connectionPoolTimeout,
+            encodingContext: .default,
+            decodingContext: .default,
+            sqlLogLevel: sqlLogLevel
+        )
+    }
+}
+
+/// The actual concrete configuration type produced by a configuration factory.
 struct FluentPostgresConfiguration<E: PostgresJSONEncoder, D: PostgresJSONDecoder>: DatabaseConfiguration {
     var middleware: [any AnyModelMiddleware] = []
     let configuration: SQLPostgresConfiguration
