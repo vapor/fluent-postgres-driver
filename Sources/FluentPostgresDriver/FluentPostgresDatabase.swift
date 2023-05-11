@@ -65,7 +65,7 @@ extension _FluentPostgresDatabase: Database {
         return self.withConnection { conn in
             guard let sqlConn = conn as? any SQLDatabase else {
                 fatalError("""
-                    Connection yieled by a Fluent+Postgres database is not also an SQLDatabase.
+                    Connection yielded by a Fluent+Postgres database is not also an SQLDatabase.
                     This is a bug in Fluent; please report it at https://github.com/vapor/fluent-postgres-driver/issues
                     """)
             }
@@ -124,7 +124,7 @@ extension _FluentPostgresDatabase: PostgresDatabase {
     func withConnection<T>(_ closure: @escaping (PostgresConnection) -> EventLoopFuture<T>) -> EventLoopFuture<T> {
         guard let psqlDb: any PostgresDatabase = self.database as? any PostgresDatabase else {
             fatalError("""
-                Connection yieled by a Fluent+Postgres database is not also a PostgresDatabase.
+                Connection yielded by a Fluent+Postgres database is not also a PostgresDatabase.
                 This is a bug in Fluent; please report it at https://github.com/vapor/fluent-postgres-driver/issues
                 """)
         }
