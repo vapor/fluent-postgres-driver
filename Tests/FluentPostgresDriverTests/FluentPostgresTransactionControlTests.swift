@@ -24,10 +24,10 @@ final class FluentPostgresTransactionControlTests: XCTestCase {
                 }
             }.wait()
             XCTFail("Expected error but none was thrown")
-        } catch let error as PSQLError where error.code == .server && error.serverInfo?[.sqlState] == "23505" {
+        } catch let error where String(reflecting: error).contains("sqlState: 23505") {
             // ignore
         } catch {
-            XCTFail("Expected SQL state 23505 but got \(error)")
+            XCTFail("Expected SQL state 23505 but got \(String(reflecting: error))")
         }
 
         let count2 = try Todo.query(on: self.db).count().wait()
