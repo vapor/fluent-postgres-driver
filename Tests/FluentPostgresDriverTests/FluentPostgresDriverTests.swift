@@ -170,11 +170,10 @@ final class FluentPostgresDriverTests: XCTestCase {
             @ID(custom: .id) var id: Int?
             init() {}; init(integerLiteral l: Int) { self.id = l }
         }
-        final class Seq: Model, Equatable, ExpressibleByNilLiteral, ExpressibleByArrayLiteral {
+        final class Seq: Model, ExpressibleByNilLiteral, ExpressibleByArrayLiteral {
             static let schema = "seqs"
             @ID(custom: .id) var id: Int?; @OptionalField(key: "list") var list: [Elem]?
             init() {}; init(nilLiteral: ()) { self.list = nil }; init(arrayLiteral el: Elem...) { self.list = el }
-            static func == (lhs: Seq, rhs: Seq) -> Bool { lhs.id == rhs.id && lhs.list?.map(\.id) == rhs.list?.map(\.id) }
         }
         do {
             try self.db.schema(Seq.schema).field(.id, .int, .identifier(auto: true)).field("list", .sql(embed: "JSONB[]")).create().wait()
@@ -187,7 +186,13 @@ final class FluentPostgresDriverTests: XCTestCase {
             XCTAssertEqual(raws, [#"[{"id": 1},{"id": 2}]"#, nil])
             
             // Make sure it round-trips through Fluent.
-            XCTAssertEqual(try Seq.query(on: self.db).all().wait(), [s1, s2])
+            let seqs = try Seq.query(on: self.db).all().wait()
+            
+            XCTAssertEqual(seqs.count, 2)
+            XCTAssertEqual(seqs.dropFirst(0).first?.id, s1.id)
+            XCTAssertEqual(seqs.dropFirst(0).first?.list?.map(\.id), s1.list?.map(\.id))
+            XCTAssertEqual(seqs.dropFirst(1).first?.id, s2.id)
+            XCTAssertEqual(seqs.dropFirst(1).first?.list?.map(\.id), s2.list?.map(\.id))
         } catch let error {
             XCTFail("caught error: \(String(reflecting: error))")
         }
