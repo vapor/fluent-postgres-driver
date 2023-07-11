@@ -4,6 +4,7 @@ import FluentBenchmark
 import FluentPostgresDriver
 import XCTest
 import PostgresKit
+import SQLKit
 
 final class FluentPostgresDriverTests: XCTestCase {
     //func testAll() throws { try self.benchmarker.testAll() }
@@ -161,6 +162,40 @@ final class FluentPostgresDriverTests: XCTestCase {
         XCTAssertNoThrow(try EnumAddMultipleCasesMigration().revert(on: self.db).wait())
         try! EventWithFooMigration().revert(on: self.db).wait()
         try! EnumMigration().revert(on: self.db).wait()
+    }
+    
+    func testEncodingArrayOfModels() throws {
+        final class Elem: Model, ExpressibleByIntegerLiteral {
+            static let schema = ""
+            @ID(custom: .id) var id: Int?
+            init() {}; init(integerLiteral l: Int) { self.id = l }
+        }
+        final class Seq: Model, ExpressibleByNilLiteral, ExpressibleByArrayLiteral {
+            static let schema = "seqs"
+            @ID(custom: .id) var id: Int?; @OptionalField(key: "list") var list: [Elem]?
+            init() {}; init(nilLiteral: ()) { self.list = nil }; init(arrayLiteral el: Elem...) { self.list = el }
+        }
+        do {
+            try self.db.schema(Seq.schema).field(.id, .int, .identifier(auto: true)).field("list", .sql(embed: "JSONB[]")).create().wait()
+            defer { try! db.schema(Seq.schema).delete().wait() }
+            
+            let s1: Seq = [1, 2], s2: Seq = nil; try [s1, s2].forEach { try $0.create(on: self.db).wait() }
+            
+            // Make sure it went into the DB as "array of jsonb" rather than as "array of one jsonb containing array" or such.
+            let raws = try (self.db as! SQLDatabase).raw("SELECT array_to_json(list)::text t FROM seqs").all().wait().map { try $0.decode(column: "t", as: String?.self) }
+            XCTAssertEqual(raws, [#"[{"id": 1},{"id": 2}]"#, nil])
+            
+            // Make sure it round-trips through Fluent.
+            let seqs = try Seq.query(on: self.db).all().wait()
+            
+            XCTAssertEqual(seqs.count, 2)
+            XCTAssertEqual(seqs.dropFirst(0).first?.id, s1.id)
+            XCTAssertEqual(seqs.dropFirst(0).first?.list?.map(\.id), s1.list?.map(\.id))
+            XCTAssertEqual(seqs.dropFirst(1).first?.id, s2.id)
+            XCTAssertEqual(seqs.dropFirst(1).first?.list?.map(\.id), s2.list?.map(\.id))
+        } catch let error {
+            XCTFail("caught error: \(String(reflecting: error))")
+        }
     }
 
     
