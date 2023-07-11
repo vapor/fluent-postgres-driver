@@ -3,8 +3,8 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 on:
-  pull_request: { branches: ['*'] }
-  push: { branches: ['main'] }
+  pull_request: { types: [opened, reopened, synchronize, ready_for_review] }
+  push: { branches: [ main ] }
 
 env:
   LOG_LEVEL: info
@@ -23,50 +23,8 @@ env:
   POSTGRES_PASSWORD_B: 'test_password'
 
 jobs:
-  # Baseline test run for code coverage stats
-  codecov:
-    strategy:
-      matrix:
-        include:
-          - dbimage: postgres:15
-            dbauth: scram-sha-256
-    runs-on: ubuntu-latest
-    container: swift:5.8-jammy
-    services:
-      psql-a:
-        image: ${{ matrix.dbimage }}
-        env:
-          POSTGRES_USER: 'test_username'
-          POSTGRES_DB: 'test_database'
-          POSTGRES_PASSWORD: 'test_password'
-          POSTGRES_HOST_AUTH_METHOD: ${{ matrix.dbauth }}
-          POSTGRES_INITDB_ARGS: --auth-host=${{ matrix.dbauth }}
-      psql-b:
-        image: ${{ matrix.dbimage }}
-        env:
-          POSTGRES_USER: 'test_username'
-          POSTGRES_DB: 'test_database'
-          POSTGRES_PASSWORD: 'test_password'
-          POSTGRES_HOST_AUTH_METHOD: ${{ matrix.dbauth }}
-          POSTGRES_INITDB_ARGS: --auth-host=${{ matrix.dbauth }}
-    steps:
-      - name: Save Postgres version and method to env
-        run: |
-          echo POSTGRES_VERSION='${{ matrix.dbimage }}' >> $GITHUB_ENV
-          echo POSTGRES_AUTH_METHOD='${{ matrix.dbauth }}' >> $GITHUB_ENV
-      - name: Check out package
-        uses: actions/checkout@v3
-      - name: Run local tests with coverage
-        run: swift test --enable-code-coverage
-      - name: Submit coverage report to Codecov.io
-        uses: vapor/swift-codecov-action@v0.2
-        with:
-          cc_env_vars: 'SWIFT_VERSION,SWIFT_PLATFORM,RUNNER_OS,RUNNER_ARCH,POSTGRES_VERSION,POSTGRES_AUTH_METHOD'
-          cc_fail_ci_if_error: false
-
-  # Check for API breakage versus main
   api-breakage:
-    if: github.event_name == 'pull_request'
+    if: ${{ !(github.event.pull_request.draft || false) }}
     runs-on: ubuntu-latest
     container: swift:5.8-jammy
     steps:
@@ -77,7 +35,7 @@ jobs:
         uses: vapor/ci/.github/actions/ci-swift-check-api-breakage@reusable-workflows
 
   linux-all:
-    if: github.event_name == 'pull_request'
+    if: ${{ !(github.event.pull_request.draft || false) }}
     strategy:
       fail-fast: false
       matrix:
@@ -107,13 +65,28 @@ jobs:
           POSTGRES_HOST_AUTH_METHOD: ${{ matrix.dbauth }}
           POSTGRES_INITDB_ARGS: --auth-host=${{ matrix.dbauth }}
     steps:
+      - name: Display versions
+        shell: bash
+        run: |
+          echo POSTGRES_VERSION='${{ matrix.dbimage }}' >> $GITHUB_ENV
+          echo POSTGRES_AUTH_METHOD='${{ matrix.dbauth }}' >> $GITHUB_ENV
+          if [[ '${{ contains(matrix.container, 'nightly') }}' == 'true' ]]; then
+            SWIFT_PLATFORM="$(source /etc/os-release && echo "${ID}${VERSION_ID}")" SWIFT_VERSION="$(cat /.swift_tag)"
+            printf 'SWIFT_PLATFORM=%s\nSWIFT_VERSION=%s\n' "${SWIFT_PLATFORM}" "${SWIFT_VERSION}" >>"${GITHUB_ENV}"
+          fi
+          printf 'OS:  %s\nTag: %s\nVersion:\n' "${SWIFT_PLATFORM}-${RUNNER_ARCH}" "${SWIFT_VERSION}" && swift --version
       - name: Check out package
         uses: actions/checkout@v3
       - name: Run all tests
-        run: swift test --sanitize=thread
+        run: swift test --sanitize=thread --enable-code-coverage
+      - name: Submit coverage report to Codecov.io
+        uses: vapor/swift-codecov-action@v0.2
+        with:
+          cc_env_vars: 'SWIFT_VERSION,SWIFT_PLATFORM,RUNNER_OS,RUNNER_ARCH,POSTGRES_VERSION,POSTGRES_AUTH_METHOD'
+          cc_fail_ci_if_error: false
 
   macos-all:
-    if: github.event_name == 'pull_request'
+    if: ${{ !(github.event.pull_request.draft || false) }}
     strategy:
       fail-fast: false
       matrix:
