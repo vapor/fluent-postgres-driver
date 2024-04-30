@@ -92,7 +92,7 @@ extension PSQLError: DatabaseError {
     
     public var isConnectionClosed: Bool {
         switch self.code {
-        case .connectionClosed: return true
+        case .serverClosedConnection, .clientClosedConnection: return true
         default: return false
         }
     }
