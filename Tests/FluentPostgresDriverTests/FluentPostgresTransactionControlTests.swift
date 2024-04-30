@@ -6,9 +6,9 @@ import XCTest
 import PostgresKit
 
 final class FluentPostgresTransactionControlTests: XCTestCase {
-    func testRollback() throws {
+    func testRollback() async throws {
         do {
-            try self.db.withConnection { db -> EventLoopFuture<Void> in
+            try await self.db.withConnection { db -> EventLoopFuture<Void> in
                 (db as! any TransactionControlDatabase).beginTransaction().flatMap { () -> EventLoopFuture<Void> in
                     let todo1 = Todo(title: "Test")
                     return todo1.save(on: db)
@@ -22,7 +22,7 @@ final class FluentPostgresTransactionControlTests: XCTestCase {
                                 .flatMap { db.eventLoop.makeFailedFuture(e) }
                         }
                 }
-            }.wait()
+            }.get()
             XCTFail("Expected error but none was thrown")
         } catch let error where String(reflecting: error).contains("sqlState: 23505") {
             // ignore
@@ -30,41 +30,37 @@ final class FluentPostgresTransactionControlTests: XCTestCase {
             XCTFail("Expected SQL state 23505 but got \(String(reflecting: error))")
         }
 
-        let count2 = try Todo.query(on: self.db).count().wait()
+        let count2 = try await Todo.query(on: self.db).count()
         XCTAssertEqual(count2, 0)
     }
     
-    var eventLoopGroup: (any EventLoopGroup)!
-    var threadPool: NIOThreadPool!
+    var eventLoopGroup: any EventLoopGroup { MultiThreadedEventLoopGroup.singleton }
+    var threadPool: NIOThreadPool { NIOThreadPool.singleton }
     var dbs: Databases!
     var db: (any Database)!
     
-    override func setUpWithError() throws {
-        try super.setUpWithError()
+    override func setUp() async throws {
+        try await super.setUp()
         
         XCTAssert(isLoggingConfigured)
-        self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: Swift.min(System.coreCount, 2))
-        self.threadPool = NIOThreadPool(numberOfThreads: 1)
-        self.dbs = Databases(threadPool: threadPool, on: self.eventLoopGroup)
+        self.dbs = Databases(threadPool: self.threadPool, on: self.eventLoopGroup)
 
         self.dbs.use(.testPostgres(subconfig: "A"), as: .a)
 
         self.db = self.dbs.database(.a, logger: Logger(label: "test.fluent.a"), on: self.eventLoopGroup.any())
-        _ = try (self.db as! PostgresDatabase).query("drop schema public cascade").wait()
-        _ = try (self.db as! PostgresDatabase).query("create schema public").wait()
+        _ = try await (self.db as! any PostgresDatabase).query("drop schema public cascade").get()
+        _ = try await (self.db as! any PostgresDatabase).query("create schema public").get()
         
-        try CreateTodo().prepare(on: self.db).wait()
+        try await CreateTodo().prepare(on: self.db)
     }
 
-    override func tearDownWithError() throws {
-        try CreateTodo().revert(on: self.db).wait()
+    override func tearDown() async throws {
+        try await CreateTodo().revert(on: self.db)
         self.dbs.shutdown()
-        try self.threadPool.syncShutdownGracefully()
-        try self.eventLoopGroup.syncShutdownGracefully()
-        try super.tearDownWithError()
+        try await super.tearDown()
     }
     
-    final class Todo: Model {
+    final class Todo: Model, @unchecked Sendable {
         static let schema = "todos"
 
         @ID
@@ -77,17 +73,17 @@ final class FluentPostgresTransactionControlTests: XCTestCase {
         init(title: String) { self.title = title; id = nil }
     }
     
-    struct CreateTodo: Migration {
-        func prepare(on database: any Database) -> EventLoopFuture<Void> {
-            database.schema("todos")
+    struct CreateTodo: AsyncMigration {
+        func prepare(on database: any Database) async throws {
+            try await database.schema("todos")
                 .id()
                 .field("title", .string, .required)
                 .unique(on: "title")
                 .create()
         }
 
-        func revert(on database: any Database) -> EventLoopFuture<Void> {
-            database.schema("todos").delete()
+        func revert(on database: any Database) async throws {
+            try await database.schema("todos").delete()
         }
     }
 }
