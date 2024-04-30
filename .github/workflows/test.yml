@@ -12,9 +12,9 @@ env:
   POSTGRES_HOSTNAME: 'psql-a'
   POSTGRES_HOSTNAME_A: 'psql-a'
   POSTGRES_HOSTNAME_B: 'psql-b'
-  POSTGRES_DB: 'test_database'
-  POSTGRES_DB_A: 'test_database'
-  POSTGRES_DB_B: 'test_database'
+  POSTGRES_DB: 'test_database_a'
+  POSTGRES_DB_A: 'test_database_a'
+  POSTGRES_DB_B: 'test_database_b'
   POSTGRES_USER: 'test_username'
   POSTGRES_USER_A: 'test_username'
   POSTGRES_USER_B: 'test_username'
@@ -24,15 +24,17 @@ env:
 
 jobs:
   api-breakage:
-    if: ${{ !(github.event.pull_request.draft || false) }}
+    if: ${{ github.event_name == 'pull_request' && !(github.event.pull_request.draft || false) }}
     runs-on: ubuntu-latest
-    container: swift:5.8-jammy
+    container: swift:jammy
     steps:
-      - name: Check out package
-        uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
         with: { 'fetch-depth': 0 }
-      - name: Run API breakage check action
-        uses: vapor/ci/.github/actions/ci-swift-check-api-breakage@reusable-workflows
+      - name: API breaking changes
+        run: |
+          git config --global --add safe.directory "${GITHUB_WORKSPACE}"
+          swift package diagnose-api-breaking-changes origin/main
 
   linux-all:
     if: ${{ !(github.event.pull_request.draft || false) }}
@@ -40,50 +42,46 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {dbimage: 'postgres:11', dbauth: 'trust',         swiftver: 'swift:5.7-focal'}
-          - {dbimage: 'postgres:13', dbauth: 'md5',           swiftver: 'swift:5.7-jammy'}
-          - {dbimage: 'postgres:15', dbauth: 'scram-sha-256', swiftver: 'swift:5.8-jammy'}
-          - {dbimage: 'postgres:15', dbauth: 'scram-sha-256', swiftver: 'swiftlang/swift:nightly-5.9-jammy'}
-          - {dbimage: 'postgres:15', dbauth: 'scram-sha-256', swiftver: 'swiftlang/swift:nightly-main-jammy'}
-    container: ${{ matrix.swiftver }}
+          - postgres-image-a: 'postgres:13'
+            postgres-image-b: 'postgres:14'
+            postgres-auth: 'trust'
+            swift-image: 'swift:5.8-focal'
+          - postgres-image-a: 'postgres:15'
+            postgres-image-b: 'postgres:16'
+            postgres-auth: 'md5'
+            swift-image: 'swift:5.10-jammy'
+          - postgres-image-a: 'postgres:15'
+            postgres-image-b: 'postgres:16'
+            postgres-auth: 'scram-sha-256'
+            swift-image: 'swiftlang/swift:nightly-6.0-jammy'
+    container: ${{ matrix.swift-image }}
     runs-on: ubuntu-latest
     services:
       psql-a:
-        image: ${{ matrix.dbimage }}
+        image: ${{ matrix.postgres-image-a }}
         env:
           POSTGRES_USER: 'test_username'
-          POSTGRES_DB: 'test_database'
+          POSTGRES_DB: 'test_database_a'
           POSTGRES_PASSWORD: 'test_password'
-          POSTGRES_HOST_AUTH_METHOD: ${{ matrix.dbauth }}
-          POSTGRES_INITDB_ARGS: --auth-host=${{ matrix.dbauth }}
+          POSTGRES_HOST_AUTH_METHOD: ${{ matrix.postgres-auth }}
+          POSTGRES_INITDB_ARGS: --auth-host=${{ matrix.postgres-auth }}
       psql-b:
-        image: ${{ matrix.dbimage }}
+        image: ${{ matrix.postgres-image-b }}
         env:
           POSTGRES_USER: 'test_username'
-          POSTGRES_DB: 'test_database'
+          POSTGRES_DB: 'test_database_b'
           POSTGRES_PASSWORD: 'test_password'
-          POSTGRES_HOST_AUTH_METHOD: ${{ matrix.dbauth }}
-          POSTGRES_INITDB_ARGS: --auth-host=${{ matrix.dbauth }}
+          POSTGRES_HOST_AUTH_METHOD: ${{ matrix.postgres-auth }}
+          POSTGRES_INITDB_ARGS: --auth-host=${{ matrix.postgres-auth }}
     steps:
-      - name: Display versions
-        shell: bash
-        run: |
-          echo POSTGRES_VERSION='${{ matrix.dbimage }}' >> $GITHUB_ENV
-          echo POSTGRES_AUTH_METHOD='${{ matrix.dbauth }}' >> $GITHUB_ENV
-          if [[ '${{ contains(matrix.container, 'nightly') }}' == 'true' ]]; then
-            SWIFT_PLATFORM="$(source /etc/os-release && echo "${ID}${VERSION_ID}")" SWIFT_VERSION="$(cat /.swift_tag)"
-            printf 'SWIFT_PLATFORM=%s\nSWIFT_VERSION=%s\n' "${SWIFT_PLATFORM}" "${SWIFT_VERSION}" >>"${GITHUB_ENV}"
-          fi
-          printf 'OS:  %s\nTag: %s\nVersion:\n' "${SWIFT_PLATFORM}-${RUNNER_ARCH}" "${SWIFT_VERSION}" && swift --version
       - name: Check out package
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Run all tests
         run: swift test --sanitize=thread --enable-code-coverage
       - name: Submit coverage report to Codecov.io
-        uses: vapor/swift-codecov-action@v0.2
+        uses: vapor/swift-codecov-action@v0.3
         with:
-          cc_env_vars: 'SWIFT_VERSION,SWIFT_PLATFORM,RUNNER_OS,RUNNER_ARCH,POSTGRES_VERSION,POSTGRES_AUTH_METHOD'
-          cc_fail_ci_if_error: false
+          codecov_token: ${{ secrets.CODECOV_TOKEN }}
 
   macos-all:
     if: ${{ !(github.event.pull_request.draft || false) }}
@@ -91,41 +89,34 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - dbimage: postgresql@14
-            dbauth: scram-sha-256
-            macos: macos-13
-            xcode: latest-stable
-    runs-on: ${{ matrix.macos }}
+          - macos-version: macos-13
+            xcode-version: '~14.3'
+          - macos-version: macos-14
+            xcode-version: latest
+    runs-on: ${{ matrix.macos-version }}
     env:
       LOG_LEVEL: debug
       POSTGRES_HOSTNAME: 127.0.0.1
       POSTGRES_HOSTNAME_A: 127.0.0.1
       POSTGRES_HOSTNAME_B: 127.0.0.1
-      POSTGRES_DB: 'test_database_a'
-      POSTGRES_DB_A: 'test_database_a'
-      POSTGRES_DB_B: 'test_database_b'
-      POSTGRES_USER: 'test_username_a'
-      POSTGRES_USER_A: 'test_username_a'
-      POSTGRES_USER_B: 'test_username_b'
     steps:
       - name: Select latest available Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: ${{ matrix.xcode }}
+          xcode-version: ${{ matrix.xcode-version }}
       - name: Install Postgres, setup DB and auth, and wait for server start
         run: |
-          export PATH="$(brew --prefix)/opt/${{ matrix.dbimage }}/bin:$PATH" PGDATA=/tmp/vapor-postgres-test PGUSER=postgres
-          (brew unlink postgresql || true) && brew install ${{ matrix.dbimage }} && brew link --force ${{ matrix.dbimage }}
-          initdb --locale=C --auth-host ${{ matrix.dbauth }} --username=postgres --pwfile=<(echo postgres)
+          brew upgrade || true
+          export PATH="$(brew --prefix)/opt/postgresql@16/bin:$PATH" PGDATA=/tmp/vapor-postgres-test PGUSER="${POSTGRES_USER_A}"
+          (brew unlink postgresql@14 || true) && brew install postgresql@16 && brew link --force postgresql@16
+          initdb --locale=C --auth-host "scram-sha-256" -U "${POSTGRES_USER_A}" --pwfile=<(echo "${POSTGRES_PASSWORD_A}")
           pg_ctl start --wait
-          psql postgres <<<"CREATE ROLE $POSTGRES_USER_A LOGIN PASSWORD '$POSTGRES_PASSWORD_A';"
-          psql postgres <<<"CREATE ROLE $POSTGRES_USER_B LOGIN PASSWORD '$POSTGRES_PASSWORD_B';"
-          psql postgres <<<"CREATE DATABASE $POSTGRES_DB_A OWNER = $POSTGRES_USER_A;"
-          psql postgres <<<"CREATE DATABASE $POSTGRES_DB_B OWNER = $POSTGRES_USER_B;"
-          psql $POSTGRES_DB_A <<<"ALTER SCHEMA public OWNER TO $POSTGRES_USER_A;"
-          psql $POSTGRES_DB_B <<<"ALTER SCHEMA public OWNER TO $POSTGRES_USER_B;"
-        timeout-minutes: 2
+          PGPASSWORD="${POSTGRES_PASSWORD_A}" createdb -w -O "${POSTGRES_USER_A}" "${POSTGRES_DB_A}"
+          PGPASSWORD="${POSTGRES_PASSWORD_A}" createdb -w -O "${POSTGRES_USER_B}" "${POSTGRES_DB_B}"
+          PGPASSWORD="${POSTGRES_PASSWORD_A}" psql -w "${POSTGRES_DB_A}" <<<"ALTER SCHEMA public OWNER TO ${POSTGRES_USER_A};"
+          PGPASSWORD="${POSTGRES_PASSWORD_A}" psql -w "${POSTGRES_DB_B}" <<<"ALTER SCHEMA public OWNER TO ${POSTGRES_USER_B};"
+        timeout-minutes: 15
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Run all tests
         run: swift test --sanitize=thread

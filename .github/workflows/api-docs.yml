@@ -11,4 +11,4 @@ jobs:
      with:
        package_name: fluent-postgres-driver
        modules: FluentPostgresDriver
-       pathsToInvalidate: /fluentpostgresdriver
+       pathsToInvalidate: /fluentpostgresdriver/*
