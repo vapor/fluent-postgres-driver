@@ -16,14 +16,14 @@ struct _FluentPostgresDatabase<E: PostgresJSONEncoder, D: PostgresJSONDecoder> {
 extension _FluentPostgresDatabase: Database {
     func execute(
         query: DatabaseQuery,
-        onOutput: @escaping (any DatabaseOutput) -> ()
+        onOutput: @escaping @Sendable (any DatabaseOutput) -> ()
     ) -> EventLoopFuture<Void> {
         var expression = SQLQueryConverter(delegate: PostgresConverterDelegate()).convert(query)
         
         /// For `.create` query actions, we want to return the generated IDs, unless the `customIDKey` is the
         /// empty string, which we use as a very hacky signal for "we don't implement this for composite IDs yet".
         if case .create = query.action, query.customIDKey != .some(.string("")) {
-            expression = PostgresReturningID(base: expression, idKey: query.customIDKey ?? .id)
+            expression = SQLKit.SQLList([expression, SQLReturning(.init((query.customIDKey ?? .id).description))], separator: SQLRaw(" "))
         }
         
         return self.execute(sql: expression, { onOutput($0.databaseOutput()) })
@@ -34,7 +34,7 @@ extension _FluentPostgresDatabase: Database {
 
         return self.execute(sql: expression,
             // N.B.: Don't fatalError() here; what're users supposed to do about it?
-            { self.logger.error("Unexpected row returned from schema query: \($0)") }
+            { self.logger.debug("Unexpected row returned from schema query: \($0)") }
         )
     }
 
@@ -44,7 +44,7 @@ extension _FluentPostgresDatabase: Database {
             return e.createCases.reduce(self.create(enum: e.name)) { $0.value($1) }.run()
         case .update:
             if !e.deleteCases.isEmpty {
-                self.logger.error("PostgreSQL does not support deleting enum cases.")
+                self.logger.debug("PostgreSQL does not support deleting enum cases.")
             }
             guard !e.createCases.isEmpty else {
                 return self.eventLoop.makeSucceededFuture(())
@@ -58,7 +58,7 @@ extension _FluentPostgresDatabase: Database {
         }
     }
 
-    func transaction<T>(_ closure: @escaping (any Database) -> EventLoopFuture<T>) -> EventLoopFuture<T> {
+    func transaction<T>(_ closure: @escaping @Sendable (any Database) -> EventLoopFuture<T>) -> EventLoopFuture<T> {
         guard !self.inTransaction else {
             return closure(self)
         }
@@ -70,8 +70,8 @@ extension _FluentPostgresDatabase: Database {
                     """)
             }
             return sqlConn.raw("BEGIN").run().flatMap {
-                return closure(conn).flatMap { result in
-                    sqlConn.raw("COMMIT").run().map { result }
+                closure(conn).flatMap { result in
+                    sqlConn.raw("COMMIT").run().and(value: result).map { $1 }
                 }.flatMapError { error in
                     sqlConn.raw("ROLLBACK").run().flatMapThrowing { throw error }
                 }
@@ -79,7 +79,7 @@ extension _FluentPostgresDatabase: Database {
         }
     }
     
-    func withConnection<T>(_ closure: @escaping (any Database) -> EventLoopFuture<T>) -> EventLoopFuture<T> {
+    func withConnection<T>(_ closure: @escaping @Sendable (any Database) -> EventLoopFuture<T>) -> EventLoopFuture<T> {
         self.withConnection { (underlying: any PostgresDatabase) in
             closure(_FluentPostgresDatabase(
                 database: underlying.sql(encodingContext: self.encodingContext, decodingContext: self.decodingContext, queryLogLevel: self.database.queryLogLevel),
@@ -111,8 +111,16 @@ extension _FluentPostgresDatabase: SQLDatabase {
     var dialect: any SQLDialect { self.database.dialect }
     var queryLogLevel: Logger.Level? { self.database.queryLogLevel }
     
-    func execute(sql query: any SQLExpression, _ onRow: @escaping (any SQLRow) -> ()) -> EventLoopFuture<Void> {
+    func execute(sql query: any SQLExpression, _ onRow: @escaping @Sendable (any SQLRow) -> ()) -> EventLoopFuture<Void> {
         self.database.execute(sql: query, onRow)
+    }
+    
+    func execute(sql query: any SQLExpression, _ onRow: @escaping @Sendable (any SQLRow) -> ()) async throws {
+        try await self.database.execute(sql: query, onRow)
+    }
+    
+    func withSession<R>(_ closure: @escaping @Sendable (any SQLDatabase) async throws -> R) async throws -> R {
+        try await self.database.withSession(closure)
     }
 }
 
@@ -130,17 +138,5 @@ extension _FluentPostgresDatabase: PostgresDatabase {
         }
         
         return psqlDb.withConnection(closure)
-    }
-}
-
-private struct PostgresReturningID: SQLExpression {
-    let base: any SQLExpression
-    let idKey: FieldKey
-
-    func serialize(to serializer: inout SQLSerializer) {
-        serializer.statement {
-            $0.append(self.base)
-            $0.append("RETURNING", SQLIdentifier(self.idKey.description))
-        }
     }
 }

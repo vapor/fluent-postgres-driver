@@ -4,7 +4,8 @@ import Logging
 import FluentKit
 import PostgresKit
 
-struct _FluentPostgresDriver<E: PostgresJSONEncoder, D: PostgresJSONDecoder>: DatabaseDriver {
+/// Marked `@unchecked Sendable` to silence warning about `PostgresConnectionSource`
+struct _FluentPostgresDriver<E: PostgresJSONEncoder, D: PostgresJSONDecoder>: DatabaseDriver, @unchecked Sendable {
     let pool: EventLoopGroupConnectionPool<PostgresConnectionSource>
     let encodingContext: PostgresEncodingContext<E>
     let decodingContext: PostgresDecodingContext<D>

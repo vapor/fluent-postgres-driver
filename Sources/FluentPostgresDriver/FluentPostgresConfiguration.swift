@@ -81,7 +81,9 @@ extension DatabaseConfigurationFactory {
         decodingContext: PostgresDecodingContext<some PostgresJSONDecoder>,
         sqlLogLevel: Logger.Level = .debug
     ) -> DatabaseConfigurationFactory {
-        .init {
+        let configuration = FakeSendable(wrappedValue: configuration)
+        
+        return .init {
             FluentPostgresConfiguration(
                 configuration: configuration,
                 maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
@@ -92,6 +94,8 @@ extension DatabaseConfigurationFactory {
         }
     }
 }
+
+fileprivate struct FakeSendable<T>: @unchecked Sendable { let wrappedValue: T }
 
 /// We'd like to just default the context parameters of the "actual" method. Unfortunately, there are a few
 /// cases involving the UNIX domain socket initalizer where usage can resolve to either the new
@@ -166,7 +170,7 @@ extension DatabaseConfigurationFactory {
 /// The actual concrete configuration type produced by a configuration factory.
 struct FluentPostgresConfiguration<E: PostgresJSONEncoder, D: PostgresJSONDecoder>: DatabaseConfiguration {
     var middleware: [any AnyModelMiddleware] = []
-    let configuration: SQLPostgresConfiguration
+    fileprivate let configuration: FakeSendable<SQLPostgresConfiguration>
     let maxConnectionsPerEventLoop: Int
     let connectionPoolTimeout: TimeAmount
     let encodingContext: PostgresEncodingContext<E>
@@ -174,7 +178,7 @@ struct FluentPostgresConfiguration<E: PostgresJSONEncoder, D: PostgresJSONDecode
     let sqlLogLevel: Logger.Level
 
     func makeDriver(for databases: Databases) -> any DatabaseDriver {
-        let connectionSource = PostgresConnectionSource(sqlConfiguration: self.configuration)
+        let connectionSource = PostgresConnectionSource(sqlConfiguration: self.configuration.wrappedValue)
         let elgPool = EventLoopGroupConnectionPool(
             source: connectionSource,
             maxConnectionsPerEventLoop: self.maxConnectionsPerEventLoop,
