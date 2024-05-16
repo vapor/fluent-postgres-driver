@@ -99,7 +99,7 @@ fileprivate struct FakeSendable<T>: @unchecked Sendable { let wrappedValue: T }
 
 /// We'd like to just default the context parameters of the "actual" method. Unfortunately, there are a few
 /// cases involving the UNIX domain socket initalizer where usage can resolve to either the new
-/// ``SQLPostgresConfiguration``-based method or the deprecated ``PostgresConfiguration``-based method, with no
+/// `SQLPostgresConfiguration`-based method or the deprecated `PostgresConfiguration`-based method, with no
 /// obvious way to disambiguate which to call. Because the context parameters are generic, if they are defaulted,
 /// the compiler resolves the ambiguity in favor of the deprecated method (which has no generic parameters).
 /// However, by adding the non-defaulted-parameter variant which takes neither context, we've provided a version
