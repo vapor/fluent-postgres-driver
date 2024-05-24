@@ -25,6 +25,6 @@ struct _FluentPostgresDriver<E: PostgresJSONEncoder, D: PostgresJSONDecoder>: Da
     }
     
     func shutdown() {
-        self.pool.shutdown()
+        try? self.pool.syncShutdownGracefully()
     }
 }
