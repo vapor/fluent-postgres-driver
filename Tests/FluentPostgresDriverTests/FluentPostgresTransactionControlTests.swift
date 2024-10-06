@@ -56,7 +56,7 @@ final class FluentPostgresTransactionControlTests: XCTestCase {
 
     override func tearDown() async throws {
         try await CreateTodo().revert(on: self.db)
-        self.dbs.shutdown()
+        await self.dbs.shutdownAsync()
         try await super.tearDown()
     }
     

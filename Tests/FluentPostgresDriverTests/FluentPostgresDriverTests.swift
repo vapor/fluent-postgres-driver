@@ -274,7 +274,7 @@ final class FluentPostgresDriverTests: XCTestCase {
      }
 
     override func tearDown() async throws {
-        self.dbs.shutdown()
+        await self.dbs.shutdownAsync()
         try await super.tearDown()
     }
 }
