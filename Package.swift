@@ -13,8 +13,8 @@ let package = Package(
         .library(name: "FluentPostgresDriver", targets: ["FluentPostgresDriver"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/vapor/async-kit.git", from: "1.19.0"),
-        .package(url: "https://github.com/vapor/fluent-kit.git", from: "1.48.4"),
+        .package(url: "https://github.com/vapor/async-kit.git", from: "1.20.0"),
+        .package(url: "https://github.com/vapor/fluent-kit.git", from: "1.49.0"),
         .package(url: "https://github.com/vapor/postgres-kit.git", from: "2.13.4"),
     ],
     targets: [
