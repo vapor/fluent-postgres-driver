@@ -71,7 +71,8 @@ fileprivate extension PostgresError.Code {
     }
 }
 
-extension PostgresError: DatabaseError {
+// Used for DatabaseError conformance
+extension PostgresError {
     public var isSyntaxError: Bool { self.code.isSyntaxError }
     public var isConnectionClosed: Bool {
         switch self {
@@ -82,7 +83,8 @@ extension PostgresError: DatabaseError {
     public var isConstraintFailure: Bool { self.code.isConstraintFailure }
 }
 
-extension PSQLError: DatabaseError {
+// Used for DatabaseError conformance
+extension PSQLError {
     public var isSyntaxError: Bool {
         switch self.code {
         case .server: return self.serverInfo?[.sqlState].map { PostgresError.Code(raw: $0).isSyntaxError } ?? false
@@ -104,3 +106,11 @@ extension PSQLError: DatabaseError {
         }
     }
 }
+
+#if compiler(<6)
+extension PostgresError: DatabaseError { }
+extension PSQLError: DatabaseError { }
+#else
+extension PostgresError: @retroactive DatabaseError { }
+extension PSQLError: @retroactive DatabaseError { }
+#endif
