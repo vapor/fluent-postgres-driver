@@ -45,7 +45,7 @@ jobs:
           - postgres-image-a: 'postgres:13'
             postgres-image-b: 'postgres:14'
             postgres-auth: 'trust'
-            swift-image: 'swift:5.8-focal'
+            swift-image: 'swift:5.9-focal'
           - postgres-image-a: 'postgres:15'
             postgres-image-b: 'postgres:16'
             postgres-auth: 'md5'
@@ -53,7 +53,7 @@ jobs:
           - postgres-image-a: 'postgres:15'
             postgres-image-b: 'postgres:16'
             postgres-auth: 'scram-sha-256'
-            swift-image: 'swiftlang/swift:nightly-6.0-jammy'
+            swift-image: 'swift:6.0-jammy'
     container: ${{ matrix.swift-image }}
     runs-on: ubuntu-latest
     services:
@@ -89,8 +89,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - macos-version: macos-13
-            xcode-version: '~14.3'
           - macos-version: macos-14
             xcode-version: latest
     runs-on: ${{ matrix.macos-version }}
