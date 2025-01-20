@@ -259,7 +259,7 @@ final class FluentPostgresDriverTests: XCTestCase {
             func prepare(on database: any Database) async throws {
                 try await database.schema("orgs")
                     .field("id", .int, .identifier(auto: true))
-                    .field("date", .date, .required)
+                    .field("date", .datetime, .required)
                     .create()
             }
 
@@ -272,13 +272,13 @@ final class FluentPostgresDriverTests: XCTestCase {
         do {
             let date = Date()
             let new = Event()
-            XCTAssertEqual(date, date)
+            XCTAssertEqual(date.timeIntervalSince1970, date.timeIntervalSince1970)
             new.date = date
-            XCTAssertEqual(new.date, date)
+            XCTAssertEqual(new.date.timeIntervalSince1970, date.timeIntervalSince1970)
             try await new.save(on: self.db)
-            XCTAssertEqual(new.date, date)
+            XCTAssertEqual(new.date.timeIntervalSince1970, date.timeIntervalSince1970)
             let fetched = try await Event.query(on: self.db).first()!
-            XCTAssertEqual(fetched.date, date)
+            XCTAssertEqual(fetched.date.timeIntervalSince1970, date.timeIntervalSince1970)
         } catch {
             try? await CreateEvent().revert(on: self.db)
             throw error
