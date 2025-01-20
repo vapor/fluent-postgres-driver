@@ -245,6 +245,47 @@ final class FluentPostgresDriverTests: XCTestCase {
         try await db.schema(Seq.schema).delete()
     }
 
+    func testSwift6DatePrecisionBug() async throws {
+        final class Event: Model, @unchecked Sendable {
+            static let schema = "orgs"
+
+            @ID(custom: "id", generatedBy: .database) var id: Int?
+            @Field(key: "date") var date: Date
+
+            init() {}
+        }
+
+        struct CreateEvent: AsyncMigration {
+            func prepare(on database: any Database) async throws {
+                try await database.schema("orgs")
+                    .field("id", .int, .identifier(auto: true))
+                    .field("date", .date, .required)
+                    .create()
+            }
+
+            func revert(on database: any Database) async throws {
+                try await database.schema("orgs").delete()
+            }
+        }
+
+        try await CreateEvent().prepare(on: self.db)
+        do {
+            let date = Date()
+            let new = Event()
+            XCTAssertEqual(date, date)
+            new.date = date
+            XCTAssertEqual(new.date, date)
+            try await new.save(on: self.db)
+            XCTAssertEqual(new.date, date)
+            let fetched = try await Event.query(on: self.db).first()!
+            XCTAssertEqual(fetched.date, date)
+        } catch {
+            try? await CreateEvent().revert(on: self.db)
+            throw error
+        }
+        try await CreateEvent().revert(on: self.db)
+    }
+
     
     var benchmarker: FluentBenchmarker { .init(databases: self.dbs) }
     var eventLoopGroup: any EventLoopGroup { MultiThreadedEventLoopGroup.singleton }
