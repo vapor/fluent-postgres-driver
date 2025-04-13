@@ -1,9 +1,5 @@
 <p align="center">
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/vapor/fluent-postgres-driver/assets/1130717/c2350b70-aaf1-43e1-ab79-86fc88ba8da4">
-  <source media="(prefers-color-scheme: light)" srcset="https://github.com/vapor/fluent-postgres-driver/assets/1130717/dfc94dc2-281b-4e54-be86-549813496373">
-  <img src="https://github.com/vapor/fluent-postgres-driver/assets/1130717/dfc94dc2-281b-4e54-be86-549813496373" height="96" alt="FluentPostgresDriver">
-</picture> 
+<img src="https://design.vapor.codes/images/vapor-fluentpostgresdriver.svg" height="96" alt="FluentPostgresDriver">
 <br>
 <br>
 <a href="https://docs.vapor.codes/4.0/"><img src="https://design.vapor.codes/images/readthedocs.svg" alt="Documentation"></a>
@@ -11,7 +7,7 @@
 <a href="LICENSE"><img src="https://design.vapor.codes/images/mitlicense.svg" alt="MIT License"></a>
 <a href="https://github.com/vapor/fluent-postgres-driver/actions/workflows/test.yml"><img src="https://img.shields.io/github/actions/workflow/status/vapor/fluent-postgres-driver/test.yml?event=push&style=plastic&logo=github&label=tests&logoColor=%23ccc" alt="Continuous Integration"></a>
 <a href="https://codecov.io/github/vapor/fluent-postgres-driver"><img src="https://img.shields.io/codecov/c/github/vapor/fluent-postgres-driver?style=plastic&logo=codecov&label=codecov"></a>
-<a href="https://swift.org"><img src="https://design.vapor.codes/images/swift58up.svg" alt="Swift 5.8+"></a>
+<a href="https://swift.org"><img src="https://design.vapor.codes/images/swift510up.svg" alt="Swift 5.10+"></a>
 </p>
 
 <br>
