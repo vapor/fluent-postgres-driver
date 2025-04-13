@@ -1,9 +1,8 @@
-import Logging
-import FluentKit
 import AsyncKit
-import NIOCore
-import NIOSSL
+import FluentKit
 import Foundation
+import Logging
+import NIOCore
 import PostgresKit
 import PostgresNIO
 
@@ -31,7 +30,8 @@ extension DatabaseConfigurationFactory {
             configuration: try .init(url: urlString),
             maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
             connectionPoolTimeout: connectionPoolTimeout,
-            encodingContext: encodingContext, decodingContext: decodingContext,
+            encodingContext: encodingContext,
+            decodingContext: decodingContext,
             sqlLogLevel: sqlLogLevel
         )
     }
@@ -59,7 +59,8 @@ extension DatabaseConfigurationFactory {
             configuration: try .init(url: url),
             maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
             connectionPoolTimeout: connectionPoolTimeout,
-            encodingContext: encodingContext, decodingContext: decodingContext,
+            encodingContext: encodingContext,
+            decodingContext: decodingContext,
             sqlLogLevel: sqlLogLevel
         )
     }
@@ -82,20 +83,21 @@ extension DatabaseConfigurationFactory {
         sqlLogLevel: Logger.Level = .debug
     ) -> DatabaseConfigurationFactory {
         let configuration = FakeSendable(wrappedValue: configuration)
-        
+
         return .init {
             FluentPostgresConfiguration(
                 configuration: configuration,
                 maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
                 connectionPoolTimeout: connectionPoolTimeout,
-                encodingContext: encodingContext, decodingContext: decodingContext,
+                encodingContext: encodingContext,
+                decodingContext: decodingContext,
                 sqlLogLevel: sqlLogLevel
             )
         }
     }
 }
 
-fileprivate struct FakeSendable<T>: @unchecked Sendable { let wrappedValue: T }
+private struct FakeSendable<T>: @unchecked Sendable { let wrappedValue: T }
 
 /// We'd like to just default the context parameters of the "actual" method. Unfortunately, there are a few
 /// cases involving the UNIX domain socket initalizer where usage can resolve to either the new
@@ -185,7 +187,7 @@ struct FluentPostgresConfiguration<E: PostgresJSONEncoder, D: PostgresJSONDecode
             requestTimeout: self.connectionPoolTimeout,
             on: databases.eventLoopGroup
         )
-        
+
         return _FluentPostgresDriver(
             pool: elgPool,
             encodingContext: self.encodingContext,

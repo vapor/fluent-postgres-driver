@@ -1,15 +1,16 @@
-import Logging
-import FluentKit
 import FluentBenchmark
+import FluentKit
 import FluentPostgresDriver
-import XCTest
+import Logging
 import PostgresKit
 import SQLKit
+import XCTest
 
 func XCTAssertThrowsErrorAsync<T>(
     _ expression: @autoclosure () async throws -> T,
     _ message: @autoclosure () -> String = "",
-    file: StaticString = #filePath, line: UInt = #line,
+    file: StaticString = #filePath,
+    line: UInt = #line,
     _ callback: (any Error) -> Void = { _ in }
 ) async {
     do {
@@ -23,7 +24,8 @@ func XCTAssertThrowsErrorAsync<T>(
 func XCTAssertNoThrowAsync<T>(
     _ expression: @autoclosure () async throws -> T,
     _ message: @autoclosure () -> String = "",
-    file: StaticString = #filePath, line: UInt = #line
+    file: StaticString = #filePath,
+    line: UInt = #line
 ) async {
     do {
         _ = try await expression()
@@ -73,7 +75,7 @@ final class FluentPostgresDriverTests: XCTestCase {
             XCTAssertFalse(($0 as? any DatabaseError)?.isConstraintFailure ?? true, "\(String(reflecting: $0))")
             XCTAssertFalse(($0 as? any DatabaseError)?.isConnectionClosed ?? true, "\(String(reflecting: $0))")
         }
-        
+
         let sql2 = (self.dbs.database(.a, logger: .init(label: "test.fluent.a"), on: self.eventLoopGroup.any())!) as! any SQLDatabase
         try await sql2.drop(table: "foo").ifExists().run()
         try await sql2.create(table: "foo").column("name", type: .text, .unique).run()
@@ -83,7 +85,7 @@ final class FluentPostgresDriverTests: XCTestCase {
             XCTAssertFalse(($0 as? any DatabaseError)?.isSyntaxError ?? true, "\(String(reflecting: $0))")
             XCTAssertFalse(($0 as? any DatabaseError)?.isConnectionClosed ?? true, "\(String(reflecting: $0))")
         }
-        
+
         // Disabled until we figure out why it hangs instead of throwing an error.
         //let postgres = (self.dbs.database(.a, logger: .init(label: "test.fluent.a"), on: self.eventLoopGroup.any())!) as! any PostgresDatabase
         //await XCTAssertThrowsErrorAsync(try await postgres.withConnection { conn in
@@ -96,7 +98,7 @@ final class FluentPostgresDriverTests: XCTestCase {
         //    XCTAssertFalse(($0 as? any DatabaseError)?.isConstraintFailure ?? true, "\(String(reflecting: $0))")
         //}
     }
-    
+
     func testBlob() async throws {
         struct CreateFoo: AsyncMigration {
             func prepare(on database: any Database) async throws {
@@ -156,10 +158,14 @@ final class FluentPostgresDriverTests: XCTestCase {
         let jsonDecoder = JSONDecoder()
         jsonDecoder.dateDecodingStrategy = .iso8601
 
-        self.dbs.use(.testPostgres(subconfig: "A",
-            encodingContext: .init(jsonEncoder: jsonEncoder),
-            decodingContext: .init(jsonDecoder: jsonDecoder)
-        ), as: .iso8601)
+        self.dbs.use(
+            .testPostgres(
+                subconfig: "A",
+                encodingContext: .init(jsonEncoder: jsonEncoder),
+                decodingContext: .init(jsonDecoder: jsonDecoder)
+            ),
+            as: .iso8601
+        )
         let db = self.dbs.database(
             .iso8601,
             logger: .init(label: "test"),
@@ -210,30 +216,38 @@ final class FluentPostgresDriverTests: XCTestCase {
             throw error
         }
     }
-    
+
     func testEncodingArrayOfModels() async throws {
         final class Elem: Model, ExpressibleByIntegerLiteral, @unchecked Sendable {
             static let schema = ""
             @ID(custom: .id) var id: Int?
-            init() {}; init(integerLiteral l: Int) { self.id = l }
+            init() {}
+            init(integerLiteral l: Int) { self.id = l }
         }
         final class Seq: Model, ExpressibleByNilLiteral, ExpressibleByArrayLiteral, @unchecked Sendable {
             static let schema = "seqs"
-            @ID(custom: .id) var id: Int?; @OptionalField(key: "list") var list: [Elem]?
-            init() {}; init(nilLiteral: ()) { self.list = nil }; init(arrayLiteral el: Elem...) { self.list = el }
+            @ID(custom: .id) var id: Int?
+            @OptionalField(key: "list") var list: [Elem]?
+            init() {}
+            init(nilLiteral: ()) { self.list = nil }
+            init(arrayLiteral el: Elem...) { self.list = el }
         }
         do {
             try await self.db.schema(Seq.schema).field(.id, .int, .identifier(auto: true)).field("list", .sql(embed: "JSONB[]")).create()
-            
-            let s1: Seq = [1, 2], s2: Seq = nil; try [s1, s2].forEach { try $0.create(on: self.db).wait() }
-            
+
+            let s1: Seq = [1, 2]
+            let s2: Seq = nil
+            try [s1, s2].forEach { try $0.create(on: self.db).wait() }
+
             // Make sure it went into the DB as "array of jsonb" rather than as "array of one jsonb containing array" or such.
-            let raws = try await (self.db as! any SQLDatabase).raw("SELECT array_to_json(list)::text t FROM seqs").all().map { try $0.decode(column: "t", as: String?.self) }
+            let raws = try await (self.db as! any SQLDatabase).raw("SELECT array_to_json(list)::text t FROM seqs").all().map {
+                try $0.decode(column: "t", as: String?.self)
+            }
             XCTAssertEqual(raws, [#"[{"id": 1},{"id": 2}]"#, nil])
-            
+
             // Make sure it round-trips through Fluent.
             let seqs = try await Seq.query(on: self.db).all()
-            
+
             XCTAssertEqual(seqs.count, 2)
             XCTAssertEqual(seqs.dropFirst(0).first?.id, s1.id)
             XCTAssertEqual(seqs.dropFirst(0).first?.list?.map(\.id), s1.list?.map(\.id))
@@ -245,17 +259,16 @@ final class FluentPostgresDriverTests: XCTestCase {
         try await db.schema(Seq.schema).delete()
     }
 
-    
     var benchmarker: FluentBenchmarker { .init(databases: self.dbs) }
     var eventLoopGroup: any EventLoopGroup { MultiThreadedEventLoopGroup.singleton }
     var threadPool: NIOThreadPool { NIOThreadPool.singleton }
     var dbs: Databases!
     var db: (any Database)!
     var postgres: any PostgresDatabase { self.db as! any PostgresDatabase }
-    
+
     override func setUp() async throws {
         try await super.setUp()
-        
+
         XCTAssert(isLoggingConfigured)
         self.dbs = Databases(threadPool: self.threadPool, on: self.eventLoopGroup)
 
@@ -271,7 +284,7 @@ final class FluentPostgresDriverTests: XCTestCase {
         _ = try await (b as! any PostgresDatabase).query("create schema public").get()
 
         self.db = a
-     }
+    }
 
     override func tearDown() async throws {
         await self.dbs.shutdownAsync()
@@ -293,8 +306,13 @@ extension DatabaseConfigurationFactory {
             database: env("POSTGRES_DB_\(subconfig)") ?? "test_database",
             tls: try! .prefer(.init(configuration: .makeClientConfiguration()))
         )
-        
-        return .postgres(configuration: baseSubconfig, connectionPoolTimeout: .seconds(30), encodingContext: encodingContext, decodingContext: decodingContext)
+
+        return .postgres(
+            configuration: baseSubconfig,
+            connectionPoolTimeout: .seconds(30),
+            encodingContext: encodingContext,
+            decodingContext: decodingContext
+        )
     }
 }
 

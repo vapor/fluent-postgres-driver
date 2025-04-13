@@ -1,7 +1,7 @@
 import AsyncKit
-import NIOCore
-import Logging
 import FluentKit
+import Logging
+import NIOCore
 import PostgresKit
 
 /// Marked `@unchecked Sendable` to silence warning about `PostgresConnectionSource`
@@ -10,7 +10,7 @@ struct _FluentPostgresDriver<E: PostgresJSONEncoder, D: PostgresJSONDecoder>: Da
     let encodingContext: PostgresEncodingContext<E>
     let decodingContext: PostgresDecodingContext<D>
     let sqlLogLevel: Logger.Level
-    
+
     func makeDatabase(with context: DatabaseContext) -> any Database {
         _FluentPostgresDatabase(
             database: self.pool
@@ -23,11 +23,11 @@ struct _FluentPostgresDriver<E: PostgresJSONEncoder, D: PostgresJSONDecoder>: Da
             inTransaction: false
         )
     }
-    
+
     func shutdown() {
         try? self.pool.syncShutdownGracefully()
     }
-    
+
     func shutdownAsync() async {
         try? await self.pool.shutdownAsync()
     }
