@@ -53,7 +53,7 @@ jobs:
           - postgres-image-a: 'postgres:16'
             postgres-image-b: 'postgres:17'
             postgres-auth: 'scram-sha-256'
-            swift-image: 'swift:6.1.noble'
+            swift-image: 'swift:6.1-noble'
     container: ${{ matrix.swift-image }}
     runs-on: ubuntu-latest
     services:
@@ -106,7 +106,7 @@ jobs:
         run: |
           brew upgrade || true
           export PATH="$(brew --prefix)/opt/postgresql@16/bin:$PATH" PGDATA=/tmp/vapor-postgres-test PGUSER="${POSTGRES_USER_A}"
-          (brew unlink postgresql@14 || true) && brew install postgresql@17 && brew link --force postgresql@16
+          brew install postgresql@17 && brew link --force postgresql@17
           initdb --locale=C --auth-host "scram-sha-256" -U "${POSTGRES_USER_A}" --pwfile=<(echo "${POSTGRES_PASSWORD_A}")
           pg_ctl start --wait
           PGPASSWORD="${POSTGRES_PASSWORD_A}" createdb -w -O "${POSTGRES_USER_A}" "${POSTGRES_DB_A}"
