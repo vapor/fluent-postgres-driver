@@ -1,9 +1,9 @@
-import Logging
-import FluentKit
 import FluentBenchmark
+import FluentKit
 import FluentPostgresDriver
-import XCTest
+import Logging
 import PostgresKit
+import XCTest
 
 final class FluentPostgresTransactionControlTests: XCTestCase {
     func testRollback() async throws {
@@ -33,15 +33,15 @@ final class FluentPostgresTransactionControlTests: XCTestCase {
         let count2 = try await Todo.query(on: self.db).count()
         XCTAssertEqual(count2, 0)
     }
-    
+
     var eventLoopGroup: any EventLoopGroup { MultiThreadedEventLoopGroup.singleton }
     var threadPool: NIOThreadPool { NIOThreadPool.singleton }
     var dbs: Databases!
     var db: (any Database)!
-    
+
     override func setUp() async throws {
         try await super.setUp()
-        
+
         XCTAssert(isLoggingConfigured)
         self.dbs = Databases(threadPool: self.threadPool, on: self.eventLoopGroup)
 
@@ -50,7 +50,7 @@ final class FluentPostgresTransactionControlTests: XCTestCase {
         self.db = self.dbs.database(.a, logger: Logger(label: "test.fluent.a"), on: self.eventLoopGroup.any())
         _ = try await (self.db as! any PostgresDatabase).query("drop schema public cascade").get()
         _ = try await (self.db as! any PostgresDatabase).query("create schema public").get()
-        
+
         try await CreateTodo().prepare(on: self.db)
     }
 
@@ -59,7 +59,7 @@ final class FluentPostgresTransactionControlTests: XCTestCase {
         await self.dbs.shutdownAsync()
         try await super.tearDown()
     }
-    
+
     final class Todo: Model, @unchecked Sendable {
         static let schema = "todos"
 
@@ -70,9 +70,12 @@ final class FluentPostgresTransactionControlTests: XCTestCase {
         var title: String
 
         init() {}
-        init(title: String) { self.title = title; id = nil }
+        init(title: String) {
+            self.title = title
+            id = nil
+        }
     }
-    
+
     struct CreateTodo: AsyncMigration {
         func prepare(on database: any Database) async throws {
             try await database.schema("todos")
