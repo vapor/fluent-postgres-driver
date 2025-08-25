@@ -61,7 +61,7 @@ extension _FluentPostgresDatabase: Database {
         }
     }
 
-    func transaction<T>(_ closure: @escaping @Sendable (any Database) -> EventLoopFuture<T>) -> EventLoopFuture<T> {
+    func transaction<T: Sendable>(_ closure: @escaping @Sendable (any Database) -> EventLoopFuture<T>) -> EventLoopFuture<T> {
         guard !self.inTransaction else {
             return closure(self)
         }

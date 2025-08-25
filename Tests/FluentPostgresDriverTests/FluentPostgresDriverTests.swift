@@ -1,6 +1,7 @@
 import FluentBenchmark
 import FluentKit
 import FluentPostgresDriver
+import FluentSQL
 import Logging
 import PostgresKit
 import SQLKit
@@ -310,6 +311,8 @@ extension DatabaseConfigurationFactory {
         return .postgres(
             configuration: baseSubconfig,
             connectionPoolTimeout: .seconds(30),
+            pruneInterval: .seconds(30),
+            maxIdleTimeBeforePruning: .seconds(60),
             encodingContext: encodingContext,
             decodingContext: decodingContext
         )

@@ -15,6 +15,10 @@ extension DatabaseConfigurationFactory {
     ///   - urlString: The URL describing the connection, as a string.
     ///   - maxConnectionsPerEventLoop: Maximum number of connections to open per event loop.
     ///   - connectionPoolTimeout: Maximum time to wait for a connection to become available per request.
+    ///   - pruneInterval: How often to check for and prune idle database connections. If `nil` (the default),
+    ///     no pruning is performed.
+    ///   - maxIdleTimeBeforePruning: How long a connection may remain idle before being pruned, if pruning is enabled.
+    ///     Defaults to 2 minutes. Ignored if `pruneInterval` is `nil`.
     ///   - encodingContext: Encoding context to use for serializing data.
     ///   - decodingContext: Decoding context to use for deserializing data.
     ///   - sqlLogLevel: Level at which to log SQL queries.
@@ -22,6 +26,8 @@ extension DatabaseConfigurationFactory {
         url urlString: String,
         maxConnectionsPerEventLoop: Int = 1,
         connectionPoolTimeout: TimeAmount = .seconds(10),
+        pruneInterval: TimeAmount? = nil,
+        maxIdleTimeBeforePruning: TimeAmount = .seconds(120),
         encodingContext: PostgresEncodingContext<some PostgresJSONEncoder> = .default,
         decodingContext: PostgresDecodingContext<some PostgresJSONDecoder> = .default,
         sqlLogLevel: Logger.Level = .debug
@@ -30,6 +36,8 @@ extension DatabaseConfigurationFactory {
             configuration: try .init(url: urlString),
             maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
             connectionPoolTimeout: connectionPoolTimeout,
+            pruneInterval: pruneInterval,
+            maxIdleTimeBeforePruning: maxIdleTimeBeforePruning,
             encodingContext: encodingContext,
             decodingContext: decodingContext,
             sqlLogLevel: sqlLogLevel
@@ -44,6 +52,10 @@ extension DatabaseConfigurationFactory {
     ///   - url: The URL describing the connection.
     ///   - maxConnectionsPerEventLoop: Maximum number of connections to open per event loop.
     ///   - connectionPoolTimeout: Maximum time to wait for a connection to become available per request.
+    ///   - pruneInterval: How often to check for and prune idle database connections. If `nil` (the default),
+    ///     no pruning is performed.
+    ///   - maxIdleTimeBeforePruning: How long a connection may remain idle before being pruned, if pruning is enabled.
+    ///     Defaults to 2 minutes. Ignored if `pruneInterval` is `nil`.
     ///   - encodingContext: Encoding context to use for serializing data.
     ///   - decodingContext: Decoding context to use for deserializing data.
     ///   - sqlLogLevel: Level at which to log SQL queries.
@@ -51,6 +63,8 @@ extension DatabaseConfigurationFactory {
         url: URL,
         maxConnectionsPerEventLoop: Int = 1,
         connectionPoolTimeout: TimeAmount = .seconds(10),
+        pruneInterval: TimeAmount? = nil,
+        maxIdleTimeBeforePruning: TimeAmount = .seconds(120),
         encodingContext: PostgresEncodingContext<some PostgresJSONEncoder> = .default,
         decodingContext: PostgresDecodingContext<some PostgresJSONDecoder> = .default,
         sqlLogLevel: Logger.Level = .debug
@@ -59,6 +73,8 @@ extension DatabaseConfigurationFactory {
             configuration: try .init(url: url),
             maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
             connectionPoolTimeout: connectionPoolTimeout,
+            pruneInterval: pruneInterval,
+            maxIdleTimeBeforePruning: maxIdleTimeBeforePruning,
             encodingContext: encodingContext,
             decodingContext: decodingContext,
             sqlLogLevel: sqlLogLevel
@@ -71,6 +87,10 @@ extension DatabaseConfigurationFactory {
     ///   - configuration: A ``PostgresKit/SQLPostgresConfiguration`` describing the connection.
     ///   - maxConnectionsPerEventLoop: Maximum number of connections to open per event loop.
     ///   - connectionPoolTimeout: Maximum time to wait for a connection to become available per request.
+    ///   - pruneInterval: How often to check for and prune idle database connections. If `nil` (the default),
+    ///     no pruning is performed.
+    ///   - maxIdleTimeBeforePruning: How long a connection may remain idle before being pruned, if pruning is enabled.
+    ///     Defaults to 2 minutes. Ignored if `pruneInterval` is `nil`.
     ///   - encodingContext: Encoding context to use for serializing data.
     ///   - decodingContext: Decoding context to use for deserializing data.
     ///   - sqlLogLevel: Level at which to log SQL queries.
@@ -78,6 +98,8 @@ extension DatabaseConfigurationFactory {
         configuration: SQLPostgresConfiguration,
         maxConnectionsPerEventLoop: Int = 1,
         connectionPoolTimeout: TimeAmount = .seconds(10),
+        pruneInterval: TimeAmount? = nil,
+        maxIdleTimeBeforePruning: TimeAmount = .seconds(120),
         encodingContext: PostgresEncodingContext<some PostgresJSONEncoder>,
         decodingContext: PostgresDecodingContext<some PostgresJSONDecoder>,
         sqlLogLevel: Logger.Level = .debug
@@ -87,6 +109,8 @@ extension DatabaseConfigurationFactory {
                 configuration: configuration,
                 maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
                 connectionPoolTimeout: connectionPoolTimeout,
+                pruningInterval: pruneInterval,
+                maxIdleTimeBeforePruning: maxIdleTimeBeforePruning,
                 encodingContext: encodingContext,
                 decodingContext: decodingContext,
                 sqlLogLevel: sqlLogLevel
@@ -108,12 +132,14 @@ extension DatabaseConfigurationFactory {
 ///
 ///     _ = DatabaseConfigurationFactory.postgres(configuration: .init(unixDomainSocketPath: "", username: ""))
 extension DatabaseConfigurationFactory {
-    /// ``postgres(configuration:maxConnectionsPerEventLoop:connectionPoolTimeout:encodingContext:decodingContext:sqlLogLevel:)``
+    /// ``postgres(configuration:maxConnectionsPerEventLoop:connectionPoolTimeout:pruneInterval:maxIdleTimeBeforePruning:encodingContext:decodingContext:sqlLogLevel:)``
     /// with the `decodingContext` defaulted.
     public static func postgres(
         configuration: SQLPostgresConfiguration,
         maxConnectionsPerEventLoop: Int = 1,
         connectionPoolTimeout: TimeAmount = .seconds(10),
+        pruneInterval: TimeAmount? = nil,
+        maxIdleTimeBeforePruning: TimeAmount = .seconds(120),
         encodingContext: PostgresEncodingContext<some PostgresJSONEncoder>,
         sqlLogLevel: Logger.Level = .debug
     ) -> DatabaseConfigurationFactory {
@@ -121,18 +147,22 @@ extension DatabaseConfigurationFactory {
             configuration: configuration,
             maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
             connectionPoolTimeout: connectionPoolTimeout,
+            pruneInterval: pruneInterval,
+            maxIdleTimeBeforePruning: maxIdleTimeBeforePruning,
             encodingContext: encodingContext,
             decodingContext: .default,
             sqlLogLevel: sqlLogLevel
         )
     }
 
-    /// ``postgres(configuration:maxConnectionsPerEventLoop:connectionPoolTimeout:encodingContext:decodingContext:sqlLogLevel:)``
+    /// ``postgres(configuration:maxConnectionsPerEventLoop:connectionPoolTimeout:pruneInterval:maxIdleTimeBeforePruning:encodingContext:decodingContext:sqlLogLevel:)``
     /// with the `encodingContext` defaulted.
     public static func postgres(
         configuration: SQLPostgresConfiguration,
         maxConnectionsPerEventLoop: Int = 1,
         connectionPoolTimeout: TimeAmount = .seconds(10),
+        pruneInterval: TimeAmount? = nil,
+        maxIdleTimeBeforePruning: TimeAmount = .seconds(120),
         decodingContext: PostgresDecodingContext<some PostgresJSONDecoder>,
         sqlLogLevel: Logger.Level = .debug
     ) -> DatabaseConfigurationFactory {
@@ -140,24 +170,30 @@ extension DatabaseConfigurationFactory {
             configuration: configuration,
             maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
             connectionPoolTimeout: connectionPoolTimeout,
+            pruneInterval: pruneInterval,
+            maxIdleTimeBeforePruning: maxIdleTimeBeforePruning,
             encodingContext: .default,
             decodingContext: decodingContext,
             sqlLogLevel: sqlLogLevel
         )
     }
 
-    /// ``postgres(configuration:maxConnectionsPerEventLoop:connectionPoolTimeout:encodingContext:decodingContext:sqlLogLevel:)``
+    /// ``postgres(configuration:maxConnectionsPerEventLoop:connectionPoolTimeout:pruneInterval:maxIdleTimeBeforePruning:encodingContext:decodingContext:sqlLogLevel:)``
     /// with both `encodingContext` and `decodingContext` defaulted.
     public static func postgres(
         configuration: SQLPostgresConfiguration,
         maxConnectionsPerEventLoop: Int = 1,
         connectionPoolTimeout: TimeAmount = .seconds(10),
+        pruneInterval: TimeAmount? = nil,
+        maxIdleTimeBeforePruning: TimeAmount = .seconds(120),
         sqlLogLevel: Logger.Level = .debug
     ) -> DatabaseConfigurationFactory {
         .postgres(
             configuration: configuration,
             maxConnectionsPerEventLoop: maxConnectionsPerEventLoop,
             connectionPoolTimeout: connectionPoolTimeout,
+            pruneInterval: pruneInterval,
+            maxIdleTimeBeforePruning: maxIdleTimeBeforePruning,
             encodingContext: .default,
             decodingContext: .default,
             sqlLogLevel: sqlLogLevel
@@ -171,6 +207,8 @@ struct FluentPostgresConfiguration<E: PostgresJSONEncoder, D: PostgresJSONDecode
     fileprivate let configuration: SQLPostgresConfiguration
     let maxConnectionsPerEventLoop: Int
     let connectionPoolTimeout: TimeAmount
+    let pruningInterval: TimeAmount?
+    let maxIdleTimeBeforePruning: TimeAmount
     let encodingContext: PostgresEncodingContext<E>
     let decodingContext: PostgresDecodingContext<D>
     let sqlLogLevel: Logger.Level
@@ -181,6 +219,8 @@ struct FluentPostgresConfiguration<E: PostgresJSONEncoder, D: PostgresJSONDecode
             source: connectionSource,
             maxConnectionsPerEventLoop: self.maxConnectionsPerEventLoop,
             requestTimeout: self.connectionPoolTimeout,
+            pruneInterval: self.pruningInterval,
+            maxIdleTimeBeforePruning: self.maxIdleTimeBeforePruning,
             on: databases.eventLoopGroup
         )
 

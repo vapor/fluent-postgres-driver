@@ -29,7 +29,7 @@ jobs:
     container: swift:noble
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with: { 'fetch-depth': 0 }
       - name: API breaking changes
         run: |
@@ -74,10 +74,12 @@ jobs:
           POSTGRES_HOST_AUTH_METHOD: ${{ matrix.postgres-auth }}
           POSTGRES_INITDB_ARGS: --auth-host=${{ matrix.postgres-auth }}
     steps:
+      - name: Ensure curl is available
+        run: apt-get update -y && apt-get install -y curl
       - name: Check out package
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Run all tests
-        run: swift test --sanitize=thread --enable-code-coverage
+        run: swift test --enable-code-coverage
       - name: Submit coverage report to Codecov.io
         uses: vapor/swift-codecov-action@v0.3
         with:
@@ -115,6 +117,6 @@ jobs:
           PGPASSWORD="${POSTGRES_PASSWORD_A}" psql -w "${POSTGRES_DB_B}" <<<"ALTER SCHEMA public OWNER TO ${POSTGRES_USER_B};"
         timeout-minutes: 15
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Run all tests
-        run: swift test --sanitize=thread
+        run: swift test

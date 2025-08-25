@@ -20,7 +20,7 @@ struct PostgresConverterDelegate: SQLConverterDelegate {
         case .dictionary:
             SQLRaw("JSONB")
         case .array(of: let type):
-            if let type = type, let dataType = self.customDataType(type) {
+            if let type, let dataType = self.customDataType(type) {
                 SQLArrayDataType(dataType: dataType)
             } else {
                 SQLRaw("JSONB")

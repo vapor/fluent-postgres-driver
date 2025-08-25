@@ -13,8 +13,9 @@ let package = Package(
         .library(name: "FluentPostgresDriver", targets: ["FluentPostgresDriver"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/vapor/fluent-kit.git", from: "1.49.0"),
-        .package(url: "https://github.com/vapor/postgres-kit.git", from: "2.13.4"),
+        .package(url: "https://github.com/vapor/fluent-kit.git", from: "1.52.2"),
+        .package(url: "https://github.com/vapor/postgres-kit.git", from: "2.14.0"),
+        .package(url: "https://github.com/vapor/async-kit.git", from: "1.21.0"),
     ],
     targets: [
         .target(
@@ -23,6 +24,7 @@ let package = Package(
                 .product(name: "FluentKit", package: "fluent-kit"),
                 .product(name: "FluentSQL", package: "fluent-kit"),
                 .product(name: "PostgresKit", package: "postgres-kit"),
+                .product(name: "AsyncKit", package: "async-kit"),
             ],
             swiftSettings: swiftSettings
         ),
@@ -39,6 +41,7 @@ let package = Package(
 
 var swiftSettings: [SwiftSetting] { [
     .enableUpcomingFeature("ExistentialAny"),
+    .enableUpcomingFeature("MemberImportVisibility"),
     .enableUpcomingFeature("ConciseMagicFile"),
     .enableUpcomingFeature("ForwardTrailingClosures"),
     .enableUpcomingFeature("DisableOutwardActorInference"),
