@@ -1,6 +1,7 @@
 import FluentBenchmark
 import FluentKit
 import FluentPostgresDriver
+import FluentSQL
 import Logging
 import PostgresKit
 import SQLKit
@@ -297,7 +298,7 @@ extension DatabaseConfigurationFactory {
         subconfig: String,
         encodingContext: PostgresEncodingContext<some PostgresJSONEncoder> = .default,
         decodingContext: PostgresDecodingContext<some PostgresJSONDecoder> = .default
-    ) -> DatabaseConfigurationFactory {
+    ) -> Self {
         let baseSubconfig = SQLPostgresConfiguration(
             hostname: env("POSTGRES_HOSTNAME_\(subconfig)") ?? "localhost",
             port: env("POSTGRES_PORT_\(subconfig)").flatMap(Int.init) ?? SQLPostgresConfiguration.ianaPortNumber,
@@ -310,6 +311,8 @@ extension DatabaseConfigurationFactory {
         return .postgres(
             configuration: baseSubconfig,
             connectionPoolTimeout: .seconds(30),
+            pruneInterval: .seconds(30),
+            maxIdleTimeBeforePruning: .seconds(60),
             encodingContext: encodingContext,
             decodingContext: decodingContext
         )
