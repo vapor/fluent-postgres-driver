@@ -5,37 +5,60 @@ import FluentSQL
 import Logging
 import PostgresKit
 import SQLKit
+import Testing
 import XCTest
 
-func XCTAssertThrowsErrorAsync<T>(
-    _ expression: @autoclosure () async throws -> T,
-    _ message: @autoclosure () -> String = "",
-    file: StaticString = #filePath,
-    line: UInt = #line,
-    _ callback: (any Error) -> Void = { _ in }
-) async {
+func withDbs(_ closure: @escaping @Sendable (_ dbs: Databases, _ db: any Database) async throws -> Void) async throws {
+    let databases = Databases(threadPool: .singleton, on: MultiThreadedEventLoopGroup.singleton)
+
+    databases.use(.testPostgres(subconfig: "A"), as: .a)
+    databases.use(.testPostgres(subconfig: "B"), as: .b)
+
     do {
-        _ = try await expression()
-        XCTAssertThrowsError({}(), message(), file: file, line: line, callback)
+        let a = databases.database(.a, logger: .init(label: "test.fluent.a"), on: databases.eventLoopGroup.any())!
+        _ = try await (a as! any SQLDatabase).raw("drop schema if exists public cascade").run()
+        _ = try await (a as! any SQLDatabase).raw("create schema public").run()
+
+        let b = databases.database(.b, logger: .init(label: "test.fluent.b"), on: databases.eventLoopGroup.any())!
+        _ = try await (b as! any SQLDatabase).raw("drop schema if exists public cascade").run()
+        _ = try await (b as! any SQLDatabase).raw("create schema public").run()
+
+        try await closure(databases, a)
+        await databases.shutdownAsync()
     } catch {
-        XCTAssertThrowsError(try { throw error }(), message(), file: file, line: line, callback)
+        print(String(reflecting: error))
+        await databases.shutdownAsync()
+        throw error
     }
 }
 
-func XCTAssertNoThrowAsync<T>(
-    _ expression: @autoclosure () async throws -> T,
-    _ message: @autoclosure () -> String = "",
-    file: StaticString = #filePath,
-    line: UInt = #line
-) async {
-    do {
-        _ = try await expression()
-    } catch {
-        XCTAssertNoThrow(try { throw error }(), message(), file: file, line: line)
-    }
-}
+final class FluentBenchmarksTests: XCTestCase {
+    var benchmarker: FluentBenchmarker { .init(databases: self.dbs) }
+    var dbs: Databases!
 
-final class FluentPostgresDriverTests: XCTestCase {
+    override func setUp() async throws {
+        try await super.setUp()
+
+        XCTAssert(isLoggingConfigured)
+        self.dbs = Databases(threadPool: .singleton, on: MultiThreadedEventLoopGroup.singleton)
+
+        self.dbs.use(.testPostgres(subconfig: "A"), as: .a)
+        self.dbs.use(.testPostgres(subconfig: "B"), as: .b)
+
+        let a = self.dbs.database(.a, logger: .init(label: "test.fluent.a"), on: self.dbs.eventLoopGroup.any())
+        _ = try await (a as! any PostgresDatabase).query("drop schema public cascade").get()
+        _ = try await (a as! any PostgresDatabase).query("create schema public").get()
+
+        let b = self.dbs.database(.b, logger: .init(label: "test.fluent.b"), on: self.dbs.eventLoopGroup.any())
+        _ = try await (b as! any PostgresDatabase).query("drop schema public cascade").get()
+        _ = try await (b as! any PostgresDatabase).query("create schema public").get()
+    }
+
+    override func tearDown() async throws {
+        await self.dbs.shutdownAsync()
+        try await super.tearDown()
+    }
+
     func testAggregate() throws { try self.benchmarker.testAggregate() }
     func testArray() throws { try self.benchmarker.testArray() }
     func testBatch() throws { try self.benchmarker.testBatch() }
@@ -68,23 +91,35 @@ final class FluentPostgresDriverTests: XCTestCase {
     func testTimestamp() throws { try self.benchmarker.testTimestamp() }
     func testTransaction() throws { try self.benchmarker.testTransaction() }
     func testUnique() throws { try self.benchmarker.testUnique() }
+}
 
-    func testDatabaseError() async throws {
-        let sql1 = (self.db as! any SQLDatabase)
-        await XCTAssertThrowsErrorAsync(try await sql1.raw("asdf").run()) {
-            XCTAssertTrue(($0 as? any DatabaseError)?.isSyntaxError ?? false, "\(String(reflecting: $0))")
-            XCTAssertFalse(($0 as? any DatabaseError)?.isConstraintFailure ?? true, "\(String(reflecting: $0))")
-            XCTAssertFalse(($0 as? any DatabaseError)?.isConnectionClosed ?? true, "\(String(reflecting: $0))")
-        }
+@Suite(.serialized)
+struct AllSuites {}
 
-        let sql2 = (self.dbs.database(.a, logger: .init(label: "test.fluent.a"), on: self.eventLoopGroup.any())!) as! any SQLDatabase
-        try await sql2.drop(table: "foo").ifExists().run()
-        try await sql2.create(table: "foo").column("name", type: .text, .unique).run()
-        try await sql2.insert(into: "foo").columns("name").values("bar").run()
-        await XCTAssertThrowsErrorAsync(try await sql2.insert(into: "foo").columns("name").values("bar").run()) {
-            XCTAssertTrue(($0 as? any DatabaseError)?.isConstraintFailure ?? false, "\(String(reflecting: $0))")
-            XCTAssertFalse(($0 as? any DatabaseError)?.isSyntaxError ?? true, "\(String(reflecting: $0))")
-            XCTAssertFalse(($0 as? any DatabaseError)?.isConnectionClosed ?? true, "\(String(reflecting: $0))")
+extension AllSuites {
+@Suite
+struct FluentPostgresDriverTests {
+    init() {
+        #expect(isLoggingConfigured)
+    }
+    
+    @Test
+    func databaseError() async throws {
+        try await withDbs { dbs, db in
+            let sql1 = (db as! any SQLDatabase)
+            let error = await #expect(throws: (any Error).self) { try await sql1.raw("asdf").run() }
+            #expect((error as? any DatabaseError)?.isSyntaxError ?? false, "\(String(reflecting: error))")
+            #expect(!((error as? any DatabaseError)?.isConstraintFailure ?? true), "\(String(reflecting: error))")
+            #expect(!((error as? any DatabaseError)?.isConnectionClosed ?? true), "\(String(reflecting: error))")
+
+            let sql2 = (dbs.database(.a, logger: .init(label: "test.fluent.a"), on: dbs.eventLoopGroup.any())!) as! any SQLDatabase
+            try await sql2.drop(table: "foo").ifExists().run()
+            try await sql2.create(table: "foo").column("name", type: .text, .unique).run()
+            try await sql2.insert(into: "foo").columns("name").values("bar").run()
+            await #expect(throws: (any Error).self) { try await sql2.insert(into: "foo").columns("name").values("bar").run() }
+            #expect((error as? any DatabaseError)?.isSyntaxError ?? false, "\(String(reflecting: error))")
+            #expect(!((error as? any DatabaseError)?.isConstraintFailure ?? true), "\(String(reflecting: error))")
+            #expect(!((error as? any DatabaseError)?.isConnectionClosed ?? true), "\(String(reflecting: error))")
         }
 
         // Disabled until we figure out why it hangs instead of throwing an error.
@@ -100,7 +135,8 @@ final class FluentPostgresDriverTests: XCTestCase {
         //}
     }
 
-    func testBlob() async throws {
+    @Test
+    func blob() async throws {
         struct CreateFoo: AsyncMigration {
             func prepare(on database: any Database) async throws {
                 try await database.schema("foos")
@@ -114,11 +150,14 @@ final class FluentPostgresDriverTests: XCTestCase {
             }
         }
 
-        try await CreateFoo().prepare(on: self.db)
-        try await CreateFoo().revert(on: self.db)
+        try await withDbs { _, db in
+            try await CreateFoo().prepare(on: db)
+            try await CreateFoo().revert(on: db)
+        }
     }
 
-    func testSaveModelWithBool() async throws {
+    @Test
+    func saveModelWithBool() async throws {
         final class Organization: Model, @unchecked Sendable {
             static let schema = "orgs"
 
@@ -141,84 +180,93 @@ final class FluentPostgresDriverTests: XCTestCase {
             }
         }
 
-        try await CreateOrganization().prepare(on: self.db)
-        do {
-            let new = Organization()
-            new.disabled = false
-            try await new.save(on: self.db)
-        } catch {
-            try? await CreateOrganization().revert(on: self.db)
-            throw error
-        }
-        try await CreateOrganization().revert(on: self.db)
-    }
-
-    func testCustomJSON() async throws {
-        let jsonEncoder = JSONEncoder()
-        jsonEncoder.dateEncodingStrategy = .iso8601
-        let jsonDecoder = JSONDecoder()
-        jsonDecoder.dateDecodingStrategy = .iso8601
-
-        self.dbs.use(
-            .testPostgres(
-                subconfig: "A",
-                encodingContext: .init(jsonEncoder: jsonEncoder),
-                decodingContext: .init(jsonDecoder: jsonDecoder)
-            ),
-            as: .iso8601
-        )
-        let db = self.dbs.database(
-            .iso8601,
-            logger: .init(label: "test"),
-            on: self.eventLoopGroup.any()
-        )!
-
-        try await EventMigration().prepare(on: db)
-        do {
-            let date = Date()
-            let event = Event()
-            event.id = 1
-            event.metadata = Metadata(createdAt: date)
-            try await event.save(on: db)
-
-            let rows = try await EventStringlyTyped.query(on: db).filter(\.$id == 1).all()
-            let expected = ISO8601DateFormatter().string(from: date)
-            XCTAssertEqual(rows[0].metadata["createdAt"], expected)
-        } catch {
-            try? await EventMigration().revert(on: db)
-            throw error
-        }
-        try await EventMigration().revert(on: db)
-    }
-
-    func testEnumAddingMultipleCases() async throws {
-        try await EnumMigration().prepare(on: self.db)
-        do {
-            try await EventWithFooMigration().prepare(on: self.db)
+        try await withDbs { _, db in
+            try await CreateOrganization().prepare(on: db)
             do {
-                let event = EventWithFoo()
-                event.foobar = .foo
-                try await event.save(on: self.db)
-
-                await XCTAssertNoThrowAsync(try await EnumAddMultipleCasesMigration().prepare(on: self.db))
-
-                event.foobar = .baz
-                await XCTAssertNoThrowAsync(try await event.update(on: self.db))
-                event.foobar = .qux
-                await XCTAssertNoThrowAsync(try await event.update(on: self.db))
-
-                await XCTAssertNoThrowAsync(try await EnumAddMultipleCasesMigration().revert(on: self.db))
+                let new = Organization()
+                new.disabled = false
+                try await new.save(on: db)
             } catch {
-                try? await EventWithFooMigration().revert(on: self.db)
+                try? await CreateOrganization().revert(on: db)
                 throw error
             }
-        } catch {
-            try? await EnumMigration().revert(on: self.db)
-            throw error
+            try await CreateOrganization().revert(on: db)
         }
     }
 
-    func testEncodingArrayOfModels() async throws {
+    @Test
+    func customJSON() async throws {
+        try await withDbs { dbs, _ in
+            let jsonEncoder = JSONEncoder()
+            jsonEncoder.dateEncodingStrategy = .iso8601
+            let jsonDecoder = JSONDecoder()
+            jsonDecoder.dateDecodingStrategy = .iso8601
+
+            dbs.use(
+                .testPostgres(
+                    subconfig: "A",
+                    encodingContext: .init(jsonEncoder: jsonEncoder),
+                    decodingContext: .init(jsonDecoder: jsonDecoder)
+                ),
+                as: .iso8601
+            )
+            let db = dbs.database(
+                .iso8601,
+                logger: .init(label: "test"),
+                on: dbs.eventLoopGroup.any()
+            )!
+
+            try await EventMigration().prepare(on: db)
+            do {
+                let date = Date()
+                let event = Event()
+                event.id = 1
+                event.metadata = Metadata(createdAt: date)
+                try await event.save(on: db)
+
+                let rows = try await EventStringlyTyped.query(on: db).filter(\.$id == 1).all()
+                let expected = ISO8601DateFormatter().string(from: date)
+                #expect(rows[0].metadata["createdAt"] == expected)
+            } catch {
+                try? await EventMigration().revert(on: db)
+                throw error
+            }
+            try await EventMigration().revert(on: db)
+        }
+    }
+
+    @Test
+    func enumAddingMultipleCases() async throws {
+        try await withDbs { _, db in
+            try await EnumMigration().prepare(on: db)
+            do {
+                try await EventWithFooMigration().prepare(on: db)
+                do {
+                    let event = EventWithFoo()
+                    event.foobar = .foo
+                    try await event.save(on: db)
+
+                    await #expect(throws: Never.self) { try await EnumAddMultipleCasesMigration().prepare(on: db) }
+
+                    event.foobar = .baz
+                    await #expect(throws: Never.self) { try await event.update(on: db) }
+                    event.foobar = .qux
+                    await #expect(throws: Never.self) { try await event.update(on: db) }
+
+                    await #expect(throws: Never.self) { try await EnumAddMultipleCasesMigration().revert(on: db) }
+                } catch {
+                    try? await EventWithFooMigration().revert(on: db)
+                    throw error
+                }
+            } catch {
+                try? await EnumMigration().revert(on: db)
+                throw error
+            }
+        }
+    }
+
+    @Test
+    func encodingArrayOfModels() async throws {
         final class Elem: Model, ExpressibleByIntegerLiteral, @unchecked Sendable {
             static let schema = ""
             @ID(custom: .id) var id: Int?
@@ -233,64 +281,36 @@ final class FluentPostgresDriverTests: XCTestCase {
             init(nilLiteral: ()) { self.list = nil }
             init(arrayLiteral el: Elem...) { self.list = el }
         }
-        do {
-            try await self.db.schema(Seq.schema).field(.id, .int, .identifier(auto: true)).field("list", .sql(embed: "JSONB[]")).create()
+        try await withDbs { _, db in
+            do {
+                try await db.schema(Seq.schema).field(.id, .int, .identifier(auto: true)).field("list", .sql(embed: "JSONB[]")).create()
 
-            let s1: Seq = [1, 2]
-            let s2: Seq = nil
-            try [s1, s2].forEach { try $0.create(on: self.db).wait() }
+                let s1: Seq = [1, 2]
+                let s2: Seq = nil
+                try await s1.create(on: db)
+                try await s2.create(on: db)
 
-            // Make sure it went into the DB as "array of jsonb" rather than as "array of one jsonb containing array" or such.
-            let raws = try await (self.db as! any SQLDatabase).raw("SELECT array_to_json(list)::text t FROM seqs").all().map {
-                try $0.decode(column: "t", as: String?.self)
+                // Make sure it went into the DB as "array of jsonb" rather than as "array of one jsonb containing array" or such.
+                let raws = try await (db as! any SQLDatabase).raw("SELECT array_to_json(list)::text t FROM seqs").all().map {
+                    try $0.decode(column: "t", as: String?.self)
+                }
+                #expect(raws == [#"[{"id": 1},{"id": 2}]"#, nil])
+
+                // Make sure it round-trips through Fluent.
+                let seqs = try await Seq.query(on: db).all()
+
+                #expect(seqs.count == 2)
+                #expect(seqs.dropFirst(0).first?.id == s1.id)
+                #expect(seqs.dropFirst(0).first?.list?.map(\.id) == s1.list?.map(\.id))
+                #expect(seqs.dropFirst(1).first?.id == s2.id)
+                #expect(seqs.dropFirst(1).first?.list?.map(\.id) == s2.list?.map(\.id))
+            } catch let error {
+                Issue.record("caught error: \(String(reflecting: error))")
             }
-            XCTAssertEqual(raws, [#"[{"id": 1},{"id": 2}]"#, nil])
-
-            // Make sure it round-trips through Fluent.
-            let seqs = try await Seq.query(on: self.db).all()
-
-            XCTAssertEqual(seqs.count, 2)
-            XCTAssertEqual(seqs.dropFirst(0).first?.id, s1.id)
-            XCTAssertEqual(seqs.dropFirst(0).first?.list?.map(\.id), s1.list?.map(\.id))
-            XCTAssertEqual(seqs.dropFirst(1).first?.id, s2.id)
-            XCTAssertEqual(seqs.dropFirst(1).first?.list?.map(\.id), s2.list?.map(\.id))
-        } catch let error {
-            XCTFail("caught error: \(String(reflecting: error))")
+            try await db.schema(Seq.schema).delete()
         }
-        try await db.schema(Seq.schema).delete()
     }
-
-    var benchmarker: FluentBenchmarker { .init(databases: self.dbs) }
-    var eventLoopGroup: any EventLoopGroup { MultiThreadedEventLoopGroup.singleton }
-    var threadPool: NIOThreadPool { NIOThreadPool.singleton }
-    var dbs: Databases!
-    var db: (any Database)!
-    var postgres: any PostgresDatabase { self.db as! any PostgresDatabase }
-
-    override func setUp() async throws {
-        try await super.setUp()
-
-        XCTAssert(isLoggingConfigured)
-        self.dbs = Databases(threadPool: self.threadPool, on: self.eventLoopGroup)
-
-        self.dbs.use(.testPostgres(subconfig: "A"), as: .a)
-        self.dbs.use(.testPostgres(subconfig: "B"), as: .b)
-
-        let a = self.dbs.database(.a, logger: .init(label: "test.fluent.a"), on: self.eventLoopGroup.any())
-        _ = try await (a as! any PostgresDatabase).query("drop schema public cascade").get()
-        _ = try await (a as! any PostgresDatabase).query("create schema public").get()
-
-        let b = self.dbs.database(.b, logger: .init(label: "test.fluent.b"), on: self.eventLoopGroup.any())
-        _ = try await (b as! any PostgresDatabase).query("drop schema public cascade").get()
-        _ = try await (b as! any PostgresDatabase).query("create schema public").get()
-
-        self.db = a
-    }
-
-    override func tearDown() async throws {
-        await self.dbs.shutdownAsync()
-        try await super.tearDown()
-    }
+}
 }
 
 extension DatabaseConfigurationFactory {
@@ -300,11 +320,11 @@ extension DatabaseConfigurationFactory {
         decodingContext: PostgresDecodingContext<some PostgresJSONDecoder> = .default
     ) -> Self {
         let baseSubconfig = SQLPostgresConfiguration(
-            hostname: env("POSTGRES_HOSTNAME_\(subconfig)") ?? "localhost",
-            port: env("POSTGRES_PORT_\(subconfig)").flatMap(Int.init) ?? SQLPostgresConfiguration.ianaPortNumber,
-            username: env("POSTGRES_USER_\(subconfig)") ?? "test_username",
-            password: env("POSTGRES_PASSWORD_\(subconfig)") ?? "test_password",
-            database: env("POSTGRES_DB_\(subconfig)") ?? "test_database",
+            hostname: ProcessInfo.processInfo.environment["POSTGRES_HOSTNAME_\(subconfig)"] ?? "localhost",
+            port: ProcessInfo.processInfo.environment["POSTGRES_PORT_\(subconfig)"].flatMap(Int.init) ?? SQLPostgresConfiguration.ianaPortNumber,
+            username: ProcessInfo.processInfo.environment["POSTGRES_USER_\(subconfig)"] ?? "test_username",
+            password: ProcessInfo.processInfo.environment["POSTGRES_PASSWORD_\(subconfig)"] ?? "test_password",
+            database: ProcessInfo.processInfo.environment["POSTGRES_DB_\(subconfig)"] ?? "test_database",
             tls: try! .prefer(.init(configuration: .makeClientConfiguration()))
         )
 
@@ -423,15 +443,37 @@ struct EnumAddMultipleCasesMigration: AsyncMigration {
     }
 }
 
-func env(_ name: String) -> String? {
-    ProcessInfo.processInfo.environment[name]
-}
-
 let isLoggingConfigured: Bool = {
-    LoggingSystem.bootstrap { label in
-        var handler = StreamLogHandler.standardOutput(label: label)
-        handler.logLevel = env("LOG_LEVEL").flatMap { .init(rawValue: $0) } ?? .info
-        return handler
-    }
+    LoggingSystem.bootstrap { QuickLogHandler(label: $0, level: ProcessInfo.processInfo.environment["LOG_LEVEL"].flatMap { .init(rawValue: $0) } ?? .info) }
     return true
 }()
+
+struct QuickLogHandler: LogHandler {
+    private let label: String
+    var logLevel = Logger.Level.info, metadataProvider = LoggingSystem.metadataProvider, metadata = Logger.Metadata()
+    subscript(metadataKey key: String) -> Logger.Metadata.Value? { get { self.metadata[key] } set { self.metadata[key] = newValue } }
+    init(label: String, level: Logger.Level) { (self.label, self.logLevel) = (label, level) }
+    func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, source: String, file: String, function: String, line: UInt) {
+        print("\(self.timestamp()) \(level) \(self.label) :\(self.prettify(metadata ?? [:]).map { " \($0)" } ?? "") [\(source)] \(message)")
+    }
+    private func prettify(_ metadata: Logger.Metadata) -> String? {
+        self.metadata.merging(self.metadataProvider?.get() ?? [:]) { $1 }.merging(metadata) { $1 }.sorted { $0.0 < $1.0 }.map { "\($0)=\($1.mvDesc)" }.joined(separator: " ")
+    }
+    private func timestamp() -> String { .init(unsafeUninitializedCapacity: 255) { buffer in
+        var timestamp = time(nil)
+        return localtime(&timestamp).map { strftime(buffer.baseAddress!, buffer.count, "%Y-%m-%dT%H:%M:%S%z", $0) } ?? buffer.initialize(fromContentsOf: "<unknown>".utf8)
+    } }
+}
+extension Logger.MetadataValue {
+    var mvDesc: String { switch self {
+        case .dictionary(let dict): "[\(dict.mapValues(\.mvDesc).lazy.sorted { $0.0 < $1.0 }.map { "\($0): \($1)" }.joined(separator: ", "))]"
+        case .array(let list): "[\(list.map(\.mvDesc).joined(separator: ", "))]"
+        case .string(let str): #""\#(str)""#
+        case .stringConvertible(let repr): switch repr {
+            case let repr as Bool: "\(repr)"
+            case let repr as any FixedWidthInteger: "\(repr)"
+            case let repr as any BinaryFloatingPoint: "\(repr)"
+            default: #""\#(String(describing: repr))""#
+        }
+    } }
+}
