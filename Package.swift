@@ -41,7 +41,7 @@ let package = Package(
 
 var swiftSettings: [SwiftSetting] { [
     .enableUpcomingFeature("ExistentialAny"),
-    .enableUpcomingFeature("InternalImportsByDefault"),
+    //.enableUpcomingFeature("InternalImportsByDefault"),
     .enableUpcomingFeature("MemberImportVisibility"),
     .enableUpcomingFeature("InferIsolatedConformances"),
     //.enableUpcomingFeature("NonisolatedNonsendingByDefault"),
