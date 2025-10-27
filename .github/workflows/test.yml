@@ -5,22 +5,22 @@ concurrency:
 on:
   pull_request: { types: [opened, reopened, synchronize, ready_for_review] }
   push: { branches: [ main ] }
-
+permissions:
+  contents: read
 env:
   LOG_LEVEL: info
-  SWIFT_DETERMINISTIC_HASHING: 1
-  POSTGRES_HOSTNAME: 'psql-a'
-  POSTGRES_HOSTNAME_A: 'psql-a'
-  POSTGRES_HOSTNAME_B: 'psql-b'
-  POSTGRES_DB: 'test_database_a'
-  POSTGRES_DB_A: 'test_database_a'
-  POSTGRES_DB_B: 'test_database_b'
-  POSTGRES_USER: 'test_username'
-  POSTGRES_USER_A: 'test_username'
-  POSTGRES_USER_B: 'test_username'
-  POSTGRES_PASSWORD: 'test_password'
-  POSTGRES_PASSWORD_A: 'test_password'
-  POSTGRES_PASSWORD_B: 'test_password'
+  POSTGRES_HOSTNAME_A: &postgres_host_a 'psql-a'
+  POSTGRES_HOSTNAME_B: &postgres_host_b 'psql-b'
+  POSTGRES_HOSTNAME: *postgres_host_a
+  POSTGRES_DB_A: &postgres_db_a 'test_database_a'
+  POSTGRES_DB_B: &postgres_db_b 'test_database_b'
+  POSTGRES_DB: *postgres_db_a
+  POSTGRES_USER_A: &postgres_user_a 'test_username'
+  POSTGRES_USER_B: &postgres_user_b 'test_username'
+  POSTGRES_USER: *postgres_user_a
+  POSTGRES_PASSWORD_A: &postgres_pass_a 'test_password'
+  POSTGRES_PASSWORD_B: &postgres_pass_b 'test_password'
+  POSTGRES_PASSWORD: *postgres_pass_a
 
 jobs:
   api-breakage:
@@ -42,35 +42,35 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - postgres-image-a: 'postgres:12'
-            postgres-image-b: 'postgres:13'
+          - postgres-image-a: 'postgres:13'
+            postgres-image-b: 'postgres:14'
             postgres-auth: 'trust'
-            swift-image: 'swift:5.10-jammy'
-          - postgres-image-a: 'postgres:14'
-            postgres-image-b: 'postgres:15'
-            postgres-auth: 'md5'
             swift-image: 'swift:6.0-noble'
-          - postgres-image-a: 'postgres:16'
-            postgres-image-b: 'postgres:17'
-            postgres-auth: 'scram-sha-256'
+          - postgres-image-a: 'postgres:15'
+            postgres-image-b: 'postgres:16'
+            postgres-auth: 'md5'
             swift-image: 'swift:6.1-noble'
+          - postgres-image-a: 'postgres:17'
+            postgres-image-b: 'postgres:18'
+            postgres-auth: 'scram-sha-256'
+            swift-image: 'swift:6.2-noble'
     container: ${{ matrix.swift-image }}
     runs-on: ubuntu-latest
     services:
-      psql-a:
+      *postgres_host_a:
         image: ${{ matrix.postgres-image-a }}
         env:
-          POSTGRES_USER: 'test_username'
-          POSTGRES_DB: 'test_database_a'
-          POSTGRES_PASSWORD: 'test_password'
+          POSTGRES_USER: *postgres_user_a
+          POSTGRES_DB: *postgres_db_a
+          POSTGRES_PASSWORD: *postgres_pass_a
           POSTGRES_HOST_AUTH_METHOD: ${{ matrix.postgres-auth }}
           POSTGRES_INITDB_ARGS: --auth-host=${{ matrix.postgres-auth }}
-      psql-b:
+      *postgres_host_b:
         image: ${{ matrix.postgres-image-b }}
         env:
-          POSTGRES_USER: 'test_username'
-          POSTGRES_DB: 'test_database_b'
-          POSTGRES_PASSWORD: 'test_password'
+          POSTGRES_USER: *postgres_user_b
+          POSTGRES_DB: *postgres_db_b
+          POSTGRES_PASSWORD: *postgres_pass_b
           POSTGRES_HOST_AUTH_METHOD: ${{ matrix.postgres-auth }}
           POSTGRES_INITDB_ARGS: --auth-host=${{ matrix.postgres-auth }}
     steps:
@@ -79,7 +79,7 @@ jobs:
       - name: Check out package
         uses: actions/checkout@v5
       - name: Run all tests
-        run: swift test --enable-code-coverage
+        run: swift test --enable-code-coverage --explicit-target-dependency-import-check error -Xswiftc -require-explicit-sendable
       - name: Submit coverage report to Codecov.io
         uses: vapor/swift-codecov-action@v0.3
         with:
@@ -92,6 +92,8 @@ jobs:
       matrix:
         include:
           - macos-version: macos-15
+            xcode-version: latest-stable
+          - macos-version: macos-26
             xcode-version: latest-stable
     runs-on: ${{ matrix.macos-version }}
     env:
@@ -108,7 +110,7 @@ jobs:
         run: |
           brew upgrade || true
           export PATH="$(brew --prefix)/opt/postgresql@16/bin:$PATH" PGDATA=/tmp/vapor-postgres-test PGUSER="${POSTGRES_USER_A}"
-          brew install postgresql@17 && brew link --force postgresql@17
+          brew install postgresql@18 && brew link --force postgresql@18
           initdb --locale=C --auth-host "scram-sha-256" -U "${POSTGRES_USER_A}" --pwfile=<(echo "${POSTGRES_PASSWORD_A}")
           pg_ctl start --wait
           PGPASSWORD="${POSTGRES_PASSWORD_A}" createdb -w -O "${POSTGRES_USER_A}" "${POSTGRES_DB_A}"
@@ -119,4 +121,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
       - name: Run all tests
-        run: swift test
+        run: swift test --enable-code-coverage --explicit-target-dependency-import-check error -Xswiftc -require-explicit-sendable
+      - name: Submit coverage report to Codecov.io
+        uses: vapor/swift-codecov-action@v0.3
+        with:
+          codecov_token: ${{ secrets.CODECOV_TOKEN }}
+
+  musl:
+    runs-on: ubuntu-latest
+    container: swift:6.2-noble
+    timeout-minutes: 30
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v5
+      - name: Install SDK
+        run: swift sdk install https://download.swift.org/swift-6.2-release/static-sdk/swift-6.2-RELEASE/swift-6.2-RELEASE_static-linux-0.0.1.artifactbundle.tar.gz --checksum d2225840e592389ca517bbf71652f7003dbf45ac35d1e57d98b9250368769378
+      - name: Build
+        run: swift build --swift-sdk x86_64-swift-linux-musl

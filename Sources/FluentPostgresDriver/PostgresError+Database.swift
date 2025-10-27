@@ -107,10 +107,5 @@ extension PSQLError {
     }
 }
 
-#if compiler(<6)
-extension PostgresError: DatabaseError {}
-extension PSQLError: DatabaseError {}
-#else
 extension PostgresError: @retroactive DatabaseError {}
 extension PSQLError: @retroactive DatabaseError {}
-#endif

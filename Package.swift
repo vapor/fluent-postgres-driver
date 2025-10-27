@@ -1,4 +1,4 @@
-// swift-tools-version:5.10
+// swift-tools-version:6.0
 import PackageDescription
 
 let package = Package(
@@ -14,7 +14,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/vapor/fluent-kit.git", from: "1.52.2"),
-        .package(url: "https://github.com/vapor/postgres-kit.git", from: "2.14.0"),
+        .package(url: "https://github.com/vapor/postgres-kit.git", from: "2.14.1"),
         .package(url: "https://github.com/vapor/async-kit.git", from: "1.21.0"),
     ],
     targets: [
@@ -41,9 +41,9 @@ let package = Package(
 
 var swiftSettings: [SwiftSetting] { [
     .enableUpcomingFeature("ExistentialAny"),
+    //.enableUpcomingFeature("InternalImportsByDefault"),
     .enableUpcomingFeature("MemberImportVisibility"),
-    .enableUpcomingFeature("ConciseMagicFile"),
-    .enableUpcomingFeature("ForwardTrailingClosures"),
-    .enableUpcomingFeature("DisableOutwardActorInference"),
-    .enableExperimentalFeature("StrictConcurrency=complete"),
+    .enableUpcomingFeature("InferIsolatedConformances"),
+    //.enableUpcomingFeature("NonisolatedNonsendingByDefault"),
+    .enableUpcomingFeature("ImmutableWeakCaptures"),
 ] }
