@@ -322,11 +322,11 @@ extension DatabaseConfigurationFactory {
         decodingContext: PostgresDecodingContext<some PostgresJSONDecoder> = .default
     ) -> Self {
         let baseSubconfig = SQLPostgresConfiguration(
-            hostname: ProcessInfo.processInfo.environment["POSTGRES_HOSTNAME_\(subconfig)"] ?? "localhost",
-            port: ProcessInfo.processInfo.environment["POSTGRES_PORT_\(subconfig)"].flatMap(Int.init) ?? SQLPostgresConfiguration.ianaPortNumber,
-            username: ProcessInfo.processInfo.environment["POSTGRES_USER_\(subconfig)"] ?? "test_username",
-            password: ProcessInfo.processInfo.environment["POSTGRES_PASSWORD_\(subconfig)"] ?? "test_password",
-            database: ProcessInfo.processInfo.environment["POSTGRES_DB_\(subconfig)"] ?? "test_database",
+            hostname: env("POSTGRES_HOSTNAME_\(subconfig)") ?? env("POSTGRES_HOSTNAME_A") ?? env("POSTGRES_HOSTNAME") ?? "localhost",
+            port:    (env("POSTGRES_PORT_\(subconfig)")     ?? env("POSTGRES_PORT_A")     ?? env("POSTGRES_PORT")).flatMap(Int.init) ?? SQLPostgresConfiguration.ianaPortNumber,
+            username: env("POSTGRES_USER_\(subconfig)")     ?? env("POSTGRES_USER_A")     ?? env("POSTGRES_USER") ?? "test_username",
+            password: env("POSTGRES_PASSWORD_\(subconfig)") ?? env("POSTGRES_PASSWORD_A") ?? env("POSTGRES_PASSWORD") ?? "test_password",
+            database: env("POSTGRES_DB_\(subconfig)")       ?? env("POSTGRES_DB_A")       ?? env("POSTGRES_DB") ?? "test_database",
             tls: try! .prefer(.init(configuration: .makeClientConfiguration()))
         )
 
@@ -445,8 +445,12 @@ struct EnumAddMultipleCasesMigration: AsyncMigration {
     }
 }
 
+func env(_ e: String) -> String? {
+    ProcessInfo.processInfo.environment[e]
+}
+
 let isLoggingConfigured: Bool = {
-    LoggingSystem.bootstrap { QuickLogHandler(label: $0, level: ProcessInfo.processInfo.environment["LOG_LEVEL"].flatMap { .init(rawValue: $0) } ?? .info) }
+    LoggingSystem.bootstrap { QuickLogHandler(label: $0, level: env("LOG_LEVEL").flatMap { .init(rawValue: $0) } ?? .info) }
     return true
 }()
 
