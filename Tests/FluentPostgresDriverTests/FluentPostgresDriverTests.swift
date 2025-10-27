@@ -102,24 +102,25 @@ struct FluentPostgresDriverTests {
     init() {
         #expect(isLoggingConfigured)
     }
-    
+
+    #if !compiler(<6.1) // #expect(throws:) doesn't return the Error until 6.1
     @Test
     func databaseError() async throws {
         try await withDbs { dbs, db in
             let sql1 = (db as! any SQLDatabase)
-            let error = await #expect(throws: (any Error).self) { try await sql1.raw("asdf").run() }
-            #expect((error as? any DatabaseError)?.isSyntaxError ?? false, "\(String(reflecting: error))")
-            #expect(!((error as? any DatabaseError)?.isConstraintFailure ?? true), "\(String(reflecting: error))")
-            #expect(!((error as? any DatabaseError)?.isConnectionClosed ?? true), "\(String(reflecting: error))")
+            let error1 = await #expect(throws: (any Error).self) { try await sql1.raw("asdf").run() }
+            #expect((error1 as? any DatabaseError)?.isSyntaxError ?? false, "\(String(reflecting: error1))")
+            #expect(!((error1 as? any DatabaseError)?.isConstraintFailure ?? true), "\(String(reflecting: error1))")
+            #expect(!((error1 as? any DatabaseError)?.isConnectionClosed ?? true), "\(String(reflecting: error1))")
 
             let sql2 = (dbs.database(.a, logger: .init(label: "test.fluent.a"), on: dbs.eventLoopGroup.any())!) as! any SQLDatabase
             try await sql2.drop(table: "foo").ifExists().run()
             try await sql2.create(table: "foo").column("name", type: .text, .unique).run()
             try await sql2.insert(into: "foo").columns("name").values("bar").run()
-            await #expect(throws: (any Error).self) { try await sql2.insert(into: "foo").columns("name").values("bar").run() }
-            #expect((error as? any DatabaseError)?.isSyntaxError ?? false, "\(String(reflecting: error))")
-            #expect(!((error as? any DatabaseError)?.isConstraintFailure ?? true), "\(String(reflecting: error))")
-            #expect(!((error as? any DatabaseError)?.isConnectionClosed ?? true), "\(String(reflecting: error))")
+            let error2 = await #expect(throws: (any Error).self) { try await sql2.insert(into: "foo").columns("name").values("bar").run() }
+            #expect((error2 as? any DatabaseError)?.isSyntaxError ?? false, "\(String(reflecting: error2))")
+            #expect(!((error2 as? any DatabaseError)?.isConstraintFailure ?? true), "\(String(reflecting: error2))")
+            #expect(!((error2 as? any DatabaseError)?.isConnectionClosed ?? true), "\(String(reflecting: error2))")
         }
 
         // Disabled until we figure out why it hangs instead of throwing an error.
@@ -134,6 +135,7 @@ struct FluentPostgresDriverTests {
         //    XCTAssertFalse(($0 as? any DatabaseError)?.isConstraintFailure ?? true, "\(String(reflecting: $0))")
         //}
     }
+    #endif
 
     @Test
     func blob() async throws {

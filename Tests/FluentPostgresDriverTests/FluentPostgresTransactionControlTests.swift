@@ -6,6 +6,7 @@ extension AllSuites {
 struct FluentPostgresTransactionControlTests {
     init() { #expect(isLoggingConfigured) }
 
+    #if !compiler(<6.1) // #expect(throws:) doesn't return the Error until 6.1
     @Test
     func rollback() async throws {
         try await withDbs { _, db in try await db.withConnection { db in
@@ -26,7 +27,8 @@ struct FluentPostgresTransactionControlTests {
             try await CreateTodo().revert(on: db)
         } }
     }
-
+    #endif
+    
     final class Todo: Model, @unchecked Sendable {
         static let schema = "todos"
         @ID var id
