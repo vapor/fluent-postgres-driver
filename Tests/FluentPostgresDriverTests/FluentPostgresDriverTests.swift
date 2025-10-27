@@ -118,8 +118,8 @@ struct FluentPostgresDriverTests {
             try await sql2.create(table: "foo").column("name", type: .text, .unique).run()
             try await sql2.insert(into: "foo").columns("name").values("bar").run()
             let error2 = await #expect(throws: (any Error).self) { try await sql2.insert(into: "foo").columns("name").values("bar").run() }
-            #expect((error2 as? any DatabaseError)?.isSyntaxError ?? false, "\(String(reflecting: error2))")
-            #expect(!((error2 as? any DatabaseError)?.isConstraintFailure ?? true), "\(String(reflecting: error2))")
+            #expect(!((error2 as? any DatabaseError)?.isSyntaxError ?? true), "\(String(reflecting: error2))")
+            #expect((error2 as? any DatabaseError)?.isConstraintFailure ?? false, "\(String(reflecting: error2))")
             #expect(!((error2 as? any DatabaseError)?.isConnectionClosed ?? true), "\(String(reflecting: error2))")
         }
 
