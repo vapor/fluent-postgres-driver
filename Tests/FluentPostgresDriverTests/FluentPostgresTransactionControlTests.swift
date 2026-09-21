@@ -1,15 +1,20 @@
 import FluentKit
 import Testing
 
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
+
 extension AllSuites {
 @Suite
 struct FluentPostgresTransactionControlTests {
     init() { #expect(isLoggingConfigured) }
 
-    #if !compiler(<6.1) // #expect(throws:) doesn't return the Error until 6.1
-    @Test
-    func rollback() async throws {
-        try await withDbs { _, db in try await db.withConnection { db in
+    @Test(arguments: TestDriver.allCases)
+    func rollback(_ driver: TestDriver) async throws {
+        try await withDbs(driver) { _, db in try await db.withConnection { db in
             try await CreateTodo().prepare(on: db)
             do {
                 try await (db as! any TransactionControlDatabase).beginTransaction().get()
@@ -27,7 +32,6 @@ struct FluentPostgresTransactionControlTests {
             try await CreateTodo().revert(on: db)
         } }
     }
-    #endif
     
     final class Todo: Model, @unchecked Sendable {
         static let schema = "todos"

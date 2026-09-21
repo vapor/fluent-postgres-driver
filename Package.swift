@@ -1,4 +1,4 @@
-// swift-tools-version:6.0
+// swift-tools-version:6.2
 import PackageDescription
 
 let package = Package(
@@ -10,12 +10,14 @@ let package = Package(
         .tvOS(.v13),
     ],
     products: [
-        .library(name: "FluentPostgresDriver", targets: ["FluentPostgresDriver"]),
+        .library(name: "FluentPostgresDriver", targets: ["FluentPostgresDriver"])
     ],
     dependencies: [
         .package(url: "https://github.com/vapor/fluent-kit.git", from: "1.52.2"),
         .package(url: "https://github.com/vapor/postgres-kit.git", from: "2.14.1"),
         .package(url: "https://github.com/vapor/async-kit.git", from: "1.21.0"),
+        .package(url: "https://github.com/vapor/postgres-nio.git", from: "1.33.1"),
+        .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.12.0")
     ],
     targets: [
         .target(
@@ -25,6 +27,8 @@ let package = Package(
                 .product(name: "FluentSQL", package: "fluent-kit"),
                 .product(name: "PostgresKit", package: "postgres-kit"),
                 .product(name: "AsyncKit", package: "async-kit"),
+                .product(name: "PostgresNIO", package: "postgres-nio"),
+                .product(name: "ServiceLifecycle", package: "swift-service-lifecycle")
             ],
             swiftSettings: swiftSettings
         ),

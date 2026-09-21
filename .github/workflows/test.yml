@@ -45,15 +45,15 @@ jobs:
           - postgres-image-a: 'postgres:13'
             postgres-image-b: 'postgres:14'
             postgres-auth: 'trust'
-            swift-image: 'swift:6.0-noble'
+            swift-image: 'swift:6.2-noble'
           - postgres-image-a: 'postgres:15'
             postgres-image-b: 'postgres:16'
             postgres-auth: 'md5'
-            swift-image: 'swift:6.1-noble'
+            swift-image: 'swift:6.3-noble'
           - postgres-image-a: 'postgres:17'
             postgres-image-b: 'postgres:18'
             postgres-auth: 'scram-sha-256'
-            swift-image: 'swift:6.2-noble'
+            swift-image: 'swift:6.4-noble'
     container: ${{ matrix.swift-image }}
     runs-on: ubuntu-latest
     services:

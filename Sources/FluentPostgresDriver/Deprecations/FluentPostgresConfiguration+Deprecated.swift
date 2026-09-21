@@ -10,10 +10,6 @@ import PostgresNIO
 
 // Factory methods accepting both encoder and decoder
 extension DatabaseConfigurationFactory {
-    enum FluentPostgresError: Error {
-        case invalidURL(String)
-    }
-
     @available(*, deprecated, message: "Use `.postgres(url:maxConnectionsPerEventLoop:connectionPoolTimeout:encodingContext:decodingContext:sqlLogLevel:)` instead.")
     public static func postgres(
         url: String, maxConnectionsPerEventLoop: Int = 1, connectionPoolTimeout: TimeAmount = .seconds(10),
