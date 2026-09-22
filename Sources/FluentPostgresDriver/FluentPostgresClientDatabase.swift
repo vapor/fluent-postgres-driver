@@ -5,7 +5,7 @@ import PostgresKit
 import PostgresNIO
 
 @available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
-struct _FluentPostgresClientDatabase<E: PostgresJSONEncoder, D: PostgresJSONDecoder> {
+struct _FluentPostgresClientDatabase<E: PostgresJSONEncoder, D: PostgresJSONDecoder>: Sendable {
     enum Source {
         case client(PostgresClient)
         case connection(any SQLDatabase)
@@ -32,20 +32,20 @@ struct _FluentPostgresClientDatabase<E: PostgresJSONEncoder, D: PostgresJSONDeco
 
 @available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
 extension _FluentPostgresClientDatabase: Database {
-    func withConnection<T>(_ closure: @escaping @Sendable (any Database) -> EventLoopFuture<T>) -> EventLoopFuture<T> {
+    func withConnection<T: Sendable>(_ closure: @escaping @Sendable (any Database) -> EventLoopFuture<T>) -> EventLoopFuture<T> {
         switch self.source {
         case .connection:
-            return closure(self)
+            closure(self)
         case .client(let client):
-            return self.eventLoop.makeFutureWithUnsafeTask {
+            self.eventLoop.makeFutureWithTask {
                 try await client.withConnection { connection in
-                    try await closure(self.scoped(to: connection, inTransaction: self.inTransaction)).unsafeGet()
+                    try await closure(self.scoped(to: connection, inTransaction: self.inTransaction)).get()
                 }
             }
         }
     }
 
-    func transaction<T>(_ closure: @escaping @Sendable (any Database) -> EventLoopFuture<T>) -> EventLoopFuture<T> {
+    func transaction<T: Sendable>(_ closure: @escaping @Sendable (any Database) -> EventLoopFuture<T>) -> EventLoopFuture<T> {
         guard !self.inTransaction else {
             return closure(self)
         }
@@ -54,7 +54,7 @@ extension _FluentPostgresClientDatabase: Database {
         func runTransaction(on db: Self) async throws -> T {
             try await db.raw("BEGIN").run()
             do {
-                let result = try await closure(db).unsafeGet()
+                let result = try await closure(db).get()
                 try await db.raw("COMMIT").run()
                 return result
             } catch {
@@ -65,11 +65,11 @@ extension _FluentPostgresClientDatabase: Database {
 
         switch self.source {
         case .connection:
-            return self.eventLoop.makeFutureWithUnsafeTask {
+            return self.eventLoop.makeFutureWithTask {
                 try await runTransaction(on: self.with(inTransaction: true))
             }
         case .client(let client):
-            return self.eventLoop.makeFutureWithUnsafeTask {
+            return self.eventLoop.makeFutureWithTask {
                 try await client.withConnection { connection in
                     try await runTransaction(on: self.scoped(to: connection, inTransaction: true))
                 }
@@ -90,13 +90,9 @@ extension _FluentPostgresClientDatabase: Database {
 
     private func scoped(to conn: PostgresConnection, inTransaction: Bool? = nil) -> Self {
         .init(
-            source: .connection(
-                conn
-                    .logging(to: self.logger)
-                    .sql(
-                        encodingContext: self.encodingContext,
-                        decodingContext: self.decodingContext,
-                        queryLogLevel: self.sqlLogLevel)),
+            source: .connection(conn
+                .logging(to: self.logger)
+                .sql(encodingContext: self.encodingContext, decodingContext: self.decodingContext, queryLogLevel: self.sqlLogLevel)),
             context: self.context,
             encodingContext: self.encodingContext,
             decodingContext: self.decodingContext,

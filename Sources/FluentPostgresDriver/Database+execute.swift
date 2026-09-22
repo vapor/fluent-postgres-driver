@@ -27,7 +27,7 @@ extension Database where Self: SQLDatabase {
         )
     }
 
-    func execute(enum e: FluentKit.DatabaseEnum) -> NIOCore.EventLoopFuture<Void> {
+    func execute(enum e: DatabaseEnum) -> EventLoopFuture<Void> {
         switch e.action {
         case .create:
             return e.createCases.reduce(self.create(enum: e.name)) { $0.value($1) }.run()
