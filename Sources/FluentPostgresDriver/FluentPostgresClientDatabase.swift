@@ -125,11 +125,19 @@ extension _FluentPostgresClientDatabase: SQLDatabase {
     }
 
     func execute(sql query: any SQLExpression, _ onRow: @escaping @Sendable (any SQLRow) -> Void) -> EventLoopFuture<Void> {
+        let onRow: @Sendable (any SQLRow) -> Void = { row in
+            if self.eventLoop.inEventLoop {
+                onRow(row)
+            } else {
+                self.eventLoop.execute { onRow(row) }
+            }
+        }
+
         switch self.source {
         case .connection(let connection):
-            connection.execute(sql: query, onRow)
+            return connection.execute(sql: query, onRow).hop(to: self.eventLoop)
         case .client(let client):
-            self.eventLoop.makeFutureWithTask {
+            return self.eventLoop.makeFutureWithTask {
                 try await client.withConnection { connection in
                     try await self.scoped(to: connection).execute(sql: query, onRow)
                 }
