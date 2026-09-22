@@ -7,7 +7,7 @@ import PostgresKit
 import SQLKit
 import PostgresNIO
 
-enum TestDriver: CaseIterable {
+enum TestDriver: Sendable, CaseIterable {
     case asyncKit
     case postgresClient
 
@@ -61,7 +61,7 @@ extension DatabaseConfigurationFactory {
             port:    (env("POSTGRES_PORT_\(subconfig)")     ?? env("POSTGRES_PORT_A")     ?? env("POSTGRES_PORT")).flatMap(Int.init) ?? SQLPostgresConfiguration.ianaPortNumber,
             username: env("POSTGRES_USER_\(subconfig)")     ?? env("POSTGRES_USER_A")     ?? env("POSTGRES_USER") ?? "test_username",
             password: env("POSTGRES_PASSWORD_\(subconfig)") ?? env("POSTGRES_PASSWORD_A") ?? env("POSTGRES_PASSWORD") ?? "test_password",
-            database: env("POSTGRES_DB_\(subconfig)")       ?? env("POSTGRES_DB_A")       ?? env("POSTGRES_DB") ?? "test_database",
+            database: env("POSTGRES_DB_\(subconfig)")       ?? env("POSTGRES_DB_A")       ?? env("POSTGRES_DB") ?? "test_database_\(subconfig.lowercased())",
             tls: try! .prefer(.init(configuration: .makeClientConfiguration()))
         )
 
@@ -87,7 +87,7 @@ extension DatabaseConfigurationFactory {
             port:    (env("POSTGRES_PORT_\(subconfig)")     ?? env("POSTGRES_PORT_A")     ?? env("POSTGRES_PORT")).flatMap(Int.init) ?? SQLPostgresConfiguration.ianaPortNumber,
             username: env("POSTGRES_USER_\(subconfig)")     ?? env("POSTGRES_USER_A")     ?? env("POSTGRES_USER") ?? "test_username",
             password: env("POSTGRES_PASSWORD_\(subconfig)") ?? env("POSTGRES_PASSWORD_A") ?? env("POSTGRES_PASSWORD") ?? "test_password",
-            database: env("POSTGRES_DB_\(subconfig)")       ?? env("POSTGRES_DB_A")       ?? env("POSTGRES_DB") ?? "test_database",
+            database: env("POSTGRES_DB_\(subconfig)")       ?? env("POSTGRES_DB_A")       ?? env("POSTGRES_DB") ?? "test_database_\(subconfig.lowercased())",
             tls: .prefer(.makeClientConfiguration())
         )
 

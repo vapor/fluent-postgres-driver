@@ -8,7 +8,9 @@ import SQLKit
 import XCTest
 import PostgresNIO
 
-class FluentBenchmarksTests: XCTestCase {
+
+@available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
+final class FluentBenchmarksPostgresClientTests: XCTestCase {
     var benchmarker: FluentBenchmarker { .init(databases: self.dbs) }
     var dbs: Databases!
 
@@ -18,8 +20,8 @@ class FluentBenchmarksTests: XCTestCase {
         XCTAssert(isLoggingConfigured)
         self.dbs = Databases(threadPool: .singleton, on: MultiThreadedEventLoopGroup.singleton)
 
-        self.dbs.use(.testPostgres(subconfig: "A"), as: .a)
-        self.dbs.use(.testPostgres(subconfig: "B"), as: .b)
+        self.dbs.use(.testPostgres(clientSubconfig: "A", logger: .init(label: "test.fluent.a")), as: .a)
+        self.dbs.use(.testPostgres(clientSubconfig: "B", logger: .init(label: "test.fluent.b")), as: .b)
 
         for (id, label) in [(DatabaseID.a, "test.fluent.a"), (.b, "test.fluent.b")] {
             let sql = self.dbs.database(id, logger: .init(label: label), on: self.dbs.eventLoopGroup.any()) as! any SQLDatabase
