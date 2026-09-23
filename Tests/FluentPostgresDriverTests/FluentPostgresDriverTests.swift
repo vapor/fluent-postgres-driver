@@ -7,91 +7,7 @@ import PostgresKit
 import SQLKit
 import Testing
 import XCTest
-
-func withDbs(_ closure: @escaping @Sendable (_ dbs: Databases, _ db: any Database) async throws -> Void) async throws {
-    let databases = Databases(threadPool: .singleton, on: MultiThreadedEventLoopGroup.singleton)
-
-    databases.use(.testPostgres(subconfig: "A"), as: .a)
-    databases.use(.testPostgres(subconfig: "B"), as: .b)
-
-    do {
-        let a = databases.database(.a, logger: .init(label: "test.fluent.a"), on: databases.eventLoopGroup.any())!
-        _ = try await (a as! any SQLDatabase).raw("drop schema if exists public cascade").run()
-        _ = try await (a as! any SQLDatabase).raw("create schema public").run()
-
-        let b = databases.database(.b, logger: .init(label: "test.fluent.b"), on: databases.eventLoopGroup.any())!
-        _ = try await (b as! any SQLDatabase).raw("drop schema if exists public cascade").run()
-        _ = try await (b as! any SQLDatabase).raw("create schema public").run()
-
-        try await closure(databases, a)
-        await databases.shutdownAsync()
-    } catch {
-        print(String(reflecting: error))
-        await databases.shutdownAsync()
-        throw error
-    }
-}
-
-final class FluentBenchmarksTests: XCTestCase {
-    var benchmarker: FluentBenchmarker { .init(databases: self.dbs) }
-    var dbs: Databases!
-
-    override func setUp() async throws {
-        try await super.setUp()
-
-        XCTAssert(isLoggingConfigured)
-        self.dbs = Databases(threadPool: .singleton, on: MultiThreadedEventLoopGroup.singleton)
-
-        self.dbs.use(.testPostgres(subconfig: "A"), as: .a)
-        self.dbs.use(.testPostgres(subconfig: "B"), as: .b)
-
-        let a = self.dbs.database(.a, logger: .init(label: "test.fluent.a"), on: self.dbs.eventLoopGroup.any())
-        _ = try await (a as! any PostgresDatabase).query("drop schema public cascade").get()
-        _ = try await (a as! any PostgresDatabase).query("create schema public").get()
-
-        let b = self.dbs.database(.b, logger: .init(label: "test.fluent.b"), on: self.dbs.eventLoopGroup.any())
-        _ = try await (b as! any PostgresDatabase).query("drop schema public cascade").get()
-        _ = try await (b as! any PostgresDatabase).query("create schema public").get()
-    }
-
-    override func tearDown() async throws {
-        await self.dbs.shutdownAsync()
-        try await super.tearDown()
-    }
-
-    func testAggregate() throws { try self.benchmarker.testAggregate() }
-    func testArray() throws { try self.benchmarker.testArray() }
-    func testBatch() throws { try self.benchmarker.testBatch() }
-    func testChild() throws { try self.benchmarker.testChildren() }
-    func testChildren() throws { try self.benchmarker.testChildren() }
-    func testChunk() throws { try self.benchmarker.testChunk() }
-    func testCodable() throws { try self.benchmarker.testCodable() }
-    func testCompositeID() throws { try self.benchmarker.testCompositeID() }
-    func testCRUD() throws { try self.benchmarker.testCRUD() }
-    func testEagerLoad() throws { try self.benchmarker.testEagerLoad() }
-    func testEnum() throws { try self.benchmarker.testEnum() }
-    func testFilter() throws { try self.benchmarker.testFilter() }
-    func testGroup() throws { try self.benchmarker.testGroup() }
-    func testID() throws { try self.benchmarker.testID() }
-    func testJoin() throws { try self.benchmarker.testJoin() }
-    func testMiddleware() throws { try self.benchmarker.testMiddleware() }
-    func testMigrator() throws { try self.benchmarker.testMigrator() }
-    func testModel() throws { try self.benchmarker.testModel() }
-    func testOptionalParent() throws { try self.benchmarker.testOptionalParent() }
-    func testPagination() throws { try self.benchmarker.testPagination() }
-    func testParent() throws { try self.benchmarker.testParent() }
-    func testPerformance() throws { try self.benchmarker.testPerformance() }
-    func testRange() throws { try self.benchmarker.testRange() }
-    func testSchema() throws { try self.benchmarker.testSchema() }
-    func testSet() throws { try self.benchmarker.testSet() }
-    func testSiblings() throws { try self.benchmarker.testSiblings() }
-    func testSoftDelete() throws { try self.benchmarker.testSoftDelete() }
-    func testSort() throws { try self.benchmarker.testSort() }
-    func testSQL() throws { try self.benchmarker.testSQL() }
-    func testTimestamp() throws { try self.benchmarker.testTimestamp() }
-    func testTransaction() throws { try self.benchmarker.testTransaction() }
-    func testUnique() throws { try self.benchmarker.testUnique() }
-}
+import PostgresNIO
 
 @Suite(.serialized)
 struct AllSuites {}
@@ -103,10 +19,9 @@ struct FluentPostgresDriverTests {
         #expect(isLoggingConfigured)
     }
 
-    #if !compiler(<6.1) // #expect(throws:) doesn't return the Error until 6.1
-    @Test
-    func databaseError() async throws {
-        try await withDbs { dbs, db in
+    @Test(arguments: TestDriver.allCases)
+    func databaseError(_ driver: TestDriver) async throws {
+        try await withDbs(driver) { dbs, db in
             let sql1 = (db as! any SQLDatabase)
             let error1 = await #expect(throws: (any Error).self) { try await sql1.raw("asdf").run() }
             #expect((error1 as? any DatabaseError)?.isSyntaxError ?? false, "\(String(reflecting: error1))")
@@ -135,10 +50,9 @@ struct FluentPostgresDriverTests {
         //    XCTAssertFalse(($0 as? any DatabaseError)?.isConstraintFailure ?? true, "\(String(reflecting: $0))")
         //}
     }
-    #endif
 
-    @Test
-    func blob() async throws {
+    @Test(arguments: TestDriver.allCases)
+    func blob(_ driver: TestDriver) async throws {
         struct CreateFoo: AsyncMigration {
             func prepare(on database: any Database) async throws {
                 try await database.schema("foos")
@@ -152,14 +66,14 @@ struct FluentPostgresDriverTests {
             }
         }
 
-        try await withDbs { _, db in
+        try await withDbs(driver) { _, db in
             try await CreateFoo().prepare(on: db)
             try await CreateFoo().revert(on: db)
         }
     }
 
-    @Test
-    func saveModelWithBool() async throws {
+    @Test(arguments: TestDriver.allCases)
+    func saveModelWithBool(_ driver: TestDriver) async throws {
         final class Organization: Model, @unchecked Sendable {
             static let schema = "orgs"
 
@@ -182,7 +96,7 @@ struct FluentPostgresDriverTests {
             }
         }
 
-        try await withDbs { _, db in
+        try await withDbs(driver) { _, db in
             try await CreateOrganization().prepare(on: db)
             do {
                 let new = Organization()
@@ -196,9 +110,9 @@ struct FluentPostgresDriverTests {
         }
     }
 
-    @Test
-    func customJSON() async throws {
-        try await withDbs { dbs, _ in
+    @Test(arguments: TestDriver.allCases)
+    func customJSON(_ driver: TestDriver) async throws {
+        try await withDbs(driver) { dbs, _ in
             let jsonEncoder = JSONEncoder()
             jsonEncoder.dateEncodingStrategy = .iso8601
             let jsonDecoder = JSONDecoder()
@@ -237,9 +151,9 @@ struct FluentPostgresDriverTests {
         }
     }
 
-    @Test
-    func enumAddingMultipleCases() async throws {
-        try await withDbs { _, db in
+    @Test(arguments: TestDriver.allCases)
+    func enumAddingMultipleCases(_ driver: TestDriver) async throws {
+        try await withDbs(driver) { _, db in
             try await EnumMigration().prepare(on: db)
             do {
                 try await EventWithFooMigration().prepare(on: db)
@@ -267,8 +181,8 @@ struct FluentPostgresDriverTests {
         }
     }
 
-    @Test
-    func encodingArrayOfModels() async throws {
+    @Test(arguments: TestDriver.allCases)
+    func encodingArrayOfModels(_ driver: TestDriver) async throws {
         final class Elem: Model, ExpressibleByIntegerLiteral, @unchecked Sendable {
             static let schema = ""
             @ID(custom: .id) var id: Int?
@@ -283,7 +197,7 @@ struct FluentPostgresDriverTests {
             init(nilLiteral: ()) { self.list = nil }
             init(arrayLiteral el: Elem...) { self.list = el }
         }
-        try await withDbs { _, db in
+        try await withDbs(driver) { _, db in
             do {
                 try await db.schema(Seq.schema).field(.id, .int, .identifier(auto: true)).field("list", .sql(embed: "JSONB[]")).create()
 
@@ -313,32 +227,6 @@ struct FluentPostgresDriverTests {
         }
     }
 }
-}
-
-extension DatabaseConfigurationFactory {
-    static func testPostgres(
-        subconfig: String,
-        encodingContext: PostgresEncodingContext<some PostgresJSONEncoder> = .default,
-        decodingContext: PostgresDecodingContext<some PostgresJSONDecoder> = .default
-    ) -> Self {
-        let baseSubconfig = SQLPostgresConfiguration(
-            hostname: env("POSTGRES_HOSTNAME_\(subconfig)") ?? env("POSTGRES_HOSTNAME_A") ?? env("POSTGRES_HOSTNAME") ?? "localhost",
-            port:    (env("POSTGRES_PORT_\(subconfig)")     ?? env("POSTGRES_PORT_A")     ?? env("POSTGRES_PORT")).flatMap(Int.init) ?? SQLPostgresConfiguration.ianaPortNumber,
-            username: env("POSTGRES_USER_\(subconfig)")     ?? env("POSTGRES_USER_A")     ?? env("POSTGRES_USER") ?? "test_username",
-            password: env("POSTGRES_PASSWORD_\(subconfig)") ?? env("POSTGRES_PASSWORD_A") ?? env("POSTGRES_PASSWORD") ?? "test_password",
-            database: env("POSTGRES_DB_\(subconfig)")       ?? env("POSTGRES_DB_A")       ?? env("POSTGRES_DB") ?? "test_database",
-            tls: try! .prefer(.init(configuration: .makeClientConfiguration()))
-        )
-
-        return .postgres(
-            configuration: baseSubconfig,
-            connectionPoolTimeout: .seconds(30),
-            pruneInterval: .seconds(30),
-            maxIdleTimeBeforePruning: .seconds(60),
-            encodingContext: encodingContext,
-            decodingContext: decodingContext
-        )
-    }
 }
 
 extension DatabaseID {

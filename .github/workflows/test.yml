@@ -29,7 +29,7 @@ jobs:
     container: swift:noble
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with: { 'fetch-depth': 0 }
       - name: API breaking changes
         run: |
@@ -45,15 +45,15 @@ jobs:
           - postgres-image-a: 'postgres:13'
             postgres-image-b: 'postgres:14'
             postgres-auth: 'trust'
-            swift-image: 'swift:6.0-noble'
+            swift-image: 'swift:6.2-noble'
           - postgres-image-a: 'postgres:15'
             postgres-image-b: 'postgres:16'
             postgres-auth: 'md5'
-            swift-image: 'swift:6.1-noble'
+            swift-image: 'swift:6.3-noble'
           - postgres-image-a: 'postgres:17'
             postgres-image-b: 'postgres:18'
             postgres-auth: 'scram-sha-256'
-            swift-image: 'swift:6.2-noble'
+            swift-image: 'swift:6.4-noble'
     container: ${{ matrix.swift-image }}
     runs-on: ubuntu-latest
     services:
@@ -77,11 +77,11 @@ jobs:
       - name: Ensure curl is available
         run: apt-get update -y && apt-get install -y curl
       - name: Check out package
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
       - name: Run all tests
         run: swift test --enable-code-coverage --explicit-target-dependency-import-check error -Xswiftc -require-explicit-sendable
       - name: Submit coverage report to Codecov.io
-        uses: vapor/swift-codecov-action@v0.3
+        uses: vapor/swift-codecov-action@c93caea6600dbe3af0266a8ef6ee195c00181f04 # v0.3.7
         with:
           codecov_token: ${{ secrets.CODECOV_TOKEN }}
 
@@ -103,7 +103,7 @@ jobs:
       POSTGRES_HOSTNAME_B: 127.0.0.1
     steps:
       - name: Select latest available Xcode
-        uses: maxim-lobanov/setup-xcode@v1
+        uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
         with:
           xcode-version: ${{ matrix.xcode-version }}
       - name: Install Postgres, setup DB and auth, and wait for server start
@@ -119,22 +119,22 @@ jobs:
           PGPASSWORD="${POSTGRES_PASSWORD_A}" psql -w "${POSTGRES_DB_B}" <<<"ALTER SCHEMA public OWNER TO ${POSTGRES_USER_B};"
         timeout-minutes: 15
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
       - name: Run all tests
         run: swift test --enable-code-coverage --explicit-target-dependency-import-check error -Xswiftc -require-explicit-sendable
       - name: Submit coverage report to Codecov.io
-        uses: vapor/swift-codecov-action@v0.3
+        uses: vapor/swift-codecov-action@c93caea6600dbe3af0266a8ef6ee195c00181f04 # v0.3.7
         with:
           codecov_token: ${{ secrets.CODECOV_TOKEN }}
 
   musl:
     runs-on: ubuntu-latest
-    container: swift:6.2-noble
+    container: swift:6.4-noble
     timeout-minutes: 30
     steps:
       - name: Check out code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
       - name: Install SDK
-        run: swift sdk install https://download.swift.org/swift-6.2-release/static-sdk/swift-6.2-RELEASE/swift-6.2-RELEASE_static-linux-0.0.1.artifactbundle.tar.gz --checksum d2225840e592389ca517bbf71652f7003dbf45ac35d1e57d98b9250368769378
+        run: swift sdk install https://download.swift.org/swift-6.4.0-release/static-sdk/swift-6.4.0-RELEASE/swift-6.4.0-RELEASE_static-linux-0.0.1.artifactbundle.tar.gz --checksum d2225840e592389ca517bbf71652f7003dbf45ac35d1e57d98b9250368769378
       - name: Build
         run: swift build --swift-sdk x86_64-swift-linux-musl
