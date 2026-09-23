@@ -91,9 +91,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - macos-version: macos-15
-            xcode-version: latest-stable
           - macos-version: macos-26
+            xcode-version: latest-stable
+          - macos-version: xcode-27
             xcode-version: latest-stable
     runs-on: ${{ matrix.macos-version }}
     env:
