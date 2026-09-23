@@ -18,7 +18,7 @@ let package = Package(
         .package(url: "https://github.com/vapor/async-kit.git", from: "1.21.0"),
         .package(url: "https://github.com/vapor/postgres-nio.git", from: "1.33.1"),
         .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.12.0"),
-        .package(url: "https://github/apple/swift-log.git", from: "1.14.0")
+        .package(url: "https://github.com/apple/swift-log.git", from: "1.14.0"),
     ],
     targets: [
         .target(
