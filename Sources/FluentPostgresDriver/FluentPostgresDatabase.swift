@@ -41,7 +41,7 @@ extension _FluentPostgresDatabase: Database {
         self.withConnection { (underlying: any PostgresDatabase) in
             closure(
                 _FluentPostgresDatabase(
-                    database: underlying.sql(
+                    database: underlying.logging(to: self.logger).sql(
                         encodingContext: self.encodingContext,
                         decodingContext: self.decodingContext,
                         queryLogLevel: self.database.queryLogLevel
