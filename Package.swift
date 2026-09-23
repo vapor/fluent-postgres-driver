@@ -38,6 +38,7 @@ let package = Package(
             name: "FluentPostgresDriverTests",
             dependencies: [
                 .product(name: "FluentBenchmark", package: "fluent-kit"),
+                .product(name: "InMemoryLogging", package: "swift-log"),
                 .target(name: "FluentPostgresDriver"),
             ],
             swiftSettings: swiftSettings
