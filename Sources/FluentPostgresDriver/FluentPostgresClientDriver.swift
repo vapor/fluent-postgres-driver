@@ -45,7 +45,7 @@ final class _FluentPostgresClientDriver<E: PostgresJSONEncoder, D: PostgresJSOND
         }
     }
 
-    func makeDatabase(with context: FluentKit.DatabaseContext) -> any FluentKit.Database {
+    func makeDatabase(with context: DatabaseContext) -> any Database {
         _FluentPostgresClientDatabase(
             source: .client(client),
             context: context, 
