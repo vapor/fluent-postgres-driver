@@ -91,7 +91,7 @@ extension _FluentPostgresClientDatabase: Database {
     private func scoped(to conn: PostgresConnection, inTransaction: Bool? = nil) -> Self {
         .init(
             source: .connection(conn
-                .logging(to: self.logger)
+                .logging(withConnectionIDTo: self.logger)
                 .sql(encodingContext: self.encodingContext, decodingContext: self.decodingContext, queryLogLevel: self.sqlLogLevel)),
             context: self.context,
             encodingContext: self.encodingContext,
