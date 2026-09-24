@@ -19,6 +19,11 @@ enum TestDriver: Sendable, CaseIterable {
             [.asyncKit]
         }
     }
+
+    @available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
+    static var clientDrivers: [TestDriver] {
+        [.postgresClient, .externalPostgresClient]
+    }
 }
 
 func withDbs(_ driver: TestDriver, _ closure: @escaping @Sendable (_ dbs: Databases, _ db: any Database) async throws -> Void) async throws {
