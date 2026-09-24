@@ -37,6 +37,22 @@ extension DatabaseConfigurationFactory {
         }
     }
 
+    /// Create a PostgreSQL database configuration from a PostgresClient.
+    /// 
+    /// This is different to the other configuration factories as it uses PostgresNIO's
+    /// modern PostgresClient connection pool under the hood instead of the AsyncKit pool.
+    /// The client's lifecycle is expected to be managed by the caller.
+    /// 
+    /// > Warning: The database that's returned using this configuration is not castable
+    /// > to a `PostgresDatabase`, and `TransactionControlDatabase` is to be used inside 
+    /// > `withConnection`.
+    ///
+    /// - Parameters:
+    ///   - client: A ``PostgresClient``.
+    ///   - encodingContext: Encoding context to use for serializing data.
+    ///   - decodingContext: Decoding context to use for deserializing data.
+    ///   - sqlLogLevel: Level at which to log SQL queries.
+    ///   - logger: Logger to use in the client.
     public static func postgres(
         client: PostgresClient,
         encodingContext: PostgresEncodingContext<some PostgresJSONEncoder> = .default,
