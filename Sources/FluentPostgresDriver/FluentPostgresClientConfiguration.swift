@@ -28,7 +28,41 @@ extension DatabaseConfigurationFactory {
     ) -> Self {
         .init {
             FluentPostgresClientConfiguration(
-                configuration: configuration,
+                client: .configuration(configuration),
+                encodingContext: encodingContext,
+                decodingContext: decodingContext,
+                sqlLogLevel: sqlLogLevel,
+                logger: logger
+            )
+        }
+    }
+
+    /// Create a PostgreSQL database configuration from a PostgresClient.
+    /// 
+    /// This is different to the other configuration factories as it uses PostgresNIO's
+    /// modern PostgresClient connection pool under the hood instead of the AsyncKit pool.
+    /// The client's lifecycle is expected to be managed by the caller.
+    /// 
+    /// > Warning: The database that's returned using this configuration is not castable
+    /// > to a `PostgresDatabase`, and `TransactionControlDatabase` is to be used inside 
+    /// > `withConnection`.
+    ///
+    /// - Parameters:
+    ///   - client: A ``PostgresClient``.
+    ///   - encodingContext: Encoding context to use for serializing data.
+    ///   - decodingContext: Decoding context to use for deserializing data.
+    ///   - sqlLogLevel: Level at which to log SQL queries.
+    ///   - logger: Logger to use in the client.
+    public static func postgres(
+        client: PostgresClient,
+        encodingContext: PostgresEncodingContext<some PostgresJSONEncoder> = .default,
+        decodingContext: PostgresDecodingContext<some PostgresJSONDecoder> = .default,
+        sqlLogLevel: Logger.Level = .debug,
+        logger: Logger
+    ) -> Self {
+        .init {
+            FluentPostgresClientConfiguration(
+                client: .client(client),
                 encodingContext: encodingContext,
                 decodingContext: decodingContext,
                 sqlLogLevel: sqlLogLevel,
@@ -39,9 +73,15 @@ extension DatabaseConfigurationFactory {
 }
 
 @available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
-struct FluentPostgresClientConfiguration<E: PostgresJSONEncoder, D: PostgresJSONDecoder>: DatabaseConfiguration {
+private struct FluentPostgresClientConfiguration<E: PostgresJSONEncoder, D: PostgresJSONDecoder>: DatabaseConfiguration {
+    enum Client {
+        case client(PostgresClient)
+        case configuration(PostgresClient.Configuration)
+    }
+    
     var middleware: [any AnyModelMiddleware] = []
-    fileprivate let configuration: PostgresClient.Configuration
+
+    let client: Client
     
     let encodingContext: PostgresEncodingContext<E>
     let decodingContext: PostgresDecodingContext<D>
@@ -49,13 +89,25 @@ struct FluentPostgresClientConfiguration<E: PostgresJSONEncoder, D: PostgresJSON
     let logger: Logger
 
     func makeDriver(for databases: Databases) -> any DatabaseDriver {
-        _FluentPostgresClientDriver<E, D>(
-            client: PostgresClient(configuration: self.configuration, eventLoopGroup: databases.eventLoopGroup, backgroundLogger: logger),
-            eventLoopGroup: databases.eventLoopGroup,
-            encodingContext: self.encodingContext,
-            decodingContext: self.decodingContext,
-            sqlLogLevel: sqlLogLevel,
-            logger: logger
-        )
+        switch client {
+        case .client(let client):
+            _FluentPostgresClientDriver<E, D>(
+                client: client,
+                encodingContext: self.encodingContext,
+                decodingContext: self.decodingContext,
+                sqlLogLevel: sqlLogLevel,
+                logger: logger
+            )
+
+        case .configuration(let config):
+            _FluentPostgresClientDriver<E, D>(
+                configuration: config,
+                eventLoopGroup: databases.eventLoopGroup,
+                encodingContext: self.encodingContext,
+                decodingContext: self.decodingContext,
+                sqlLogLevel: sqlLogLevel,
+                logger: logger
+            )
+        }
     }
 }
