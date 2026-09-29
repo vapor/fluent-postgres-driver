@@ -14,7 +14,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/vapor/fluent-kit.git", from: "1.52.2"),
-        .package(url: "https://github.com/vapor/postgres-kit.git", from: "2.14.1"),
+        .package(url: "https://github.com/vapor/postgres-kit.git", from: "2.17.0"),
         .package(url: "https://github.com/vapor/async-kit.git", from: "1.21.0"),
         .package(url: "https://github.com/vapor/postgres-nio.git", from: "1.33.1"),
         .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.12.0"),
