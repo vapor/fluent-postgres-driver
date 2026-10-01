@@ -20,8 +20,7 @@ struct _FluentPostgresDriver<E: PostgresJSONEncoder, D: PostgresJSONDecoder>: Da
             context: context,
             encodingContext: self.encodingContext,
             decodingContext: self.decodingContext,
-            inTransaction: false,
-            connection: nil
+            inTransaction: false
         )
     }
 

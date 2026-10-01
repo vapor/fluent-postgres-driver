@@ -11,7 +11,6 @@ struct _FluentPostgresDatabase<E: PostgresJSONEncoder, D: PostgresJSONDecoder> {
     let encodingContext: PostgresEncodingContext<E>
     let decodingContext: PostgresDecodingContext<D>
     let inTransaction: Bool
-    let connection: PostgresConnection?
 }
 
 extension _FluentPostgresDatabase: Database {
@@ -42,17 +41,15 @@ extension _FluentPostgresDatabase: Database {
         self.withConnection { (connection: PostgresConnection) in
             closure(
                 _FluentPostgresDatabase(
-                    database: connection.sql(
+                    database: connection.logging(to: self.logger.withConnectionID(of: connection)).sql(
                         encodingContext: self.encodingContext,
                         decodingContext: self.decodingContext,
-                        queryLogLevel: self.database.queryLogLevel,
-                        logger: self.logger.withConnectionID(of: connection)
+                        queryLogLevel: self.database.queryLogLevel
                     ),
                     context: self.context,
                     encodingContext: self.encodingContext,
                     decodingContext: self.decodingContext,
-                    inTransaction: true,
-                    connection: connection
+                    inTransaction: true
                 )
             )
         }
@@ -97,10 +94,6 @@ extension _FluentPostgresDatabase: PostgresDatabase {
     }
 
     func withConnection<T>(_ closure: @escaping (PostgresConnection) -> EventLoopFuture<T>) -> EventLoopFuture<T> {
-        if let connection = self.connection {
-            return closure(connection)
-        }
-
         guard let psqlDb: any PostgresDatabase = self.database as? any PostgresDatabase else {
             fatalError(
                 """
