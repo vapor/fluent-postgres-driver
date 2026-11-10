@@ -38,10 +38,10 @@ extension _FluentPostgresDatabase: Database {
     }
 
     func withConnection<T>(_ closure: @escaping @Sendable (any Database) -> EventLoopFuture<T>) -> EventLoopFuture<T> {
-        self.withConnection { (underlying: any PostgresDatabase) in
+        self.withConnection { (connection: PostgresConnection) in
             closure(
                 _FluentPostgresDatabase(
-                    database: underlying.logging(to: self.logger).sql(
+                    database: connection.logging(to: self.logger.withConnectionID(of: connection)).sql(
                         encodingContext: self.encodingContext,
                         decodingContext: self.decodingContext,
                         queryLogLevel: self.database.queryLogLevel
@@ -104,5 +104,17 @@ extension _FluentPostgresDatabase: PostgresDatabase {
         }
 
         return psqlDb.withConnection(closure)
+    }
+}
+
+extension Logger {
+    /// This logger, with `connection`'s ID attached the same way PostgresNIO tags its own logs.
+    ///
+    /// Only the ID is taken from the connection. The rest of the connection's own logger metadata (such as a request ID)
+    /// belongs to whichever request happened to open the connection, so it must not be used for anyone else's queries.
+    func withConnectionID(of connection: PostgresConnection) -> Logger {
+        var logger = self
+        logger[metadataKey: "psql_connection_id"] = "\(connection.id)"
+        return logger
     }
 }

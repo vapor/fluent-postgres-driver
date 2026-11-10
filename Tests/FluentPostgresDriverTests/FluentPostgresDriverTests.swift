@@ -226,6 +226,20 @@ struct FluentPostgresDriverTests {
             try await db.schema(Seq.schema).delete()
         }
     }
+
+    /// Only the AsyncKit driver's databases are castable to `PostgresDatabase`, and that must hold once they're scoped to a connection.
+    @Test
+    func connectionScopedDatabaseIsStillPostgresDatabase() async throws {
+        try await withDbs(.asyncKit) { _, db in
+            try await db.transaction { db in
+                #expect(try await (db as! any PostgresDatabase).simpleQuery("SELECT 1").get().count == 1)
+
+                try await db.withConnection { db in
+                    try await (db as! any SQLDatabase).raw("SELECT 1").run()
+                }
+            }
+        }
+    }
 }
 }
 
